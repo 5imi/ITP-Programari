@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Stație ITP • Dashboard Local (Model UI/UX)</title>
+  <title>ACW - Fălticeni • Programări ITP</title>
+  <link rel="icon" type="image/png" href="references/ui-libs/aw-logo.png">
   <link rel="stylesheet" href="references/ui-libs/tabler/tabler.min.css">
   <style>
     :root {
@@ -13,6 +14,9 @@
       --itp-primary: #2563eb;
       --itp-text: #0f172a;
       --itp-muted: #64748b;
+      --aw-red: #c8141c;
+      --aw-red-hover: #a61017;
+      --aw-dark: #2a2421;
     }
 
     body {
@@ -332,6 +336,49 @@
       from { opacity: 0; transform: translateY(-6px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
+    /* AW Falticeni Brand Logo & Accents (Light Theme) */
+    .aw-logo-login {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #ffffff;
+      box-shadow: 0 8px 22px rgba(42, 36, 33, 0.16);
+    }
+    .aw-logo-nav {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 6px rgba(42, 36, 33, 0.15);
+      flex-shrink: 0;
+    }
+    .aw-login-card {
+      border-top: 4px solid var(--aw-red);
+    }
+    .btn-aw {
+      background-color: var(--aw-red);
+      border-color: var(--aw-red);
+      color: #ffffff;
+    }
+    .btn-aw:hover, .btn-aw:focus {
+      background-color: var(--aw-red-hover);
+      border-color: var(--aw-red-hover);
+      color: #ffffff;
+    }
+    .itp-sidebar .nav-link.active {
+      background: #fef2f2;
+      color: var(--aw-red) !important;
+      border-left: 3px solid var(--aw-red);
+      padding-left: 7px;
+      font-weight: 600;
+    }
+    .mobile-bottom-nav .mobile-nav-btn.active {
+      color: var(--aw-red) !important;
+      box-shadow: inset 0 2.5px 0 var(--aw-red);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -339,12 +386,11 @@
 <div class="page page-center" id="loginScreen" style="min-height: 100vh;">
   <div class="container container-tight py-4">
     <div class="text-center mb-3">
-      <div class="d-inline-flex align-items-center gap-2">
-        <span class="avatar avatar-md bg-primary text-white fw-bold">ITP</span>
-        <span class="fw-bold fs-2 text-dark">Stație ITP</span>
-      </div>
+      <img src="references/ui-libs/aw-logo.png" alt="ACW - Automotive Center Werkstat Fălticeni" class="aw-logo-login mb-2">
+      <div class="fw-bold fs-3 text-dark lh-sm">ACW • Automotive Center Werkstat</div>
+      <div class="text-muted small fw-semibold" style="letter-spacing: 0.06em; font-size: 0.72rem;">FĂLTICENI • STAȚIE ITP</div>
     </div>
-    <div class="card card-md">
+    <div class="card card-md aw-login-card">
       <div class="card-body p-4">
         <h2 class="h3 text-center fw-bold mb-3">Autentificare</h2>
         <form id="formLogin" autocomplete="off">
@@ -360,7 +406,7 @@
             </div>
           </div>
           <div class="alert alert-danger py-2 px-2 small d-none mb-3" id="loginErr"></div>
-          <button type="submit" class="btn btn-primary w-100 touch-btn fw-semibold">Intră în aplicație</button>
+          <button type="submit" class="btn btn-aw w-100 touch-btn fw-semibold">Intră în aplicație</button>
         </form>
         <div class="text-center text-muted small mt-2">
           Cont demo implicit: <code>admin</code> / parolă <code>admin</code> (Laur — Administrator)
@@ -378,8 +424,11 @@
     <div class="container-fluid">
       <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1">
         <a href="#" class="navbar-brand text-decoration-none d-flex align-items-center gap-2 m-0" onclick="switchView('azi'); return false;">
-          <span class="avatar avatar-sm bg-primary text-white fw-bold">ITP</span>
-          <span class="fw-bold text-dark fs-3 lh-1">ITP</span>
+          <img src="references/ui-libs/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-nav">
+          <div class="lh-1">
+            <div class="fw-bold text-dark" style="font-size: 0.96rem;">ACW - Fălticeni</div>
+            <div class="text-muted" style="font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;">STAȚIE ITP</div>
+          </div>
         </a>
         <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-nav" aria-label="Meniu">
           <span class="navbar-toggler-icon"></span>
