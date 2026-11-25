@@ -84,3 +84,14 @@ ChanMeng666/automotive-repair-management-system — Exemplu practic de separare 
 Tabler UI (HTML/CSS pe Bootstrap 5) — Unul dintre cele mai curate și profesionale design-uri luminoase pentru panouri de administrare, responsive din start pe PC și telefon, fără React/Node.
 yashhere/fastapi-htmx-starter — Model foarte curat pentru FastAPI + HTML + HTMX (interacțiuni rapide fără reîncărcarea întregii pagini și fără build complicat).
 FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămână pe intervale orare, foarte ușor de conectat la un endpoint JSON din FastAPI.
+
+---
+
+## 7. Actualizare Progres (25 noiembrie 2026)
+
+- **Repository GitHub configurat:** `https://github.com/5imi/ITP-Programari` (ramură `main`).
+- **Obiectiv de realizare:** **maxim 2 zile** pentru versiunea simplă, intuitivă și ușor de folosit (reutilizând baza și proiectele existente din contul GitHub `5imi`).
+- **Machetă UI/UX aprobată (`dashboard.html`):**
+  - Model interactiv 100% offline bazat pe `references/ui-libs/tabler/`.
+  - Aspect modern luminos, responsive PC (tabel + sidebar) și telefon (carduri mari + bară de navigare jos).
+  - Include comutator demo **Administrator vs. Utilizator restrâns**, modal simplu `+ Programare` în 4 câmpuri cu verificare suprapuneri, **Audit Log live** cu export CSV și comutator activare/dezactivare **Module**.
