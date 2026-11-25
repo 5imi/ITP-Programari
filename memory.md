@@ -34,24 +34,23 @@
 
 | Domeniu | Decizie confirmată |
 | :--- | :--- |
-| **Tip aplicație** | Localhost + acces rețea locală (LAN/Wi-Fi), offline-first |
-| **Arhitectură** | Modulară: Bază (`core/`) + module independente (`modules/<id>/`) |
-| **Backend** | Python 3.14 + FastAPI + Uvicorn + SQLite (`data/itp.db`) |
-| **Frontend** | HTML5 + CSS3 + JavaScript curat, responsive (PC + telefon) |
-| **Aspect UI** | Modern luminos (fără build step, librării UI salvate local) |
-| **Utilizatori & Acces** | Administrator (drepturi depline) + Utilizatori restrânși (permisiuni granulare per modul, verificate pe server) |
-| **Audit Log** | Esențial, centralizat în Bază, imutabil (*append-only*), before/after + IP + export Admin |
-| **Stadiu cod** | Doar proiectare, analiză și referințe — fără cod de producție încă |
+| **Tip aplicație & Acces** | `localhost` + LAN/Wi-Fi; expunere demo către beneficiar prin `cloudflared.exe`; pregătit din start (rute relative + `.env`) pentru migrare ulterioară pe domeniu + găzduire |
+| **Arhitectură** | Modulară: Bază (`core/`) + module independente (`modules/<id>/`), ușor de extins și întreținut |
+| **Scop Faza 1 (MVP)** | **Strict `Core` + modulul `programari`**; modulele `clienti-vehicule`, `inspectii`, `expirari-itp`, `tarife-incasari` trec în Etapa 2 |
+| **Dimensionare stație** | **1 linie ITP (`Linia 1`)** implicit și **slot de 30 minute**, cu blocaj strict anti-suprapunere |
+| **Backend & DB** | Python 3.14 + FastAPI + Uvicorn + SQLite WAL (`sqlite3` + migrări `.sql` per modul); reutilizare utilitare/pattern-uri testate din `D:\Proiecte\ITP-Sentinel` (backup WAL, `bcrypt`, CSRF, rate-limit, validări RO) |
+| **Frontend & UI** | HTML5 + CSS3 + JS + Tabler UI salvat local (`references/ui-libs/`), exclusiv **Temă Deschisă (Light Theme)**, responsive PC + telefon |
+| **Utilizatori & Acces** | Administrator (drepturi depline) + Utilizatori restrânși (permisiuni granulare per modul verificate pe server; `First-Start` strict local fără proxy) |
+| **Audit Log** | Esențial, centralizat în Bază, imutabil (*append-only*), before/after + IP real (inclusiv prin `cloudflared`), filtrabil după utilizator/acțiune + export CSV |
+| **Stadiu cod** | Doar proiectare, plan, memorie și machetă `dashboard.html` — fără cod de producție încă |
 
 ---
 
-## 4. Decizii Deschise (de discutat în următoarea sesiune)
+## 4. Decizii Rămase Deschise (Detalii Operaționale)
 
-1. **Modelul exact de permisiuni:** profiluri predefinite (ex. `Administrator`, `Inspector ITP`, `Recepție`) cu posibilitate de ajustare per utilizator, sau doar `Administrator` + `Utilizator` cu bife per modul; dacă utilizatorii restrânși pot edita programările create de colegi.
-2. **Dimensionarea și fluxul stației:** câți utilizatori simultani, câte linii ITP, durata standard a unui slot (ex. 30 min).
-3. **Prioritizarea și extinderea modulelor:** ordinea exactă pentru `clienti-vehicule`, `programari`, `inspectii`, `expirari-itp`, `tarife-incasari` și eventuale module extra (poze/documente din camera telefonului, flote/firme, cheltuieli stație).
-4. **Pornire pe PC-ul stației:** manual prin `start.bat` sau automat la pornirea Windows.
-5. **Proiectele personale ale utilizatorului pe GitHub:** adăugarea link-urilor în `references/my-projects/` pentru analiză comparativă.
+1. **Programul orar al stației:** intervalul exact de programări pe zi (ex. `08:00–18:00`) și zilele lucrătoare.
+2. **Editarea programărilor colegilor:** dacă utilizatorii restrânși pot edita programările create de alți colegi sau doar ștergerea rămâne la Admin.
+3. **Pornirea pe PC-ul stației:** manual prin `start.bat` sau automat la pornirea Windows.
 
 ---
 
@@ -94,4 +93,9 @@ FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămân�
 - **Machetă UI/UX aprobată (`dashboard.html`):**
   - Model interactiv 100% offline bazat pe `references/ui-libs/tabler/`.
   - Aspect modern luminos, responsive PC (tabel + sidebar) și telefon (carduri mari + bară de navigare jos).
-  - Include comutator demo **Administrator vs. Utilizator restrâns**, modal simplu `+ Programare` în 4 câmpuri cu verificare suprapuneri, **Audit Log live** cu export CSV și comutator activare/dezactivare **Module**.
+  - Include comutator demo **Administrator vs. Utilizator restrâns**, modal simplu `+ Programare` în 4 câmpuri cu verificare suprapuneri, **Audit Log live** cu filtrare după utilizator și acțiune + export CSV și comutator activare/dezactivare **Module**.
+  - **Ajustare UI/UX & Aliniere Faza 1 (seară):**
+    - Eliminat blocul `Ultimele evenimente Audit Log` din pagina `Programările de Azi` pentru a economisi spațiu vertical (logurile rămân exclusiv în secțiunea dedicată `Audit Log`), și adăugată filtrarea după **utilizatori** (selector cu contor evenimente + resetare filtre + export CSV al listei filtrate).
+    - Confirmat scopul Fazei 1: **strict modulul `programari`** (**1 linie ITP `Linia 1`**, **slot 30 min**, blocaj strict anti-suprapunere, **istoric pe zile** separat în meniul stânga + bara mobilă), restul modulelor urmând să fie adăugate modular în Etapa 2.
+    - Ajustare machetă `dashboard.html`: antet simplificat la `ITP`, modulele `Programări Azi`, `Clienți & Vehicule` și `Expirări ITP` pornite implicit în demo, **2 zile populate în istoric** (`23.11.2026`, `24.11.2026`) pe lângă ziua curentă (`25.11.2026`), element dedicat **`Istoric Zile`** în meniul din stânga, **motive hibride de respingere / revenire** (`#modalRespingere`: bife rapide + observații opționale), **flux demo `Revenire 30 zile`** (buton `+ Revenire` cu precompletare date + defecte și închidere automată a respingerii inițiale la `Admis`) și optimizare completă pentru telefon/tabletă (carduri `.mobile-cards` pe toate ecranele, topbar pe 2 rânduri, auto-închidere meniu mobil).
+    - Confirmată strategia de livrare: `localhost` + LAN + **`cloudflared.exe`** pentru demo live către beneficiar, apoi migrare pe domeniu + găzduire; actualizate `PLAN.md`, `memory.md` și `dashboard.html` corespunzător.

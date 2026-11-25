@@ -2,34 +2,44 @@
 
 ## 1. Obiectiv și Cerințe Principale
 
-- **Aplicație locală (`localhost`) cu acces în rețeaua locală (LAN/Wi-Fi):** rulează pe PC-ul principal al stației ITP și poate fi accesată simultan de pe mai multe dispozitive (PC, laptop, telefon, tabletă) conectate la același router/Wi-Fi, fără internet și fără costuri de hosting.
+- **Aplicație locală (`localhost`) cu acces în rețeaua locală (LAN/Wi-Fi), expunere demo prin `cloudflared.exe` și pregătită pentru domeniu + găzduire:**
+  - Rulează pe PC-ul principal al stației ITP și poate fi accesată simultan de pe mai multe dispozitive (PC, laptop, telefon, tabletă) conectate la același router/Wi-Fi, fără costuri de hosting.
+  - În prima fază, aplicația poate fi expusă securizat către beneficiarul proiectului prin **`cloudflared.exe`** (Cloudflare Tunnel HTTPS) pentru verificarea progresului în timp real.
+  - Arhitectura folosește rute 100% relative și configurare prin `.env`, astfel încât mutarea ulterioară pe un **domeniu propriu și găzduire (VPS/cloud)** să se facă fără rescrierea codului.
+- **Livrare incrementală (Faza 1 strict `Programări`):**
+  - Prima versiune operațională acoperă **exclusiv Baza (Core) + Modulul `programari`** (1 linie ITP implicită `Linia 1`, durată slot **30 min**, blocaj strict anti-suprapunere).
+  - Modulele ulterioare (`clienti-vehicule`, `inspectii`, `expirari-itp`, `tarife-incasari` etc.) se adaugă independent peste Bază în **Etapa 2**, fără a modifica nucleul.
 - **Frontend HTML5 + CSS3 + JavaScript, Responsive (PC + Telefon):**
-  - **Aspect UI:** **modern luminos** (paletă clară, contrast ridicat, lizibilitate foarte bună în lumină puternică la birou sau pe hala de inspecție).
+  - **Aspect UI:** **exclusiv modern luminos (Light Theme)** (paletă clară, contrast ridicat, lizibilitate foarte bună în lumină puternică la birou sau pe hala de inspecție).
   - **Pe PC:** meniu lateral fix (Sidebar), bară superioară, tabele detaliate și filtre pe un singur ecran.
-  - **Pe Telefon:** meniu inferior / sertar lateral (hamburger), carduri ușor de citit și butoane mari pentru operare cu o singură mână.
+  - **Pe Telefon:** meniu inferior / sertar lateral, carduri ușor de citit și butoane mari pentru operare cu o singură mână.
 - **Multi-utilizator cu niveluri de acces și Audit Log esențial:**
   - **Administrator:** drepturi depline asupra tuturor modulelor, utilizatorilor, setărilor, jurnalului de activitate (Audit Log) și backup-urilor.
   - **Utilizatori restrânși:** acces controlat granular per modul și acțiune.
-  - **Audit Log esențial (trasabilitate completă):** orice autentificare, creare, modificare, ștergere, schimbare de status sau modificare de permisiuni este înregistrată automat în Bază, cu identificarea utilizatorului, modulului și datelor modificate.
-- **Dezvoltare modulară (Core + Module):** mai întâi construim **Baza (Core)** stabilă, apoi adăugăm module noi în mod independent peste Bază, fără a rescrie nucleul aplicației.
+  - **Audit Log esențial (trasabilitate completă):** orice autentificare, creare, modificare, ștergere, schimbare de status sau modificare de permisiuni este înregistrată automat în Bază, cu identificarea utilizatorului, IP-ului real (inclusiv prin tunnel), modulului și datelor modificate.
 
 ---
 
 ## 2. Arhitectură Tehnică
 
-- **Acces în rețea:**
+- **Acces în rețea și tunnel:**
   - Pe PC-ul gazdă: `http://localhost:8000`
   - De pe telefoane/tablete din același Wi-Fi: `http://<IP-LOCAL-PC>:8000` (ex. `http://192.168.1.50:8000`)
+  - Demo extern către beneficiar (opțional, cât timp PC-ul este pornit): `https://<subdomeniu>.trycloudflare.com` via `cloudflared.exe tunnel --url http://localhost:8000`
+  - Ulterior (producție cloud): domeniu propriu + HTTPS prin reverse-proxy, folosind aceleași rute relative și variabile `.env`.
 - **Backend (confirmat):**
-  - **Python 3.14 + FastAPI + Uvicorn + SQLite (`sqlite3` integrat)** — server rapid, ușor de pornit local, cu documentație API automată și separare curată pe `APIRouter` per modul.
+  - **Python 3.14 + FastAPI + Uvicorn + SQLite (`sqlite3` integrat în mod WAL)** — server rapid, ușor de pornit local, cu separare curată pe `APIRouter` per modul.
+  - Reutilizare componente verificate din `D:\Proiecte\ITP-Sentinel`: configurare WAL + backup consistent `sqlite3.Connection.backup()` cu `PRAGMA integrity_check`, hashing `bcrypt`, CSRF, rate-limiting login, protecție `First-Start` strict local și normalizare plăcuțe/telefon România.
 - **Frontend:**
-  - **HTML5 + CSS3 + JavaScript** curat, servit direct de FastAPI (fără Node.js și fără pași de build).
+  - **HTML5 + CSS3 + JavaScript + Tabler UI offline** (`references/ui-libs/`), servit direct de FastAPI din `/static/` (fără Node.js și fără pași de build).
 - **Bază de date:**
-  - **SQLite** într-un singur fișier local (`data/itp.db`), cu sistem automat de migrări per modul (fără instalare de server SQL separat, suport bun pentru utilizare concurentă într-o stație ITP, backup prin copierea unui singur fișier).
-- **Securitate și Sesiuni:**
-  - Parole stocate exclusiv criptat cu hash (`scrypt` / `bcrypt`).
-  - Sesiuni autentificate prin cookie `HttpOnly`.
-  - Verificarea rolului și a permisiunilor se face **strict pe server (backend)** la fiecare cerere API, nu doar prin ascunderea butoanelor din interfața HTML.
+  - **SQLite WAL** într-un singur fișier local (`data/itp.db`), cu sistem automat de migrări `.sql` per modul și backup prin copiere consistentă la cald.
+- **Securitate, Sesiuni și Proxy (`cloudflared` / Hosting):**
+  - Parole stocate exclusiv cu hash `bcrypt`.
+  - Sesiuni autentificate prin cookie `HttpOnly` (cu flag `Secure` activat automat când cererea vine pe HTTPS / `X-Forwarded-Proto: https`) + protecție CSRF și rate-limiting la autentificare.
+  - **First-Start / Setup inițial permis exclusiv local fără proxy** (blocat dacă există headere `CF-Connecting-IP` / `X-Forwarded-For`), pentru ca nimeni din internet să nu poată prelua inițializarea prin `cloudflared`.
+  - Extragere controlată a IP-ului real (`CF-Connecting-IP` / `X-Forwarded-For`) doar pentru cererile venite de pe proxy local de încredere, pentru acuratețea Audit Log-ului.
+  - Verificarea rolului și a permisiunilor se face **strict pe server (backend)** la fiecare cerere API.
 
 ---
 
@@ -48,7 +58,7 @@ Baza nu conține logică de programări sau clienți; este platforma peste care 
    - `users` — conturi utilizatori, hash parolă, rol (`admin` / `user`), status activ/blocat.
    - `user_permissions` — permisiuni granulare per modul pentru utilizatorii restrânși.
    - `modules_state` — starea activ/inactiv a modulelor descoperite.
-   - `settings` — configurări generale ale stației ITP (nume stație, adresă, telefon, program).
+   - `settings` — configurări generale ale stației ITP (nume stație, adresă, telefon, program orar, linii ITP configurabile — implicit `Linia 1`, durată slot — implicit `30 min`).
    - `audit_log` — jurnal de activitate **esențial și imutabil (append-only)**: `timestamp`, `user_id`/`username`, `module_id`, `action` (`LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `CREATE`, `UPDATE`, `DELETE`, `STATUS_CHANGE`, `PERMISSION_CHANGE`, `MODULE_TOGGLE`, `EXPORT`, `BACKUP`), `entity_type`, `entity_id`, `before_json`, `after_json`, `ip_address`, `user_agent`.
 5. **Audit Log Centralizat (Cerință Critică în Bază)**
    - Politică strictă **append-only**: intrările din `audit_log` nu pot fi editate sau șterse din interfață (nici de către utilizatori, nici de către Admin).
@@ -63,7 +73,7 @@ Baza nu conține logică de programări sau clienți; este platforma peste care 
    - Dashboard modular: colectează automat widget-uri (carduri rezumat) expuse de modulele active.
    - Kit UI reutilizabil inclus în Bază (formulare, tabele/carduri responsive, modale, notificări toast, dialoguri de confirmare) astfel încât toate modulele să păstreze același design luminos unitar.
 10. **Backup Bază de Date**
-   - Descărcare directă a fișierului `itp.db` din panoul Admin și salvare de copii în folderul `backups/`.
+   - Descărcare directă a fișierului `itp.db` din panoul Admin și salvare de copii consistente la cald (`sqlite3.Connection.backup()` + `PRAGMA integrity_check` + rotație automată) în folderul `backups/`.
 
 ---
 
@@ -104,30 +114,27 @@ d:\ITP programari\
 
 ## 5. Roadmap / Ordinea Modulelor
 
-1. **Faza 0 – Baza (Core) + modul demo de validare**
-   - Fundația completă (server LAN, SQLite + migrări, login, roluri & permisiuni, App Shell UI modern luminos PC + telefon, panou Admin, backup) și un mic modul demo pentru testarea încărcării modulare cap-coadă.
-2. **Modul 1 – `clienti-vehicule`**
-   - Registru clienți și vehicule: număr de înmatriculare (normalizat automat), marcă/model, categorie (M1, N1, moto etc.), serie șasiu (opțional), nume client, telefon, istoric.
-3. **Modul 2 – `programari`**
-   - Calendar pe zi și pe săptămână, suport pentru una sau mai multe linii ITP, prevenire suprapuneri pe același slot/linie, statusuri (`Programat`, `Pe linie`, `Admis`, `Respins`, `Revenire`, `Anulat`), butoane rapide de apel (`tel:`) și WhatsApp.
-4. **Modul 3 – `inspectii`**
-   - Înregistrare rezultat ITP (`Admis`, `Respins`, `Revenire 30 zile`), inspector, observații, calcul automat al datei următoarei expirări (6 luni / 1 an / 2 ani).
-5. **Modul 4 – `expirari-itp`**
-   - Listă filtrabilă cu ITP-urile care expiră în 7 / 15 / 30 zile, marcare status „Client contactat”, mesaj precompletat pentru WhatsApp/SMS.
-6. **Modul 5 – `tarife-incasari` (doar Admin)**
-   - Configurare tarife pe categorii, evidență încasări, rapoarte pe intervale de timp și export CSV/Excel.
-7. **Module viitoare (opționale, la nevoie)**
-   - `flote-firme`, `documente-poze` (încărcare poze direct din camera telefonului), `cheltuieli-statie` etc.
+1. **Faza 0 – Baza (Core)**
+   - Platforma modulară completă: server LAN + suport `cloudflared.exe` / domeniu viitor, SQLite WAL + migrări `.sql`, login `bcrypt` + cookie `HttpOnly` + CSRF + rate-limit, `First-Start` strict local, roluri & permisiuni per modul, App Shell UI modern luminos PC + telefon, **Audit Log imutabil** (filtrabil după utilizator, acțiune, căutare + export CSV), panou Admin (Module, Utilizatori, Setări stație, Backup consistent `sqlite3.Connection.backup()`).
+2. **Faza 1 (Livrarea Inițială MVP) – Modul 1: `programari`**
+   - Aplicația pornește concentrată **strict pe programări**:
+     - Configurare implicită: **1 linie ITP (`Linia 1`)**, durată slot **30 min** (extensibil din Setări stație fără modificări de cod).
+     - **Blocaj strict anti-suprapunere** pe `(dată, oră, linie)` garantat tranzacțional pe server și reflectat vizual în selectorul de ore.
+     - Vederi *Programările de Azi* și **Istoric pe zile** (navigator pe dată, căutare pe zi sau în tot istoricul; zilele trecute păstrate permanent în Bază, modificare pe zile anterioare doar Admin), filtre pe status (`Programat`, `Pe linie`, `Admis`, `Respins`, `Revenire`, `Anulat`), **motive hibride la `Respins` / `Revenire`** (bife rapide predefinite + observații opționale, salvate în Audit Log și vizibile în istoric/WhatsApp), **flux complet de `Revenire` 30 zile** (`visit_type`, `parent_appointment_id`, `reinspection_deadline`, buton rapid `+ Revenire` fără suprascrierea istoricului și închidere automată la `Admis`), normalizare automată nr. înmatriculare/telefon, acțiuni rapide `Sună` (`tel:`) și `WhatsApp`, permisiuni `programari.view/create/edit/delete` (ștergerea implicit doar Admin).
+3. **Etapa 2 (Module viitoare adăugate incremental peste Bază)**
+   - **Modul 2 – `clienti-vehicule`:** registru clienți și vehicule, istoric complet per număr de înmatriculare / serie șasiu.
+   - **Modul 3 – `inspectii`:** rezultat ITP (`Admis`, `Respins`, `Revenire 30 zile`), inspector, calcul automat data următoarei expirări (6 luni / 1 an / 2 ani).
+   - **Modul 4 – `expirari-itp`:** listă filtrabilă 7 / 15 / 30 zile, status „Client contactat”, mesaj precompletat WhatsApp/SMS.
+   - **Modul 5 – `tarife-incasari` (doar Admin):** configurare tarife pe categorii, evidență încasări, rapoarte și export CSV/Excel.
+   - **Opționale:** `flote-firme`, `documente-poze` (poze din camera telefonului), `cheltuieli-statie`.
 
 ---
 
-## 6. Decizii Deschise (Faza de Analiză & Proiectare)
+## 6. Decizii Rămase de Confirmat (Detalii Operaționale)
 
-1. **Modelul exact de permisiuni pentru utilizatorii restrânși:** profiluri predefinite (ex. `Administrator`, `Inspector ITP`, `Recepție`) cu ajustare fină per utilizator sau doar `Administrator` + `Utilizator` cu bife per modul; dacă utilizatorii pot modifica programările create de alți colegi.
-2. **Fluxul operațional și dimensionarea stației:** număr de utilizatori simultani, număr de linii ITP și durata standard a unui slot de programare (ex. 30 min).
-3. **Prioritizarea și completarea listei de module:** care dintre modulele propuse (`Clienți & Vehicule`, `Programări`, `Inspecții`, `Expirări ITP`, `Tarife & Încasări`) sunt prioritare și ce module suplimentare ar fi utile (ex. poze documente de pe telefon, reveniri 30 zile, flote/firme, cheltuieli stație).
-4. **Modul de pornire pe PC-ul stației:** pornire manuală prin `start.bat` sau pornire automată la deschiderea Windows-ului.
-5. **Repository GitHub:** URL-ul repository-ului + `user.name` / `user.email` pentru Git atunci când se dorește publicarea planului.
+1. **Programul orar al stației:** intervalul zilnic de lucru afișat în grila de sloturi (ex. `08:00–18:00`, luni–sâmbătă sau luni–vineri).
+2. **Editarea programărilor colegilor:** dacă utilizatorii restrânși (`Inspector ITP`, `Recepție`) pot modifica/anula programările create de alți colegi sau doar Adminul are acest drept.
+3. **Modul de pornire pe PC-ul stației:** pornire manuală prin `start.bat` (după modelul `ITP-Sentinel/start_server.bat`) sau pornire automată la deschiderea Windows-ului.
 
 ---
 
