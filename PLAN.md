@@ -14,8 +14,8 @@
   - **Pe PC:** meniu lateral fix (Sidebar), bară superioară, tabele detaliate și filtre pe un singur ecran.
   - **Pe Telefon:** meniu inferior / sertar lateral, carduri ușor de citit și butoane mari pentru operare cu o singură mână.
 - **Multi-utilizator cu niveluri de acces și Istoric Imutabil:**
-  - **Administrator (`Laud`):** drepturi depline asupra tuturor modulelor, utilizatorilor, setărilor, exportului și backup-urilor.
-  - **Utilizatori restrânși (`Vali`, `Gabi`):** acces controlat granular per modul și acțiune.
+  - **Administrator (`Laur`):** drepturi depline asupra tuturor modulelor, utilizatorilor, setărilor, exportului și backup-urilor.
+  - **Utilizatori (`Vali`, `Gabi`):** acces controlat granular per modul și acțiune.
   - **Istoric Imutabil al programărilor (trasabilitate completă):** orice creare, editare (oră/linie/dată/client), marcare `Revenire`, reprogramare 30 zile sau ștergere din agendă păstrează **starea inițială intactă** + evenimentele ulterioare cu utilizatorul activ (tabel append-only în SQLite), completat în spate de log intern de securitate/login/backup fără un tab separat de Audit Log în UI.
 
 ---
@@ -56,7 +56,7 @@ Baza nu conține logică de programări sau clienți; este platforma peste care 
 3. **Bază de Date Core & Migrări (`data/itp.db`)**
    - `_migrations` — evidența migrărilor rulate pentru Core și pentru fiecare modul.
    - `users` — conturi utilizatori, hash parolă, rol (`admin` / `user`), status activ/blocat.
-   - `user_permissions` — permisiuni granulare per modul pentru utilizatorii restrânși.
+   - `user_permissions` — permisiuni granulare per modul pentru utilizatori.
    - `modules_state` — starea activ/inactiv a modulelor descoperite.
    - `settings` — configurări generale ale stației ITP (nume stație, adresă, telefon, program orar, linii ITP configurabile — implicit `Linia 1`, `Linia 2`, `Linia 3`, durată slot — implicit `30 min`).
    - `audit_log` — jurnal de activitate **esențial și imutabil (append-only)**: `timestamp`, `user_id`/`username`, `module_id`, `action` (`LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `CREATE`, `UPDATE`, `DELETE`, `STATUS_CHANGE`, `PERMISSION_CHANGE`, `MODULE_TOGGLE`, `EXPORT`, `BACKUP`), `entity_type`, `entity_id`, `before_json`, `after_json`, `ip_address`, `user_agent`.
@@ -66,7 +66,7 @@ Baza nu conține logică de programări sau clienți; este platforma peste care 
    - Vizualizare exclusivă pentru **Administrator**, cu filtre după utilizator, modul, interval de date, acțiune sau entitate, plus export CSV.
 6. **Roluri și Permisiuni**
    - **Administrator:** acces complet automat pe toate modulele + Panou Admin (`Utilizatori`, `Permisiuni per modul`, `Activare/Dezactivare Module`, `Setări stație`, `Jurnal activitate / Audit Log`, `Backup DB`).
-   - **Utilizator restrâns:** acces configurabil per modul (`view`, `create`, `edit`, `delete`), plus un profil implicit „Utilizator standard” pentru creare rapidă de conturi.
+   - **Utilizator:** acces configurabil per modul (`view`, `create`, `edit`, `delete`), plus un profil implicit „Utilizator standard” pentru creare rapidă de conturi.
 8. **App Shell Responsive (UI Modern Luminos)**
    - Layout adaptiv PC (sidebar) și telefon (meniu inferior / sertar mobil + carduri).
    - Meniu generat dinamic din modulele active la care utilizatorul curent are drepturi.
@@ -121,7 +121,7 @@ d:\ITP programari\
      - Configurare implicită: **3 linii ITP (`Linia 1`, `Linia 2`, `Linia 3`)**, durată slot **30 min** (extensibil din Setări stație fără modificări de cod).
      - **Blocaj strict anti-suprapunere** pe `(dată, oră, linie)` garantat tranzacțional pe server și reflectat vizual în selectorul de ore, plus **verificare duplicare nr. auto în aceeași zi** (normalizat fără spații/cratime: `b458itp` = `B 458 ITP`, cu avertizare și reconfirmare explicită înainte de salvare).
       - **Regulă obligatorie de reconfirmare (`#modalConfirm`)**: nicio acțiune destructivă sau sensibilă (`Șterge` programare cu selector de motiv/`Neprezentare`, `Editează` cu rezumatul modificărilor, `Revocă revenirea`, depășire termen `30 zile`, comutare `Module`/`Utilizatori`, status `Contactat`, `Backup`, `Deconectare`) nu se execută dintr-un singur click accidental.
-      - Vedere unificată **`Programări`** cu navigator pe zile (`‹`, dată calendaristică, `›`, comutator `Caută în toate zilele`; modificare pe zile trecute doar Admin), acțiuni coerente (`Editează`, `Revenire` / `+ Reprogramează`, editare motiv prin click pe etichetă, `Sună`, `WA`, `Șterge`), plus tab dedicat **`Istoric Imutabil`** (tabel `appointment_history` append-only în SQLite blocat la `UPDATE`/`DELETE`, care păstrează permanent `initial_snapshot` intact chiar dacă programarea este modificată sau ștearsă din agendă). Fără câmp de `Categorie` pe formularul de programare (Data, Ora, Linie, Nr. auto, Telefon, Client/Mașină).
+      - Vedere unificată **`Programări`** cu navigator pe zile (`‹`, dată calendaristică, `›`, comutator `Caută în toate zilele`; modificare pe zile trecute doar Admin), acțiuni coerente (`Editează`, `Revenire` / `+ Reprogramează`, editare motiv prin click pe etichetă, `Sună`, `WA`, `Șterge`), secțiune dedicată Admin **`Motive`** (adăugare/editare/ștergere motive salvate pentru `Revenire 30 zile` și `Ștergere/Anulare`), plus tab dedicat **`Istoric Imutabil`** (tabel `appointment_history` append-only în SQLite blocat la `UPDATE`/`DELETE`, care păstrează permanent `initial_snapshot` intact chiar dacă programarea este modificată sau ștearsă din agendă). Fără câmp de `Categorie` pe formularul de programare (Data, Ora, Linie, Nr. auto, Telefon, Client/Mașină).
 3. **Etapa 2 (Module viitoare adăugate incremental peste Bază)**
    - **Modul 2 – `clienti-vehicule`:** registru clienți și vehicule, istoric complet per număr de înmatriculare / serie șasiu.
    - **Modul 3 – `inspectii`:** rezultat ITP (`Admis`, `Respins`, `Revenire 30 zile`), inspector, calcul automat data următoarei expirări (6 luni / 1 an / 2 ani).
@@ -134,7 +134,7 @@ d:\ITP programari\
 ## 6. Decizii Rămase de Confirmat (Detalii Operaționale)
 
 1. **Programul orar al stației:** intervalul zilnic de lucru afișat în grila de sloturi (ex. `08:00–18:00`, luni–sâmbătă sau luni–vineri).
-2. **Editarea programărilor colegilor:** dacă utilizatorii restrânși (`Inspector ITP`, `Recepție`) pot modifica/anula programările create de alți colegi sau doar Adminul are acest drept.
+2. **Editarea programărilor colegilor:** dacă utilizatorii (`Inspector ITP`, `Recepție`) pot modifica/anula programările create de alți colegi sau doar Adminul are acest drept.
 3. **Modul de pornire pe PC-ul stației:** pornire manuală prin `start.bat` (după modelul `ITP-Sentinel/start_server.bat`) sau pornire automată la deschiderea Windows-ului.
 
 ---

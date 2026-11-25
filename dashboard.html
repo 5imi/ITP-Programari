@@ -42,9 +42,10 @@
       }
     }
     .itp-compact-select {
-      padding-left: 0.45rem !important;
-      padding-right: 1.45rem !important;
-      background-position: right 0.35rem center !important;
+      padding-left: 0.35rem !important;
+      padding-right: 1.25rem !important;
+      background-position: right 0.28rem center !important;
+      font-size: 0.79rem !important;
     }
     .itp-sidebar .nav-link {
       color: #334155 !important;
@@ -469,7 +470,7 @@
         </div>
 
         <div class="d-flex align-items-center justify-content-end gap-2 w-100 w-md-auto ms-md-auto flex-wrap">
-          <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1" onclick="openNewAppointmentModal()">
+          <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1" id="btnNewAppt" onclick="openNewAppointmentModal()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             <span>Programare</span>
           </button>
@@ -483,7 +484,7 @@
       <div class="container-xl">
         <div class="d-flex align-items-baseline justify-content-between mb-2 flex-wrap gap-1">
           <h2 class="page-title mb-0 fs-3" id="viewTitle">Programări</h2>
-          <div class="text-muted small" id="viewSubtitle">Miercuri, 25 noiembrie 2026 • Acces activ: Administrator (drepturi depline)</div>
+          <div class="text-muted small" id="viewSubtitle">Se încarcă...</div>
           <div id="viewActions"></div>
         </div>
 
@@ -510,7 +511,7 @@
       </div>
       <div class="modal-body py-2">
         <div class="alert alert-purple mb-2 py-2 px-2 small d-none" id="reinspectionBanner"></div>
-        <div class="row g-2">
+        <div class="row g-1 g-sm-2">
           <div class="col-5">
             <label class="form-label small mb-1 required">Data</label>
             <input type="date" class="form-control form-control-sm" id="inpDate" onchange="refreshHourOptions()" required>
@@ -520,7 +521,7 @@
             <select class="form-select form-select-sm itp-compact-select" id="inpHour"></select>
           </div>
           <div class="col-4">
-            <label class="form-label small mb-1 required">Linie</label>
+            <label class="form-label small mb-1 required">Linie (libere)</label>
             <select class="form-select form-select-sm itp-compact-select" id="inpLine" onchange="refreshHourOptions()">
               <option value="Linia 1" selected>Linia 1</option>
               <option value="Linia 2">Linia 2</option>
@@ -529,17 +530,18 @@
           </div>
           <div class="col-6">
             <label class="form-label small mb-1 required">Nr. auto</label>
-            <input type="text" class="form-control form-control-sm text-uppercase fw-bold" id="inpPlate" placeholder="B 123 ABC" oninput="checkLivePlateDuplicate()" required>
+            <input type="text" class="form-control form-control-sm text-uppercase fw-bold" id="inpPlate" placeholder="SV 08 LZB" oninput="onPlateInput()" required>
           </div>
           <div class="col-6">
             <label class="form-label small mb-1 required">Telefon</label>
-            <input type="tel" class="form-control form-control-sm" id="inpPhone" placeholder="0722 123 456" required>
+            <input type="tel" class="form-control form-control-sm" id="inpPhone" placeholder="0740 111 222" oninput="onManualClientFieldEdit('phone')" required>
           </div>
           <div class="col-12">
             <label class="form-label small mb-1">Client / Mașină</label>
-            <input type="text" class="form-control form-control-sm" id="inpClient" placeholder="Ion Popescu • Logan">
+            <input type="text" class="form-control form-control-sm" id="inpClient" placeholder="Ion Popescu • Logan" oninput="onManualClientFieldEdit('client')">
           </div>
         </div>
+        <div class="text-primary small mt-2 d-none" id="plateAutofillHint"></div>
         <div class="alert alert-warning mt-2 mb-0 py-2 px-2 small d-none" id="duplicateLiveAlert"></div>
         <div class="alert alert-danger mt-2 mb-0 py-2 small d-none" id="modalErr"></div>
       </div>
@@ -642,7 +644,7 @@
           <div class="col-6">
             <label class="form-label small mb-1 required" for="usrRole">Profil acces</label>
             <select class="form-select form-select-sm" id="usrRole" onchange="onUserRoleChange()">
-              <option value="user">Utilizator restrâns</option>
+              <option value="user">Utilizator</option>
               <option value="admin">Administrator</option>
             </select>
           </div>
@@ -686,7 +688,7 @@
     "17:00", "17:30"
   ];
 
-  const REJECTION_REASONS = [
+  const DEFAULT_REJECTION_REASONS = [
     "Frâne",
     "Direcție / Suspensie",
     "Lumini / Semnalizare",
@@ -697,20 +699,109 @@
     "Acte / Dotări"
   ];
 
-  const TODAY_DATE = "2026-11-25";
+  const DEFAULT_DELETE_REASONS = [
+    "Anulat de client",
+    "Neprezentare (No-show)",
+    "Programare dublată / Greșeală",
+    "Alt motiv"
+  ];
+
+  const DEMO_STORAGE_KEY = "acw_itp_demo_v2";
+
+  function getLocalTodayIso() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function formatDateRo(iso) {
+    if (!iso || !iso.includes("-")) return iso || "";
+    const [y, m, d] = iso.split("-");
+    return `${d}.${m}.${y}`;
+  }
+
+  function addDaysIso(iso, delta) {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    const dt = new Date(y, (m || 1) - 1, (d || 1) + delta);
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  const TODAY_DATE = getLocalTodayIso();
+
+  function createDefaultDemoData() {
+    const d0 = TODAY_DATE;
+    const dM1 = addDaysIso(TODAY_DATE, -1);
+    const dM2 = addDaysIso(TODAY_DATE, -2);
+    const dP1 = addDaysIso(TODAY_DATE, 1);
+    const dM1Deadline = addDaysIso(dM1, 30);
+    return {
+      demoUsers: [
+        { id: "laur", username: "admin", alias: "laur", password: "admin", name: "Laur", role: "admin", roleLabel: "Admin", title: "Administrator", isActive: true, locked: true, perms: { canEdit: true, canRevenire: true, canDelete: true }, desc: "Drepturi depline: programări (inclusiv zile trecute), ștergeri, utilizatori, module și backup." },
+        { id: "vali", username: "vali", alias: "", password: "admin", name: "Vali", role: "user", roleLabel: "User", title: "Utilizator", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." },
+        { id: "gabi", username: "gabi", alias: "", password: "admin", name: "Gabi", role: "user", roleLabel: "User", title: "Utilizator", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." }
+      ],
+      modules: [
+        { id: "programari", name: "Programări", desc: "3 linii ITP, slot 30 min, blocaj strict anti-suprapuneri și navigare rapidă pe zile.", enabled: true, locked: true },
+        { id: "clienti", name: "Clienți & Vehicule", desc: "Registru numere de înmatriculare, date contact și istoric.", enabled: true, locked: false },
+        { id: "expirari", name: "Expirări ITP", desc: "Alerte 7/15/30 zile și mesaje rapide WhatsApp.", enabled: true, locked: false },
+        { id: "tarife", name: "Tarife & Încasări", desc: "Modul viitor (Admin): evidență prețuri și rapoarte CSV.", enabled: false, locked: false }
+      ],
+      appointments: [
+        { id: 1, date: d0, time: "08:30", line: "Linia 1", plate: "B 458 ITP", vehicle: "Dacia Duster", client: "Andrei Ionescu", phone: "0721334556", status: "Programat" },
+        { id: 2, date: d0, time: "09:00", line: "Linia 1", plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744112233", status: "Programat" },
+        { id: 3, date: d0, time: "09:30", line: "Linia 1", plate: "IF 89 PRO", vehicle: "Ford Transit", client: "SC Trans Rapid SRL", phone: "0733998877", status: "Programat" },
+        { id: 4, date: d0, time: "10:30", line: "Linia 1", plate: "B 104 ECO", vehicle: "Toyota Corolla", client: "Mihai Dumitru", phone: "0755443322", status: "Revenire", rejectReasons: ["Lumini / Semnalizare"], rejectNote: "Reglaj far dreapta + bec poziție" },
+        { id: 5, date: d0, time: "11:30", line: "Linia 1", plate: "PH 77 RTY", vehicle: "Skoda Octavia", client: "Elena Radu", phone: "0766221100", status: "Programat" },
+        { id: 6, date: d0, time: "12:00", line: "Linia 1", plate: "SV 08 LZB", vehicle: "Dacia Logan", client: "Client Demo", phone: "0740111222", status: "Programat" },
+
+        { id: 11, date: dM1, time: "08:00", line: "Linia 1", plate: "B 912 KLM", vehicle: "Dacia Logan", client: "Dan Stoica", phone: "0723112244", status: "Programat" },
+        { id: 12, date: dM1, time: "09:00", line: "Linia 3", plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat" },
+        { id: 13, date: dM1, time: "10:30", line: "Linia 1", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Revenire", rejectReasons: ["Frâne", "Direcție / Suspensie"], rejectNote: "Dezechilibru frână spate + pivot stânga", resolvedByReinspectionId: 31 },
+        { id: 14, date: dM1, time: "13:00", line: "Linia 1", plate: "DB 44 MNP", vehicle: "Renault Trafic", client: "Vasile Neagu", phone: "0761998877", status: "Revenire", rejectReasons: ["Noxe / Emisii"], rejectNote: "Opacitate peste limită" },
+        { id: 15, date: dM1, time: "15:30", line: "Linia 1", plate: "IL 07 BGD", vehicle: "VW Passat", client: "Cristian Albu", phone: "0729887766", status: "Programat" },
+
+        { id: 21, date: dM2, time: "08:30", line: "Linia 1", plate: "B 771 ZXC", vehicle: "Ford Focus", client: "Radu Enache", phone: "0724332211", status: "Programat" },
+        { id: 22, date: dM2, time: "10:00", line: "Linia 1", plate: "CL 19 ASD", vehicle: "Dacia Sandero", client: "Gabriela Stan", phone: "0748665544", status: "Programat" },
+        { id: 23, date: dM2, time: "12:00", line: "Linia 1", plate: "B 640 FRT", vehicle: "Mercedes Sprinter", client: "SC Express Cargo", phone: "0736119922", status: "Revenire", rejectReasons: ["Anvelope / Jante", "Scurgeri lichide"], rejectNote: "Anvelope spate uzate + scurgere ulei" },
+        { id: 24, date: dM2, time: "14:30", line: "Linia 1", plate: "GR 52 QWE", vehicle: "Hyundai i30", client: "Marius Tudor", phone: "0764554433", status: "Programat" },
+
+        { id: 31, date: dP1, time: "10:00", line: "Linia 2", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat", visitType: "REVENIRE", parentId: 13, parentDate: dM1, reinspectionDeadline: dM1Deadline, verifyNotes: "Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" }
+      ],
+      vehicles: [
+        { plate: "B 458 ITP", vehicle: "Dacia Duster 1.5 dCi", category: "M1 (Turism)", client: "Andrei Ionescu", phone: "0721334556", lastResult: "Programat", expiresInDays: 365 },
+        { plate: "CJ 22 MAX", vehicle: "VW Golf 7", category: "M1 (Turism)", client: "Maria Popa", phone: "0744112233", lastResult: "Programat", expiresInDays: 2 },
+        { plate: "IF 89 PRO", vehicle: "Ford Transit", category: "N1 (Autoutilitară)", client: "SC Trans Rapid SRL", phone: "0733998877", lastResult: "Programat", expiresInDays: 9 },
+        { plate: "B 104 ECO", vehicle: "Toyota Corolla", category: "Taxi / Școală", client: "Mihai Dumitru", phone: "0755443322", lastResult: "Revenire", expiresInDays: 14 },
+        { plate: "AG 55 VLM", vehicle: "Renault Megane", category: "M1 (Turism)", client: "Vlad Marin", phone: "0728776655", lastResult: "Programat", expiresInDays: 24 }
+      ],
+      expirations: [
+        { id: 101, plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744112233", expiresDate: formatDateRo(addDaysIso(d0, 2)), daysLeft: 2, contacted: true },
+        { id: 102, plate: "IF 89 PRO", vehicle: "Ford Transit", client: "SC Trans Rapid SRL", phone: "0733998877", expiresDate: formatDateRo(addDaysIso(d0, 9)), daysLeft: 9, contacted: false },
+        { id: 103, plate: "B 104 ECO", vehicle: "Toyota Corolla", client: "Mihai Dumitru", phone: "0755443322", expiresDate: formatDateRo(addDaysIso(d0, 14)), daysLeft: 14, contacted: false },
+        { id: 104, plate: "AG 55 VLM", vehicle: "Renault Megane", client: "Vlad Marin", phone: "0728776655", expiresDate: formatDateRo(addDaysIso(d0, 24)), daysLeft: 24, contacted: false }
+      ],
+      rejectionReasons: [...DEFAULT_REJECTION_REASONS],
+      deleteReasons: [...DEFAULT_DELETE_REASONS]
+    };
+  }
+
+  const _initialSeed = createDefaultDemoData();
 
   const state = {
+    ready: false,
     isAuthenticated: false,
     role: "admin",
     currentUserId: "laur",
-    demoUsers: [
-      { id: "laur", username: "admin", alias: "laur", password: "admin", name: "Laur", role: "admin", roleLabel: "Admin", title: "Administrator", isActive: true, locked: true, perms: { canEdit: true, canRevenire: true, canDelete: true }, desc: "Drepturi depline: programări (inclusiv zile trecute), ștergeri, utilizatori, module și backup." },
-      { id: "vali", username: "vali", alias: "", password: "admin", name: "Vali", role: "user", roleLabel: "Restrâns", title: "Drepturi restrânse", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." },
-      { id: "gabi", username: "gabi", alias: "", password: "admin", name: "Gabi", role: "user", roleLabel: "Restrâns", title: "Drepturi restrânse", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." }
-    ],
+    demoUsers: _initialSeed.demoUsers,
     currentView: "azi",
     selectedDate: TODAY_DATE,
     searchAllDays: false,
+    lineFilter: "Toate",
     statusFilter: "Toate",
     historyFilter: "Toate",
     historyUserFilter: "TOȚI",
@@ -718,57 +809,108 @@
     search: "",
     editingId: null,
     editingUserId: null,
+    editingReason: null,
     rejectTargetId: null,
     rejectSelectedReasons: [],
     reinspectionDraft: null,
+    plateAutofilled: { phone: false, client: false },
     appointmentHistory: [],
     stationConfig: { lines: ["Linia 1", "Linia 2", "Linia 3"], lineName: "3 linii", slotMinutes: 30 },
-    modules: [
-      { id: "programari", name: "Programări", desc: "3 linii ITP, slot 30 min, blocaj strict anti-suprapuneri și navigare rapidă pe zile.", enabled: true, locked: true },
-      { id: "clienti", name: "Clienți & Vehicule", desc: "Registru numere de înmatriculare, date contact și istoric.", enabled: true, locked: false },
-      { id: "expirari", name: "Expirări ITP", desc: "Alerte 7/15/30 zile și mesaje rapide WhatsApp.", enabled: true, locked: false },
-      { id: "tarife", name: "Tarife & Încasări", desc: "Modul viitor (Admin): evidență prețuri și rapoarte CSV.", enabled: false, locked: false }
-    ],
-    appointments: [
-      { id: 1, date: "2026-11-25", time: "08:30", line: "Linia 1", plate: "B 458 ITP", vehicle: "Dacia Duster", client: "Andrei Ionescu", phone: "0721334556", status: "Programat" },
-      { id: 2, date: "2026-11-25", time: "09:00", line: "Linia 1", plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744112233", status: "Programat" },
-      { id: 3, date: "2026-11-25", time: "09:30", line: "Linia 1", plate: "IF 89 PRO", vehicle: "Ford Transit", client: "SC Trans Rapid SRL", phone: "0733998877", status: "Programat" },
-      { id: 4, date: "2026-11-25", time: "10:30", line: "Linia 1", plate: "B 104 ECO", vehicle: "Toyota Corolla", client: "Mihai Dumitru", phone: "0755443322", status: "Revenire", rejectReasons: ["Lumini / Semnalizare"], rejectNote: "Reglaj far dreapta + bec poziție" },
-      { id: 5, date: "2026-11-25", time: "11:30", line: "Linia 1", plate: "PH 77 RTY", vehicle: "Skoda Octavia", client: "Elena Radu", phone: "0766221100", status: "Programat" },
-      { id: 6, date: "2026-11-25", time: "12:00", line: "Linia 1", plate: "SV 08 LZB", vehicle: "Dacia Logan", client: "Client Demo", phone: "0740111222", status: "Programat" },
-
-      { id: 11, date: "2026-11-24", time: "08:00", line: "Linia 1", plate: "B 912 KLM", vehicle: "Dacia Logan", client: "Dan Stoica", phone: "0723112244", status: "Programat" },
-      { id: 12, date: "2026-11-24", time: "09:00", line: "Linia 3", plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat" },
-      { id: 13, date: "2026-11-24", time: "10:30", line: "Linia 1", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Revenire", rejectReasons: ["Frâne", "Direcție / Suspensie"], rejectNote: "Dezechilibru frână spate + pivot stânga", resolvedByReinspectionId: 31 },
-      { id: 14, date: "2026-11-24", time: "13:00", line: "Linia 1", plate: "DB 44 MNP", vehicle: "Renault Trafic", client: "Vasile Neagu", phone: "0761998877", status: "Revenire", rejectReasons: ["Noxe / Emisii"], rejectNote: "Opacitate peste limită" },
-      { id: 15, date: "2026-11-24", time: "15:30", line: "Linia 1", plate: "IL 07 BGD", vehicle: "VW Passat", client: "Cristian Albu", phone: "0729887766", status: "Programat" },
-
-      { id: 21, date: "2026-11-23", time: "08:30", line: "Linia 1", plate: "B 771 ZXC", vehicle: "Ford Focus", client: "Radu Enache", phone: "0724332211", status: "Programat" },
-      { id: 22, date: "2026-11-23", time: "10:00", line: "Linia 1", plate: "CL 19 ASD", vehicle: "Dacia Sandero", client: "Gabriela Stan", phone: "0748665544", status: "Programat" },
-      { id: 23, date: "2026-11-23", time: "12:00", line: "Linia 1", plate: "B 640 FRT", vehicle: "Mercedes Sprinter", client: "SC Express Cargo", phone: "0736119922", status: "Revenire", rejectReasons: ["Anvelope / Jante", "Scurgeri lichide"], rejectNote: "Anvelope spate uzate + scurgere ulei" },
-      { id: 24, date: "2026-11-23", time: "14:30", line: "Linia 1", plate: "GR 52 QWE", vehicle: "Hyundai i30", client: "Marius Tudor", phone: "0764554433", status: "Programat" },
-
-      { id: 31, date: "2026-11-26", time: "10:00", line: "Linia 2", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat", visitType: "REVENIRE", parentId: 13, parentDate: "2026-11-24", reinspectionDeadline: "2026-12-24", verifyNotes: "Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" }
-    ],
-    vehicles: [
-      { plate: "B 458 ITP", vehicle: "Dacia Duster 1.5 dCi", category: "M1 (Turism)", client: "Andrei Ionescu", phone: "0721334556", lastResult: "Programat", expiresInDays: 365 },
-      { plate: "CJ 22 MAX", vehicle: "VW Golf 7", category: "M1 (Turism)", client: "Maria Popa", phone: "0744112233", lastResult: "Programat", expiresInDays: 2 },
-      { plate: "IF 89 PRO", vehicle: "Ford Transit", category: "N1 (Autoutilitară)", client: "SC Trans Rapid SRL", phone: "0733998877", lastResult: "Programat", expiresInDays: 9 },
-      { plate: "B 104 ECO", vehicle: "Toyota Corolla", category: "Taxi / Școală", client: "Mihai Dumitru", phone: "0755443322", lastResult: "Revenire", expiresInDays: 14 },
-      { plate: "AG 55 VLM", vehicle: "Renault Megane", category: "M1 (Turism)", client: "Vlad Marin", phone: "0728776655", lastResult: "Programat", expiresInDays: 24 }
-    ],
-    expirations: [
-      { id: 101, plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744112233", expiresDate: "27.11.2026", daysLeft: 2, contacted: true },
-      { id: 102, plate: "IF 89 PRO", vehicle: "Ford Transit", client: "SC Trans Rapid SRL", phone: "0733998877", expiresDate: "04.12.2026", daysLeft: 9, contacted: false },
-      { id: 103, plate: "B 104 ECO", vehicle: "Toyota Corolla", client: "Mihai Dumitru", phone: "0755443322", expiresDate: "09.12.2026", daysLeft: 14, contacted: false },
-      { id: 104, plate: "AG 55 VLM", vehicle: "Renault Megane", client: "Vlad Marin", phone: "0728776655", expiresDate: "19.12.2026", daysLeft: 24, contacted: false }
-    ],
+    modules: _initialSeed.modules,
+    appointments: _initialSeed.appointments,
+    vehicles: _initialSeed.vehicles,
+    expirations: _initialSeed.expirations,
+    rejectionReasons: _initialSeed.rejectionReasons,
+    deleteReasons: _initialSeed.deleteReasons,
     permissions: [
       { profile: "Administrator", desc: "Drepturi depline pe toate modulele + Istoric Imutabil + Backup", programari: "Complet", clienti: "Complet", expirari: "Complet", admin: "Da" },
-      { profile: "Inspector ITP", desc: "Acces restrâns: vede azi și schimbă status ITP (fără ștergere)", programari: "View + Status", clienti: "View + Add", expirari: "View", admin: "Nu" },
-      { profile: "Recepție", desc: "Acces restrâns: adaugă programări și contactează expirări", programari: "View + Add/Edit", clienti: "View + Add/Edit", expirari: "View + Contact", admin: "Nu" }
+      { profile: "Inspector ITP", desc: "Utilizator operațional: vede azi și schimbă status ITP (fără ștergere)", programari: "View + Status", clienti: "View + Add", expirari: "View", admin: "Nu" },
+      { profile: "Recepție", desc: "Utilizator operațional: adaugă programări și contactează expirări", programari: "View + Add/Edit", clienti: "View + Add/Edit", expirari: "View + Contact", admin: "Nu" }
     ]
   };
+
+  function saveDemoState() {
+    if (!state.ready) return;
+    try {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        todayDate: TODAY_DATE,
+        demoUsers: state.demoUsers,
+        modules: state.modules,
+        appointments: state.appointments,
+        appointmentHistory: state.appointmentHistory,
+        vehicles: state.vehicles,
+        expirations: state.expirations,
+        rejectionReasons: state.rejectionReasons,
+        deleteReasons: state.deleteReasons
+      };
+      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(payload));
+    } catch (err) {
+      console.warn("Persistență localStorage indisponibilă:", err);
+    }
+  }
+
+  function loadDemoState() {
+    try {
+      const raw = localStorage.getItem(DEMO_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== "object") return;
+      if (Array.isArray(saved.demoUsers) && saved.demoUsers.length) state.demoUsers = saved.demoUsers;
+      if (Array.isArray(saved.modules) && saved.modules.length) state.modules = saved.modules;
+      if (Array.isArray(saved.appointments)) state.appointments = saved.appointments;
+      if (Array.isArray(saved.appointmentHistory)) state.appointmentHistory = saved.appointmentHistory;
+      if (Array.isArray(saved.vehicles) && saved.vehicles.length) state.vehicles = saved.vehicles;
+      if (Array.isArray(saved.expirations) && saved.expirations.length) state.expirations = saved.expirations;
+      if (Array.isArray(saved.rejectionReasons) && saved.rejectionReasons.length) state.rejectionReasons = saved.rejectionReasons;
+      if (Array.isArray(saved.deleteReasons) && saved.deleteReasons.length) state.deleteReasons = saved.deleteReasons;
+    } catch (err) {
+      console.warn("Nu s-a putut restaura starea demo din localStorage:", err);
+    }
+  }
+
+  function resetDemoData() {
+    if (state.role !== "admin") return;
+    closeMobileSidebar();
+    openConfirmModal({
+      title: "Resetează datele demo",
+      message: "Revin toate programările, utilizatorii, motivele, modulele și istoricul la valorile inițiale ale demo-ului?",
+      detail: "Datele salvate local în acest browser vor fi șterse și înlocuite cu setul inițial.",
+      confirmText: "Da, resetează",
+      variant: "danger",
+      onConfirm: () => {
+        try {
+          localStorage.removeItem(DEMO_STORAGE_KEY);
+        } catch (err) {
+          console.warn("Nu s-a putut curăța localStorage:", err);
+        }
+        const fresh = createDefaultDemoData();
+        state.demoUsers = fresh.demoUsers;
+        state.modules = fresh.modules;
+        state.appointments = fresh.appointments;
+        state.vehicles = fresh.vehicles;
+        state.expirations = fresh.expirations;
+        state.rejectionReasons = fresh.rejectionReasons;
+        state.deleteReasons = fresh.deleteReasons;
+        state.editingReason = null;
+        state.appointmentHistory = [];
+        state.currentUserId = "laur";
+        state.role = "admin";
+        state.selectedDate = TODAY_DATE;
+        state.lineFilter = "Toate";
+        state.statusFilter = "Toate";
+        state.historyFilter = "Toate";
+        state.historyUserFilter = "TOȚI";
+        state.search = "";
+        state.searchAllDays = false;
+        const searchEl = document.getElementById("globalSearch");
+        if (searchEl) searchEl.value = "";
+        initAppointmentHistory();
+        showToast("Datele demo au fost resetate la starea inițială.");
+        renderAll();
+      }
+    });
+  }
 
   function esc(str) {
     return String(str ?? "").replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[s]));
@@ -784,9 +926,93 @@
     return m ? `${m[1]} ${m[2]} ${m[3]}` : String(raw || "").trim().toUpperCase().replace(/\s+/g, " ");
   }
 
-  function findSameDayPlateConflict(plateKey, date, excludeId = null) {
+  function normalizeRoPhone(raw) {
+    let d = String(raw || "").replace(/[^\d+]/g, "");
+    if (d.startsWith("+40")) d = "0" + d.slice(3);
+    else if (d.startsWith("0040")) d = "0" + d.slice(4);
+    else if (d.startsWith("40") && d.length === 11) d = "0" + d.slice(2);
+    d = d.replace(/\D/g, "");
+    return { valid: /^0[237]\d{8}$/.test(d), normalized: d };
+  }
+
+  function isValidPlateKey(key) {
+    return key.length >= 4 && key.length <= 10 && /[A-Z]/.test(key) && /\d/.test(key);
+  }
+
+  function onManualClientFieldEdit(field) {
+    if (field === "phone") state.plateAutofilled.phone = false;
+    if (field === "client") state.plateAutofilled.client = false;
+  }
+
+  function findKnownVehicleByPlateKey(plateKey) {
+    if (!plateKey || plateKey.length < 4) return null;
+    const recentAppt = [...state.appointments]
+      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+      .find(a => normalizePlateKey(a.plate) === plateKey);
+    if (recentAppt) {
+      return { plate: recentAppt.plate, phone: recentAppt.phone, client: recentAppt.client, vehicle: recentAppt.vehicle };
+    }
+    const knownVeh = state.vehicles.find(v => normalizePlateKey(v.plate) === plateKey);
+    if (knownVeh) {
+      return { plate: knownVeh.plate, phone: knownVeh.phone, client: knownVeh.client, vehicle: knownVeh.vehicle };
+    }
+    return null;
+  }
+
+  function tryAutofillClientByPlate() {
+    const hintEl = document.getElementById("plateAutofillHint");
+    const plateEl = document.getElementById("inpPlate");
+    const phoneEl = document.getElementById("inpPhone");
+    const clientEl = document.getElementById("inpClient");
+    if (!hintEl || !plateEl || !phoneEl || !clientEl) return;
+    if (state.editingId !== null || state.reinspectionDraft) {
+      hintEl.classList.add("d-none");
+      hintEl.textContent = "";
+      return;
+    }
+    const key = normalizePlateKey(plateEl.value);
+    const match = findKnownVehicleByPlateKey(key);
+    if (match) {
+      if (!phoneEl.value.trim() || state.plateAutofilled.phone) {
+        phoneEl.value = match.phone || "";
+        state.plateAutofilled.phone = true;
+      }
+      const label = match.client && match.vehicle && match.client !== match.vehicle
+        ? `${match.client} • ${match.vehicle}`
+        : (match.client || match.vehicle || "");
+      if (label && (!clientEl.value.trim() || state.plateAutofilled.client)) {
+        clientEl.value = label;
+        state.plateAutofilled.client = true;
+      }
+      hintEl.textContent = `Vehicul recunoscut din baza stației: ${label} (${match.phone})`;
+      hintEl.classList.remove("d-none");
+    } else {
+      if (state.plateAutofilled.phone) {
+        phoneEl.value = "";
+        state.plateAutofilled.phone = false;
+      }
+      if (state.plateAutofilled.client) {
+        clientEl.value = "";
+        state.plateAutofilled.client = false;
+      }
+      hintEl.textContent = "";
+      hintEl.classList.add("d-none");
+    }
+  }
+
+  function onPlateInput() {
+    tryAutofillClientByPlate();
+    checkLivePlateDuplicate();
+  }
+
+  function findSameDayPlateConflict(plateKey, date, excludeId = null, excludeParentId = null) {
     if (!plateKey) return null;
-    return state.appointments.find(a => a.id !== excludeId && a.date === date && normalizePlateKey(a.plate) === plateKey) || null;
+    return state.appointments.find(a =>
+      a.id !== excludeId &&
+      a.id !== excludeParentId &&
+      a.date === date &&
+      normalizePlateKey(a.plate) === plateKey
+    ) || null;
   }
 
   function checkLivePlateDuplicate() {
@@ -796,9 +1022,10 @@
     if (!alertEl || !plateEl || !dateEl) return;
     const plateKey = normalizePlateKey(plateEl.value);
     const date = dateEl.value || state.selectedDate || TODAY_DATE;
-    const dup = findSameDayPlateConflict(plateKey, date, state.editingId);
+    const excludeParentId = state.reinspectionDraft ? state.reinspectionDraft.parentId : null;
+    const dup = findSameDayPlateConflict(plateKey, date, state.editingId, excludeParentId);
     if (dup) {
-      alertEl.innerHTML = `<strong>Atenție — programare existentă azi:</strong> <code>${esc(dup.plate)}</code> figurează deja pe <strong>${formatDateRo(dup.date)}</strong> la <strong>${esc(dup.time)}</strong> (${esc(dup.line)}) • ${esc(dup.client)} (${esc(dup.phone)}).`;
+      alertEl.innerHTML = `<strong>Atenție — programare existentă în ziua aleasă:</strong> <code>${esc(dup.plate)}</code> figurează deja pe <strong>${formatDateRo(dup.date)}</strong> la <strong>${esc(dup.time)}</strong> (${esc(dup.line)}) • ${esc(dup.client)} (${esc(dup.phone)}).`;
       alertEl.classList.remove("d-none");
     } else {
       alertEl.innerHTML = "";
@@ -841,25 +1068,28 @@
 
   function initAppointmentHistory() {
     if (Array.isArray(state.appointmentHistory) && state.appointmentHistory.length) return;
+    const d0 = TODAY_DATE;
+    const dM1 = addDaysIso(TODAY_DATE, -1);
+    const dP1 = addDaysIso(TODAY_DATE, 1);
     state.appointmentHistory = [
       {
         id: 2,
         initialSnapshot: {
-          date: "2026-11-25", time: "08:00", line: "Linia 1",
+          date: d0, time: "08:00", line: "Linia 1",
           plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744000111", status: "Programat"
         },
         createdAt: "07:50",
         createdBy: "Laur (Admin)",
         deleted: false,
         events: [
-          { at: "08:12", actor: "Vali (Restrâns)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
-          { at: "08:35", actor: "Gabi (Restrâns)", type: "MODIFICAT", summary: "Telefon: 0744000111 → 0744112233 (număr confirmat pe WhatsApp)" }
+          { at: "08:12", actor: "Vali (User)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
+          { at: "08:35", actor: "Gabi (User)", type: "MODIFICAT", summary: "Telefon: 0744000111 → 0744112233 (număr confirmat pe WhatsApp)" }
         ]
       },
       {
         id: 99,
         initialSnapshot: {
-          date: "2026-11-25", time: "12:00", line: "Linia 2",
+          date: d0, time: "12:00", line: "Linia 2",
           plate: "B 888 VEC", vehicle: "Renault Megane", client: "Radu Vasile", phone: "0722990011", status: "Programat"
         },
         createdAt: "08:05",
@@ -872,28 +1102,28 @@
       {
         id: 13,
         initialSnapshot: {
-          date: "2026-11-24", time: "10:30", line: "Linia 1",
+          date: dM1, time: "10:30", line: "Linia 1",
           plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat"
         },
         createdAt: "09:15",
-        createdBy: "Gabi (Restrâns)",
+        createdBy: "Gabi (User)",
         deleted: false,
         events: [
-          { at: "11:05", actor: "Vali (Restrâns)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
-          { at: "11:18", actor: "Gabi (Restrâns)", type: "REPROGRAMAT", summary: "Reprogramată revenirea pe 26.11.2026 la 10:00 (Linia 2)" }
+          { at: "11:05", actor: "Vali (User)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
+          { at: "11:18", actor: "Gabi (User)", type: "REPROGRAMAT", summary: `Reprogramată revenirea pe ${formatDateRo(dP1)} la 10:00 (Linia 2)` }
         ]
       },
       {
         id: 12,
         initialSnapshot: {
-          date: "2026-11-24", time: "09:00", line: "Linia 1",
+          date: dM1, time: "09:00", line: "Linia 1",
           plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat"
         },
         createdAt: "08:20",
         createdBy: "Laur (Admin)",
         deleted: false,
         events: [
-          { at: "08:52", actor: "Gabi (Restrâns)", type: "MODIFICAT", summary: "Linie: Linia 1 → Linia 3 (redistribuire pe linie liberă)" }
+          { at: "08:52", actor: "Gabi (User)", type: "MODIFICAT", summary: "Linie: Linia 1 → Linia 3 (redistribuire pe linie liberă)" }
         ]
       }
     ];
@@ -903,14 +1133,14 @@
       if (a.status === "Revenire") {
         events.push({
           at: a.time,
-          actor: "Vali (Restrâns)",
+          actor: "Vali (User)",
           type: "REVENIRE",
           summary: `Marcat Revenire 30 zile • ${formatRejectSummary(a) || "Fără detalii"}`
         });
       } else if (a.visitType === "REVENIRE") {
         events.push({
           at: "11:18",
-          actor: "Gabi (Restrâns)",
+          actor: "Gabi (User)",
           type: "REPROGRAMAT",
           summary: `Programat ca vizită de revenire (din ${formatDateRo(a.parentDate)})`
         });
@@ -919,7 +1149,7 @@
         id: a.id,
         initialSnapshot: makeSnapshot(a),
         createdAt: a.visitType === "REVENIRE" ? "11:18" : a.time,
-        createdBy: a.visitType === "REVENIRE" ? "Gabi (Restrâns)" : "Laur (Admin)",
+        createdBy: a.visitType === "REVENIRE" ? "Gabi (User)" : "Laur (Admin)",
         deleted: false,
         events
       });
@@ -1066,7 +1296,7 @@
     }
     state.currentUserId = u.id;
     state.role = u.role;
-    const adminViews = ["module", "utilizatori"];
+    const adminViews = ["module", "utilizatori", "motive"];
     if (u.role !== "admin" && adminViews.includes(state.currentView)) {
       state.currentView = "azi";
     }
@@ -1156,24 +1386,12 @@
     renderAll();
   }
 
-  function formatDateRo(iso) {
-    if (!iso || !iso.includes("-")) return iso || "";
-    const [y, m, d] = iso.split("-");
-    return `${d}.${m}.${y}`;
-  }
-
   function formatDateHeading(iso) {
     const dt = new Date(`${iso}T12:00:00`);
     const days = ["Duminică", "Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă"];
     const months = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
     if (Number.isNaN(dt.getTime())) return iso;
     return `${days[dt.getDay()]}, ${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
-  }
-
-  function addDaysIso(iso, delta) {
-    const dt = new Date(`${iso}T12:00:00`);
-    dt.setDate(dt.getDate() + delta);
-    return dt.toISOString().slice(0, 10);
   }
 
   function selectDate(iso) {
@@ -1196,11 +1414,18 @@
     return parts.join(" — ");
   }
 
+  function getRejectReasonPool() {
+    const base = Array.isArray(state.rejectionReasons) ? state.rejectionReasons : DEFAULT_REJECTION_REASONS;
+    const extras = state.rejectSelectedReasons.filter(r => !base.includes(r));
+    return [...base, ...extras];
+  }
+
   function renderRejectReasonChips() {
     const grid = document.getElementById("rejectReasonsGrid");
     if (!grid) return;
+    const pool = getRejectReasonPool();
     const selected = new Set(state.rejectSelectedReasons);
-    grid.innerHTML = REJECTION_REASONS.map((reason, idx) => {
+    grid.innerHTML = pool.map((reason, idx) => {
       const active = selected.has(reason);
       return `
         <div class="col-6">
@@ -1213,7 +1438,8 @@
   }
 
   function toggleRejectReason(idx) {
-    const reason = REJECTION_REASONS[idx];
+    const pool = getRejectReasonPool();
+    const reason = pool[idx];
     if (!reason) return;
     const pos = state.rejectSelectedReasons.indexOf(reason);
     if (pos === -1) {
@@ -1224,7 +1450,119 @@
     renderRejectReasonChips();
   }
 
+  function getReasonListByType(type) {
+    return type === "sterge" ? state.deleteReasons : state.rejectionReasons;
+  }
+
+  function addReasonItem(event, type) {
+    event.preventDefault();
+    if (state.role !== "admin") return;
+    const inputId = type === "sterge" ? "inpNewDeleteReason" : "inpNewRevenireReason";
+    const errId = type === "sterge" ? "errDeleteReason" : "errRevenireReason";
+    const inp = document.getElementById(inputId);
+    const errEl = document.getElementById(errId);
+    if (!inp) return;
+    const val = inp.value.trim().replace(/\s+/g, " ");
+    const list = getReasonListByType(type);
+    if (val.length < 2) {
+      if (errEl) {
+        errEl.textContent = "Introdu o denumire de cel puțin 2 caractere.";
+        errEl.classList.remove("d-none");
+      }
+      return;
+    }
+    if (val.length > 60) {
+      if (errEl) {
+        errEl.textContent = "Denumirea motivului poate avea maxim 60 de caractere.";
+        errEl.classList.remove("d-none");
+      }
+      return;
+    }
+    if (list.some(item => item.toLowerCase() === val.toLowerCase())) {
+      if (errEl) {
+        errEl.textContent = `Motivul "${val}" există deja în listă.`;
+        errEl.classList.remove("d-none");
+      }
+      return;
+    }
+    if (errEl) errEl.classList.add("d-none");
+    list.push(val);
+    inp.value = "";
+    showToast(`Motiv salvat: "${val}"`);
+    renderAll();
+  }
+
+  function startEditReason(type, idx) {
+    if (state.role !== "admin") return;
+    state.editingReason = { type, idx };
+    renderAll();
+    const el = document.getElementById("inpEditReasonVal");
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }
+
+  function cancelEditReason() {
+    state.editingReason = null;
+    renderAll();
+  }
+
+  function saveEditReason(event, type, idx) {
+    if (event) event.preventDefault();
+    if (state.role !== "admin") return;
+    const inp = document.getElementById("inpEditReasonVal");
+    if (!inp) return;
+    const val = inp.value.trim().replace(/\s+/g, " ");
+    const list = getReasonListByType(type);
+    if (idx < 0 || idx >= list.length) return;
+    if (val.length < 2 || val.length > 60) {
+      showToast("Motivul trebuie să aibă între 2 și 60 de caractere.");
+      return;
+    }
+    if (list.some((item, i) => i !== idx && item.toLowerCase() === val.toLowerCase())) {
+      showToast(`Motivul "${val}" există deja în listă.`);
+      return;
+    }
+    const oldVal = list[idx];
+    list[idx] = val;
+    state.editingReason = null;
+    showToast(oldVal === val ? "Nicio modificare." : `Motiv actualizat: "${oldVal}" → "${val}"`);
+    renderAll();
+  }
+
+  function deleteReasonItem(type, idx) {
+    if (state.role !== "admin") return;
+    const list = getReasonListByType(type);
+    if (idx < 0 || idx >= list.length) return;
+    if (list.length <= 1) {
+      showToast("Trebuie să rămână cel puțin un motiv în listă.");
+      return;
+    }
+    const label = list[idx];
+    const groupName = type === "sterge" ? "Motive Ștergere / Anulare" : "Motive Revenire (30 zile)";
+    openConfirmModal({
+      title: "Șterge motiv",
+      message: `Elimini acest motiv din lista "${groupName}"? Programările anterioare își păstrează textul deja salvat în Istoric.`,
+      detail: label,
+      confirmText: "Da, șterge",
+      variant: "danger",
+      onConfirm: () => {
+        const curr = getReasonListByType(type);
+        const pos = curr.indexOf(label);
+        if (pos !== -1 && curr.length > 1) curr.splice(pos, 1);
+        if (state.editingReason && state.editingReason.type === type) state.editingReason = null;
+        showToast(`Motiv șters: "${label}"`);
+        renderAll();
+      }
+    });
+  }
+
   function openRejectModal(id) {
+    if (!userCan("canRevenire") && state.role !== "admin") {
+      showToast("Nu ai permisiunea să marchezi reveniri.");
+      return;
+    }
     const item = state.appointments.find(a => a.id === id);
     if (!item) return;
     if (item.date < TODAY_DATE && state.role !== "admin") {
@@ -1243,6 +1581,10 @@
   }
 
   function revokeRevenire() {
+    if (!userCan("canRevenire") && state.role !== "admin") {
+      showToast("Nu ai permisiunea să revoci reveniri.");
+      return;
+    }
     const item = state.appointments.find(a => a.id === state.rejectTargetId);
     if (!item || item.status !== "Revenire") return;
     const prevSummary = formatRejectSummary(item);
@@ -1266,9 +1608,23 @@
     });
   }
 
+  function resetPlateAutofillState() {
+    state.plateAutofilled = { phone: false, client: false };
+    const hintEl = document.getElementById("plateAutofillHint");
+    if (hintEl) {
+      hintEl.textContent = "";
+      hintEl.classList.add("d-none");
+    }
+  }
+
   function openNewAppointmentModal() {
+    if (!userCan("canEdit")) {
+      showToast("Nu ai permisiunea să adaugi programări.");
+      return;
+    }
     state.editingId = null;
     state.reinspectionDraft = null;
+    resetPlateAutofillState();
     const form = document.getElementById("formProgramare");
     if (form) form.reset();
     document.getElementById("modalProgramareTitle").textContent = "Programare nouă ITP";
@@ -1281,12 +1637,19 @@
     const errEl = document.getElementById("modalErr");
     if (errEl) errEl.classList.add("d-none");
     const dateEl = document.getElementById("inpDate");
-    if (dateEl) dateEl.value = state.selectedDate;
+    if (dateEl) {
+      dateEl.min = state.role === "admin" ? "" : TODAY_DATE;
+      dateEl.value = (state.role !== "admin" && state.selectedDate < TODAY_DATE) ? TODAY_DATE : state.selectedDate;
+    }
     refreshHourOptions();
     setModalVisible("modalProgramare", true);
   }
 
   function openEditAppointmentModal(id) {
+    if (!userCan("canEdit") && state.role !== "admin") {
+      showToast("Nu ai permisiunea să editezi programări.");
+      return;
+    }
     const a = state.appointments.find(x => x.id === id);
     if (!a) return;
     if (a.date < TODAY_DATE && state.role !== "admin") {
@@ -1295,15 +1658,19 @@
     }
     state.editingId = id;
     state.reinspectionDraft = null;
+    resetPlateAutofillState();
     document.getElementById("modalProgramareTitle").textContent = `Editează programare • ${a.plate}`;
     document.getElementById("modalProgramareSubmitBtn").textContent = "Salvează modificările";
     const banner = document.getElementById("reinspectionBanner");
     if (banner) {
+      banner.className = "alert alert-purple mb-2 py-2 px-2 small";
       banner.innerHTML = `<strong>Istoric protejat:</strong> modificările se salvează în agendă, iar starea inițială rămâne păstrată în tab-ul <strong>Istoric</strong>.`;
       banner.classList.remove("d-none");
     }
     document.getElementById("modalErr").classList.add("d-none");
-    document.getElementById("inpDate").value = a.date;
+    const dateEl = document.getElementById("inpDate");
+    dateEl.min = state.role === "admin" ? "" : TODAY_DATE;
+    dateEl.value = a.date;
     document.getElementById("inpLine").value = a.line;
     refreshHourOptions();
     document.getElementById("inpHour").value = a.time;
@@ -1337,9 +1704,14 @@
   }
 
   function openReinspectionModal(parentId) {
+    if (!userCan("canRevenire") && state.role !== "admin") {
+      showToast("Nu ai permisiunea să reprogramezi reveniri.");
+      return;
+    }
     const p = state.appointments.find(a => a.id === parentId);
     if (!p) return;
     state.editingId = null;
+    resetPlateAutofillState();
     const deadline = addDaysIso(p.date, 30);
     const verifySummary = formatRejectSummary(p);
     state.reinspectionDraft = {
@@ -1351,12 +1723,22 @@
       rejectNote: p.rejectNote || ""
     };
 
+    const tomorrow = addDaysIso(TODAY_DATE, 1);
+    let defaultDate = TODAY_DATE;
+    if (p.date === TODAY_DATE) {
+      defaultDate = tomorrow <= deadline ? tomorrow : TODAY_DATE;
+    } else if (state.selectedDate >= TODAY_DATE && state.selectedDate <= deadline) {
+      defaultDate = state.selectedDate;
+    }
+
     document.getElementById("modalProgramareTitle").textContent = `Reprogramare revenire • ${p.plate}`;
     document.getElementById("modalProgramareSubmitBtn").textContent = "Programează revenirea";
     document.getElementById("inpPlate").value = p.plate;
     document.getElementById("inpPhone").value = p.phone;
     document.getElementById("inpClient").value = p.client !== p.vehicle ? `${p.client} • ${p.vehicle}` : p.client;
-    document.getElementById("inpDate").value = state.selectedDate >= TODAY_DATE ? state.selectedDate : TODAY_DATE;
+    const dateEl = document.getElementById("inpDate");
+    dateEl.min = state.role === "admin" ? "" : TODAY_DATE;
+    dateEl.value = defaultDate;
     document.getElementById("modalErr").classList.add("d-none");
 
     updateReinspectionBanner();
@@ -1405,7 +1787,12 @@
     if (reasonWrap) {
       reasonWrap.classList.toggle("d-none", !withReason);
       if (withReason) {
-        document.getElementById("confirmReasonSelect").value = "Anulat de client";
+        const selEl = document.getElementById("confirmReasonSelect");
+        const opts = (Array.isArray(state.deleteReasons) && state.deleteReasons.length)
+          ? state.deleteReasons
+          : DEFAULT_DELETE_REASONS;
+        selEl.innerHTML = opts.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+        selEl.value = opts[0];
         document.getElementById("confirmReasonNote").value = "";
       }
     }
@@ -1603,11 +1990,15 @@
       </li>
     `).join("");
 
+    const btnNewAppt = document.getElementById("btnNewAppt");
+    if (btnNewAppt) btnNewAppt.classList.toggle("d-none", !userCan("canEdit"));
+
     const adminGroup = document.getElementById("sidebar-admin-group");
     if (state.role === "admin") {
       adminGroup.style.display = "block";
       const adminLinks = [
         { id: "module", label: "Module" },
+        { id: "motive", label: "Motive" },
         { id: "utilizatori", label: "Utilizatori & Drepturi" }
       ];
       document.getElementById("sidebar-admin-links").innerHTML = adminLinks.map(l => `
@@ -1620,6 +2011,11 @@
         <li class="nav-item">
           <a class="nav-link" href="#" onclick="triggerManualBackup(); return false;">
             <span>Backup Bază Date</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-danger" href="#" onclick="resetDemoData(); return false;">
+            <span>Resetează Demo</span>
           </a>
         </li>`;
     } else {
@@ -1751,11 +2147,16 @@
     const isHistory = state.selectedDate < TODAY_DATE;
     const isFuture = state.selectedDate > TODAY_DATE;
     const searchAll = state.searchAllDays && !!q;
-    const baseList = state.appointments.filter(a => {
+    const dayAndSearchList = state.appointments.filter(a => {
       const okDate = searchAll ? true : a.date === state.selectedDate;
-      const okQ = !q || [a.plate, a.client, a.phone, a.vehicle, formatDateRo(a.date)].some(v => v.toLowerCase().includes(q));
+      const okQ = !q || [a.plate, a.client, a.phone, a.vehicle, a.line, formatDateRo(a.date)].some(v => String(v || "").toLowerCase().includes(q));
       return okDate && okQ;
     });
+    const countsByLine = dayAndSearchList.reduce((acc, a) => {
+      acc[a.line] = (acc[a.line] || 0) + 1;
+      return acc;
+    }, {});
+    const baseList = dayAndSearchList.filter(a => state.lineFilter === "Toate" || a.line === state.lineFilter);
     const list = baseList
       .filter(a => state.statusFilter === "Toate" || a.status === state.statusFilter)
       .sort((a, b) => (searchAll ? b.date.localeCompare(a.date) : 0) || a.time.localeCompare(b.time));
@@ -1791,8 +2192,14 @@
               </label>
             </div>
           </div>
-          <div class="filter-strip mb-0">
-            ${filters.map(f => `<button class="filter-pill ${state.statusFilter === f.key ? "active" : ""}" onclick="state.statusFilter='${f.key}'; renderAll();">${esc(f.key)} <strong>(${f.count})</strong></button>`).join("")}
+          <div class="d-flex align-items-center flex-wrap gap-2">
+            <select id="lineFilterSelect" class="form-select form-select-sm itp-compact-select" style="width: auto; min-height: 32px;" aria-label="Filtrează după linie" onchange="state.lineFilter = this.value; renderAll();">
+              <option value="Toate" ${state.lineFilter === "Toate" ? "selected" : ""}>Toate liniile (${dayAndSearchList.length})</option>
+              ${state.stationConfig.lines.map(ln => `<option value="${esc(ln)}" ${state.lineFilter === ln ? "selected" : ""}>${esc(ln)} (${countsByLine[ln] || 0})</option>`).join("")}
+            </select>
+            <div class="filter-strip mb-0">
+              ${filters.map(f => `<button class="filter-pill ${state.statusFilter === f.key ? "active" : ""}" onclick="state.statusFilter='${f.key}'; renderAll();">${esc(f.key)} <strong>(${f.count})</strong></button>`).join("")}
+            </div>
           </div>
         </div>
       </div>
@@ -1989,6 +2396,78 @@
       </div>`;
   }
 
+  function renderReasonCard({ type, title, subtitle, placeholder, inputId, errId, items }) {
+    const rows = items.map((reason, idx) => {
+      const isEditing = state.editingReason && state.editingReason.type === type && state.editingReason.idx === idx;
+      if (isEditing) {
+        return `
+          <div class="list-group-item py-2 px-3">
+            <form class="d-flex align-items-center gap-1" onsubmit="saveEditReason(event, '${type}', ${idx})">
+              <input type="text" id="inpEditReasonVal" class="form-control form-control-sm" value="${esc(reason)}" maxlength="60" required>
+              <button type="submit" class="btn btn-sm btn-primary text-nowrap">Salvează</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="cancelEditReason()">Anulează</button>
+            </form>
+          </div>`;
+      }
+      return `
+        <div class="list-group-item py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+          <span class="fw-medium text-dark">${esc(reason)}</span>
+          <div class="d-flex align-items-center gap-1 flex-shrink-0">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="startEditReason('${type}', ${idx})">Editează</button>
+            <button type="button" class="btn btn-sm btn-ghost-danger" ${items.length <= 1 ? "disabled" : ""} onclick="deleteReasonItem('${type}', ${idx})">Șterge</button>
+          </div>
+        </div>`;
+    }).join("");
+
+    return `
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between gap-2">
+            <div>
+              <h4 class="card-title mb-0">${esc(title)}</h4>
+              <div class="text-muted small">${esc(subtitle)}</div>
+            </div>
+            <span class="badge bg-blue-lt text-blue">${items.length}</span>
+          </div>
+          <div class="card-body py-2 px-3 border-bottom bg-light flex-grow-0">
+            <form class="d-flex gap-2" onsubmit="addReasonItem(event, '${type}')">
+              <input type="text" id="${inputId}" class="form-control form-control-sm" placeholder="${esc(placeholder)}" maxlength="60" required>
+              <button type="submit" class="btn btn-sm btn-primary text-nowrap">+ Adaugă</button>
+            </form>
+            <div class="alert alert-danger mt-2 mb-0 py-1 px-2 small d-none" id="${errId}"></div>
+          </div>
+          <div class="list-group list-group-flush">${rows}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderMotive() {
+    return `
+      <div class="alert alert-info py-2 px-3 mb-3 small">
+        <strong>Liste configurabile și salvate automat:</strong> motivele adăugate aici apar imediat ca opțiuni rapide în modalul <strong>Revenire (30 zile)</strong> și în dialogul de <strong>Ștergere</strong>.
+      </div>
+      <div class="row g-3 align-items-start">
+        ${renderReasonCard({
+          type: "revenire",
+          title: "Motive Revenire (30 zile)",
+          subtitle: "Apar ca butoane bifabile la marcarea unei reveniri ITP.",
+          placeholder: "Ex: Parbriz fisurat, Rugina praguri...",
+          inputId: "inpNewRevenireReason",
+          errId: "errRevenireReason",
+          items: state.rejectionReasons
+        })}
+        ${renderReasonCard({
+          type: "sterge",
+          title: "Motive Ștergere / Anulare",
+          subtitle: "Apar în selectorul obligatoriu la ștergerea unei programări.",
+          placeholder: "Ex: Mutat la altă stație, Defecțiune pe drum...",
+          inputId: "inpNewDeleteReason",
+          errId: "errDeleteReason",
+          items: state.deleteReasons
+        })}
+      </div>`;
+  }
+
   function renderUtilizatori() {
     return `
       <div class="card p-2 px-3 mb-3 d-flex flex-row align-items-center justify-content-between flex-wrap gap-2">
@@ -2086,6 +2565,15 @@
       dateEl.value = state.selectedDate || TODAY_DATE;
     }
     const targetDate = (dateEl && dateEl.value) ? dateEl.value : state.selectedDate;
+    const selectedLine = lineEl.value || state.stationConfig.lines[0];
+    state.stationConfig.lines.forEach(ln => {
+      const opt = Array.from(lineEl.options).find(o => o.value === ln);
+      if (!opt) return;
+      const busyCount = state.appointments.filter(a => a.id !== state.editingId && a.date === targetDate && a.line === ln).length;
+      const freeCount = Math.max(0, DAILY_SLOTS.length - busyCount);
+      opt.textContent = `${ln} (${freeCount})`;
+    });
+    lineEl.value = selectedLine;
     const line = lineEl.value;
     const occupied = new Set(
       state.appointments
@@ -2118,6 +2606,7 @@
       clienti: "Clienți & Vehicule",
       expirari: "Expirări ITP",
       module: "Gestionare Module",
+      motive: "Motive Revenire & Ștergere",
       utilizatori: "Utilizatori & Permisiuni"
     };
     document.getElementById("viewTitle").textContent = titles[state.currentView] || "Dashboard";
@@ -2147,16 +2636,40 @@
       clienti: renderClienti,
       expirari: renderExpirari,
       module: renderModule,
+      motive: renderMotive,
       utilizatori: renderUtilizatori
     };
     initAppointmentHistory();
     document.getElementById("mainContent").innerHTML = (views[state.currentView] || renderAzi)();
+    saveDemoState();
   }
 
   document.getElementById("globalSearch").addEventListener("input", e => {
     state.search = e.target.value;
     renderAll();
   });
+
+  function upsertKnownVehicle(appt) {
+    const key = normalizePlateKey(appt.plate);
+    if (!key) return;
+    const existing = state.vehicles.find(v => normalizePlateKey(v.plate) === key);
+    if (existing) {
+      existing.phone = appt.phone;
+      if (appt.client && appt.client !== "Client programat") existing.client = appt.client;
+      if (appt.vehicle && appt.vehicle !== "Client programat") existing.vehicle = appt.vehicle;
+      existing.lastResult = appt.status;
+    } else {
+      state.vehicles.unshift({
+        plate: appt.plate,
+        vehicle: appt.vehicle,
+        category: "Autovehicul",
+        client: appt.client,
+        phone: appt.phone,
+        lastResult: appt.status,
+        expiresInDays: 365
+      });
+    }
+  }
 
   function commitNewAppointment({ plate, phone, clientRaw, date, time, line }) {
     const newId = Date.now();
@@ -2192,8 +2705,10 @@
     }
     state.appointments.push(newAppt);
     state.appointments.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    upsertKnownVehicle(newAppt);
     state.selectedDate = date;
     state.reinspectionDraft = null;
+    resetPlateAutofillState();
     document.getElementById("formProgramare").reset();
     state.currentView = "azi";
     renderAll();
@@ -2201,14 +2716,43 @@
 
   document.getElementById("formProgramare").addEventListener("submit", e => {
     e.preventDefault();
+    const errEl = document.getElementById("modalErr");
+    if (state.reinspectionDraft) {
+      if (!userCan("canRevenire") && state.role !== "admin") {
+        errEl.textContent = "Nu ai permisiunea să reprogramezi reveniri.";
+        errEl.classList.remove("d-none");
+        return;
+      }
+    } else if (!userCan("canEdit") && state.role !== "admin") {
+      errEl.textContent = "Nu ai permisiunea să adaugi sau să editezi programări.";
+      errEl.classList.remove("d-none");
+      return;
+    }
+
     const plate = formatRoPlate(document.getElementById("inpPlate").value);
     const plateKey = normalizePlateKey(plate);
-    const phone = document.getElementById("inpPhone").value.trim();
+    const phoneCheck = normalizeRoPhone(document.getElementById("inpPhone").value);
+    const phone = phoneCheck.normalized;
     const clientRaw = document.getElementById("inpClient").value.trim() || "Client programat";
     const date = document.getElementById("inpDate").value || state.selectedDate || TODAY_DATE;
     const time = document.getElementById("inpHour").value;
     const line = document.getElementById("inpLine").value;
-    const errEl = document.getElementById("modalErr");
+
+    if (!isValidPlateKey(plateKey)) {
+      errEl.textContent = "Introdu un număr de înmatriculare valid (minim 4 caractere cu litere și cifre, ex: SV 08 LZB).";
+      errEl.classList.remove("d-none");
+      return;
+    }
+    if (!phoneCheck.valid) {
+      errEl.textContent = "Introdu un număr de telefon valid de România (10 cifre: 07xx / 02xx / 03xx sau +40...).";
+      errEl.classList.remove("d-none");
+      return;
+    }
+    if (date < TODAY_DATE && state.role !== "admin") {
+      errEl.textContent = `Nu poți salva programări pe o dată din trecut (${formatDateRo(date)}). Doar Administratorul poate modifica zilele trecute.`;
+      errEl.classList.remove("d-none");
+      return;
+    }
 
     const conflict = state.appointments.find(a => a.id !== state.editingId && a.date === date && a.time === time && a.line === line);
     if (conflict) {
@@ -2218,7 +2762,8 @@
     }
     errEl.classList.add("d-none");
 
-    const sameDayDup = findSameDayPlateConflict(plateKey, date, state.editingId);
+    const excludeParentId = state.reinspectionDraft ? state.reinspectionDraft.parentId : null;
+    const sameDayDup = findSameDayPlateConflict(plateKey, date, state.editingId, excludeParentId);
 
     if (state.editingId !== null) {
       const existing = state.appointments.find(a => a.id === state.editingId);
@@ -2373,8 +2918,8 @@
           canRevenire: document.getElementById("usrPermRevenire").checked,
           canDelete: document.getElementById("usrPermDelete").checked
         };
-    const roleLabel = role === "admin" ? "Admin" : "Restrâns";
-    const title = role === "admin" ? "Administrator" : "Drepturi restrânse";
+    const roleLabel = role === "admin" ? "Admin" : "User";
+    const title = role === "admin" ? "Administrator" : "Utilizator";
 
     if (state.editingUserId) {
       const target = state.demoUsers.find(u => u.id === state.editingUserId);
@@ -2434,6 +2979,9 @@
     completeLogin(u.id);
   });
 
+  loadDemoState();
+  initAppointmentHistory();
+  state.ready = true;
   syncAuthVisibility();
   renderAll();
 </script>
