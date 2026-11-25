@@ -50,19 +50,19 @@ Baza nu conține logică de programări sau clienți; este platforma peste care 
    - `modules_state` — starea activ/inactiv a modulelor descoperite.
    - `settings` — configurări generale ale stației ITP (nume stație, adresă, telefon, program).
    - `audit_log` — jurnal de activitate **esențial și imutabil (append-only)**: `timestamp`, `user_id`/`username`, `module_id`, `action` (`LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `CREATE`, `UPDATE`, `DELETE`, `STATUS_CHANGE`, `PERMISSION_CHANGE`, `MODULE_TOGGLE`, `EXPORT`, `BACKUP`), `entity_type`, `entity_id`, `before_json`, `after_json`, `ip_address`, `user_agent`.
-4. **Audit Log Centralizat (Cerință Critică în Bază)**
+5. **Audit Log Centralizat (Cerință Critică în Bază)**
    - Politică strictă **append-only**: intrările din `audit_log` nu pot fi editate sau șterse din interfață (nici de către utilizatori, nici de către Admin).
    - Orice modul este obligat să emită evenimente de audit printr-un helper central din Bază (ex. `core.audit.log_event(...)`).
    - Vizualizare exclusivă pentru **Administrator**, cu filtre după utilizator, modul, interval de date, acțiune sau entitate, plus export CSV.
-5. **Roluri și Permisiuni**
+6. **Roluri și Permisiuni**
    - **Administrator:** acces complet automat pe toate modulele + Panou Admin (`Utilizatori`, `Permisiuni per modul`, `Activare/Dezactivare Module`, `Setări stație`, `Jurnal activitate / Audit Log`, `Backup DB`).
    - **Utilizator restrâns:** acces configurabil per modul (`view`, `create`, `edit`, `delete`), plus un profil implicit „Utilizator standard” pentru creare rapidă de conturi.
-6. **App Shell Responsive (UI Modern Luminos)**
+8. **App Shell Responsive (UI Modern Luminos)**
    - Layout adaptiv PC (sidebar) și telefon (meniu inferior / sertar mobil + carduri).
    - Meniu generat dinamic din modulele active la care utilizatorul curent are drepturi.
    - Dashboard modular: colectează automat widget-uri (carduri rezumat) expuse de modulele active.
    - Kit UI reutilizabil inclus în Bază (formulare, tabele/carduri responsive, modale, notificări toast, dialoguri de confirmare) astfel încât toate modulele să păstreze același design luminos unitar.
-7. **Backup Bază de Date**
+10. **Backup Bază de Date**
    - Descărcare directă a fișierului `itp.db` din panoul Admin și salvare de copii în folderul `backups/`.
 
 ---

@@ -70,3 +70,17 @@
 2. Citește mai întâi `memory.md` și `PLAN.md` pentru contextul complet.
 3. Analizează codul din `references/` (în special audit log-ul, RBAC-ul, structura modulară și modelele auto) și adaugă în `references/my-projects/` proiectele proprii de referință.
 4. Răspunde la punctele din secțiunea **Decizii Deschise** și validează contractul final al **Bazei (Faza 0)** înainte de a trece la scrierea codului.
+
+Referințe pentru BAZA Modulară (FastAPI + RBAC + Audit + SQLite)
+benavlabs/crudadmin — Admin HTML pentru FastAPI + HTMX, cu autentificare pe sesiune/cookie, RBAC (admin vs. utilizatori restrânși) și audit log (jurnal de acțiuni). Foarte bun ca referință pentru securitate, sesiuni și audit.
+arctikant/fastapi-modular-monolith-starter-kit — Structură curată de monolit modular în FastAPI, exact pe principiul nostru de izolare între core/ și module independente.
+amariwan/base-fastApi — Boilerplate FastAPI cu separare pe module, cicluri de viață clare, RBAC fin și compatibilitate nativă SQLite.
+kwantabit-Technologies/fastapi-rbac — Model de permisiuni și roluri stocate dinamic în baza de date (util pentru sistemul nostru de bife per modul în panoul Admin).
+2. Referințe pe Domeniul Auto / Inspecții / Programări
+faizansaiyed123/autofix_backend — Backend FastAPI pentru service auto, cu structură de date excelentă pentru: clienți, vehicule, kilometraj, programări cu verificare suprapuneri în calendar și inspecții digitale (cu poze/rapoarte).
+Greal-dev/car-carer — Aplicație locală (self-hosted) în FastAPI + SQLite + Alpine.js pentru evidența mașinilor; referință foarte bună pentru o aplicație ușoară, 100% locală.
+ChanMeng666/automotive-repair-management-system — Exemplu practic de separare clară a interfeței Administrator vs. Tehnician/Inspector.
+3. Referințe pentru UI Modern Luminos (HTML Responsive PC + Telefon)
+Tabler UI (HTML/CSS pe Bootstrap 5) — Unul dintre cele mai curate și profesionale design-uri luminoase pentru panouri de administrare, responsive din start pe PC și telefon, fără React/Node.
+yashhere/fastapi-htmx-starter — Model foarte curat pentru FastAPI + HTML + HTMX (interacțiuni rapide fără reîncărcarea întregii pagini și fără build complicat).
+FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămână pe intervale orare, foarte ușor de conectat la un endpoint JSON din FastAPI.
