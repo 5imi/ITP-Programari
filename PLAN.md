@@ -13,10 +13,10 @@
   - **Aspect UI:** **exclusiv modern luminos (Light Theme)** (paletă clară, contrast ridicat, lizibilitate foarte bună în lumină puternică la birou sau pe hala de inspecție).
   - **Pe PC:** meniu lateral fix (Sidebar), bară superioară, tabele detaliate și filtre pe un singur ecran.
   - **Pe Telefon:** meniu inferior / sertar lateral, carduri ușor de citit și butoane mari pentru operare cu o singură mână.
-- **Multi-utilizator cu niveluri de acces și Audit Log esențial:**
-  - **Administrator:** drepturi depline asupra tuturor modulelor, utilizatorilor, setărilor, jurnalului de activitate (Audit Log) și backup-urilor.
-  - **Utilizatori restrânși:** acces controlat granular per modul și acțiune.
-  - **Audit Log esențial (trasabilitate completă):** orice autentificare, creare, modificare, ștergere, schimbare de status sau modificare de permisiuni este înregistrată automat în Bază, cu identificarea utilizatorului, IP-ului real (inclusiv prin tunnel), modulului și datelor modificate.
+- **Multi-utilizator cu niveluri de acces și Istoric Imutabil:**
+  - **Administrator (`Laud`):** drepturi depline asupra tuturor modulelor, utilizatorilor, setărilor, exportului și backup-urilor.
+  - **Utilizatori restrânși (`Vali`, `Gabi`):** acces controlat granular per modul și acțiune.
+  - **Istoric Imutabil al programărilor (trasabilitate completă):** orice creare, editare (oră/linie/dată/client), marcare `Revenire`, reprogramare 30 zile sau ștergere din agendă păstrează **starea inițială intactă** + evenimentele ulterioare cu utilizatorul activ (tabel append-only în SQLite), completat în spate de log intern de securitate/login/backup fără un tab separat de Audit Log în UI.
 
 ---
 
@@ -115,7 +115,7 @@ d:\ITP programari\
 ## 5. Roadmap / Ordinea Modulelor
 
 1. **Faza 0 – Baza (Core)**
-   - Platforma modulară completă: server LAN + suport `cloudflared.exe` / domeniu viitor, SQLite WAL + migrări `.sql`, login `bcrypt` + cookie `HttpOnly` + CSRF + rate-limit, `First-Start` strict local, roluri & permisiuni per modul, App Shell UI modern luminos PC + telefon, **Audit Log imutabil** (filtrabil după utilizator, acțiune, căutare + export CSV), panou Admin (Module, Utilizatori, Setări stație, Backup consistent `sqlite3.Connection.backup()`).
+   - Platforma modulară completă: server LAN + suport `cloudflared.exe` / domeniu viitor, SQLite WAL + migrări `.sql`, login `bcrypt` + cookie `HttpOnly` + CSRF + rate-limit, `First-Start` strict local, roluri & permisiuni per modul, App Shell UI modern luminos PC + telefon, **jurnal tehnic intern SQLite** (login, permisiuni, backup) și panou Admin (Module, Utilizatori, Setări stație, Backup consistent `sqlite3.Connection.backup()`), fără tab separat de Audit Log în meniu (trasabilitatea operațională este centralizată în **`Istoric Imutabil`** cu filtru după utilizator și export CSV).
 2. **Faza 1 (Livrarea Inițială MVP) – Modul 1: `programari`**
    - Aplicația pornește concentrată **strict pe programări**:
      - Configurare implicită: **3 linii ITP (`Linia 1`, `Linia 2`, `Linia 3`)**, durată slot **30 min** (extensibil din Setări stație fără modificări de cod).

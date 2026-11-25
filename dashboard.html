@@ -272,13 +272,13 @@
       }
     }
 
-    .audit-user-select {
+    .history-user-select {
       width: 100%;
     }
     @media (min-width: 576px) {
-      .audit-user-select {
+      .history-user-select {
         width: auto;
-        min-width: 220px;
+        min-width: 190px;
       }
     }
 
@@ -383,10 +383,11 @@
         </div>
 
         <div class="d-flex align-items-center justify-content-between gap-2 w-100 w-md-auto ms-md-auto flex-wrap">
-          <!-- Role Switcher for Demo -->
-          <div class="btn-group" role="group" aria-label="Mod demo rol">
-            <button type="button" class="btn btn-sm btn-outline-primary active" id="btnRoleAdmin" onclick="setRole('admin')">Administrator</button>
-            <button type="button" class="btn btn-sm btn-outline-primary" id="btnRoleUser" onclick="setRole('user')">Utilizator restrâns</button>
+          <!-- User Switcher for Demo -->
+          <div class="btn-group" role="group" aria-label="Utilizator demo" id="demoUserSwitcher">
+            <button type="button" class="btn btn-sm btn-outline-primary active" data-user-id="laud" onclick="switchDemoUser('laud')">Laud (Admin)</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-user-id="vali" onclick="switchDemoUser('vali')">Vali</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-user-id="gabi" onclick="switchDemoUser('gabi')">Gabi</button>
           </div>
 
           <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1" onclick="openNewAppointmentModal()">
@@ -553,15 +554,20 @@
 
   const state = {
     role: "admin",
+    currentUserId: "laud",
+    demoUsers: [
+      { id: "laud", name: "Laud", role: "admin", roleLabel: "Admin", title: "Administrator", desc: "Drepturi depline: programări (inclusiv zile trecute), ștergeri, utilizatori, module și backup." },
+      { id: "vali", name: "Vali", role: "user", roleLabel: "Restrâns", title: "Drepturi restrânse", desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." },
+      { id: "gabi", name: "Gabi", role: "user", roleLabel: "Restrâns", title: "Drepturi restrânse", desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." }
+    ],
     currentView: "azi",
     selectedDate: TODAY_DATE,
     searchAllDays: false,
     statusFilter: "Toate",
     historyFilter: "Toate",
+    historyUserFilter: "TOȚI",
     expiryWindow: 30,
     search: "",
-    auditFilterAction: "TOATE",
-    auditFilterUser: "TOȚI",
     editingId: null,
     rejectTargetId: null,
     rejectSelectedReasons: [],
@@ -582,15 +588,17 @@
       { id: 5, date: "2026-11-25", time: "11:30", line: "Linia 1", plate: "PH 77 RTY", vehicle: "Skoda Octavia", client: "Elena Radu", phone: "0766221100", status: "Programat" },
 
       { id: 11, date: "2026-11-24", time: "08:00", line: "Linia 1", plate: "B 912 KLM", vehicle: "Dacia Logan", client: "Dan Stoica", phone: "0723112244", status: "Programat" },
-      { id: 12, date: "2026-11-24", time: "09:00", line: "Linia 1", plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat" },
-      { id: 13, date: "2026-11-24", time: "10:30", line: "Linia 1", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Revenire", rejectReasons: ["Frâne", "Direcție / Suspensie"], rejectNote: "Dezechilibru frână spate + pivot stânga" },
+      { id: 12, date: "2026-11-24", time: "09:00", line: "Linia 3", plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat" },
+      { id: 13, date: "2026-11-24", time: "10:30", line: "Linia 1", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Revenire", rejectReasons: ["Frâne", "Direcție / Suspensie"], rejectNote: "Dezechilibru frână spate + pivot stânga", resolvedByReinspectionId: 31 },
       { id: 14, date: "2026-11-24", time: "13:00", line: "Linia 1", plate: "DB 44 MNP", vehicle: "Renault Trafic", client: "Vasile Neagu", phone: "0761998877", status: "Revenire", rejectReasons: ["Noxe / Emisii"], rejectNote: "Opacitate peste limită" },
       { id: 15, date: "2026-11-24", time: "15:30", line: "Linia 1", plate: "IL 07 BGD", vehicle: "VW Passat", client: "Cristian Albu", phone: "0729887766", status: "Programat" },
 
       { id: 21, date: "2026-11-23", time: "08:30", line: "Linia 1", plate: "B 771 ZXC", vehicle: "Ford Focus", client: "Radu Enache", phone: "0724332211", status: "Programat" },
       { id: 22, date: "2026-11-23", time: "10:00", line: "Linia 1", plate: "CL 19 ASD", vehicle: "Dacia Sandero", client: "Gabriela Stan", phone: "0748665544", status: "Programat" },
       { id: 23, date: "2026-11-23", time: "12:00", line: "Linia 1", plate: "B 640 FRT", vehicle: "Mercedes Sprinter", client: "SC Express Cargo", phone: "0736119922", status: "Revenire", rejectReasons: ["Anvelope / Jante", "Scurgeri lichide"], rejectNote: "Anvelope spate uzate + scurgere ulei" },
-      { id: 24, date: "2026-11-23", time: "14:30", line: "Linia 1", plate: "GR 52 QWE", vehicle: "Hyundai i30", client: "Marius Tudor", phone: "0764554433", status: "Programat" }
+      { id: 24, date: "2026-11-23", time: "14:30", line: "Linia 1", plate: "GR 52 QWE", vehicle: "Hyundai i30", client: "Marius Tudor", phone: "0764554433", status: "Programat" },
+
+      { id: 31, date: "2026-11-26", time: "10:00", line: "Linia 2", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat", visitType: "REVENIRE", parentId: 13, parentDate: "2026-11-24", reinspectionDeadline: "2026-12-24", verifyNotes: "Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" }
     ],
     vehicles: [
       { plate: "B 458 ITP", vehicle: "Dacia Duster 1.5 dCi", category: "M1 (Turism)", client: "Andrei Ionescu", phone: "0721334556", lastResult: "Programat", expiresInDays: 365 },
@@ -606,14 +614,9 @@
       { id: 104, plate: "AG 55 VLM", vehicle: "Renault Megane", client: "Vlad Marin", phone: "0728776655", expiresDate: "19.12.2026", daysLeft: 24, contacted: false }
     ],
     permissions: [
-      { profile: "Administrator", desc: "Drepturi depline pe toate modulele + Audit + Backup", programari: "Complet", clienti: "Complet", expirari: "Complet", admin: "Da" },
+      { profile: "Administrator", desc: "Drepturi depline pe toate modulele + Istoric Imutabil + Backup", programari: "Complet", clienti: "Complet", expirari: "Complet", admin: "Da" },
       { profile: "Inspector ITP", desc: "Acces restrâns: vede azi și schimbă status ITP (fără ștergere)", programari: "View + Status", clienti: "View + Add", expirari: "View", admin: "Nu" },
       { profile: "Recepție", desc: "Acces restrâns: adaugă programări și contactează expirări", programari: "View + Add/Edit", clienti: "View + Add/Edit", expirari: "View + Contact", admin: "Nu" }
-    ],
-    auditLogs: [
-      { time: "10:12:04", user: "admin (Mihai)", module: "core", action: "LOGIN_OK", details: "Autentificare reușită pe PC Birou", ip: "192.168.1.10" },
-      { time: "10:14:22", user: "inspector1 (Ion)", module: "programari", action: "STATUS_CHANGE", details: "B 458 ITP: Pe linie -> Admis", ip: "192.168.1.42 (Telefon)" },
-      { time: "10:18:05", user: "receptie1 (Ana)", module: "expirari", action: "UPDATE", details: "CJ 22 MAX marcat Contactat", ip: "192.168.1.12" }
     ]
   };
 
@@ -632,14 +635,13 @@
     return d.toTimeString().slice(0, 8);
   }
 
-  function currentActorLabel() {
-    return state.role === "admin" ? "Mihai (Admin)" : "Ion (Inspector)";
+  function getActiveDemoUser() {
+    return state.demoUsers.find(u => u.id === state.currentUserId) || state.demoUsers[0];
   }
 
-  function addAudit(module, action, details) {
-    const actor = state.role === "admin" ? "admin (Mihai)" : "inspector1 (Ion)";
-    const dev = window.innerWidth < 992 ? "192.168.1.42 (Telefon)" : "192.168.1.10 (PC)";
-    state.auditLogs.unshift({ time: nowTime(), user: actor, module, action, details, ip: dev });
+  function currentActorLabel() {
+    const u = getActiveDemoUser();
+    return `${u.name} (${u.roleLabel})`;
   }
 
   function makeSnapshot(a) {
@@ -662,13 +664,14 @@
         id: 2,
         initialSnapshot: {
           date: "2026-11-25", time: "08:00", line: "Linia 1",
-          plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744112233", status: "Programat"
+          plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744000111", status: "Programat"
         },
         createdAt: "07:50",
-        createdBy: "Mihai (Admin)",
+        createdBy: "Laud (Admin)",
         deleted: false,
         events: [
-          { at: "08:12", actor: "Ion (Inspector)", type: "MODIFICAT", summary: "Oră schimbată din 08:00 în 09:00 (clientul a anunțat întârziere)" }
+          { at: "08:12", actor: "Vali (Restrâns)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
+          { at: "08:35", actor: "Gabi (Restrâns)", type: "MODIFICAT", summary: "Telefon: 0744000111 → 0744112233 (număr confirmat pe WhatsApp)" }
         ]
       },
       {
@@ -678,10 +681,37 @@
           plate: "B 888 VEC", vehicle: "Renault Megane", client: "Radu Vasile", phone: "0722990011", status: "Programat"
         },
         createdAt: "08:05",
-        createdBy: "Mihai (Admin)",
+        createdBy: "Laud (Admin)",
         deleted: true,
         events: [
-          { at: "09:40", actor: "Mihai (Admin)", type: "ȘTERS", summary: "Șters din agenda zilei (clientul a anulat telefonic); slot 12:00 Linia 2 eliberat" }
+          { at: "09:40", actor: "Laud (Admin)", type: "ȘTERS", summary: "Șters din agenda zilei (anulat telefonic de client); slot 12:00 Linia 2 eliberat" }
+        ]
+      },
+      {
+        id: 13,
+        initialSnapshot: {
+          date: "2026-11-24", time: "10:30", line: "Linia 1",
+          plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat"
+        },
+        createdAt: "09:15",
+        createdBy: "Gabi (Restrâns)",
+        deleted: false,
+        events: [
+          { at: "11:05", actor: "Vali (Restrâns)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
+          { at: "11:18", actor: "Gabi (Restrâns)", type: "REPROGRAMAT", summary: "Reprogramată revenirea pe 26.11.2026 la 10:00 (Linia 2)" }
+        ]
+      },
+      {
+        id: 12,
+        initialSnapshot: {
+          date: "2026-11-24", time: "09:00", line: "Linia 1",
+          plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat"
+        },
+        createdAt: "08:20",
+        createdBy: "Laud (Admin)",
+        deleted: false,
+        events: [
+          { at: "08:52", actor: "Gabi (Restrâns)", type: "MODIFICAT", summary: "Linie: Linia 1 → Linia 3 (redistribuire pe linie liberă)" }
         ]
       }
     ];
@@ -691,16 +721,23 @@
       if (a.status === "Revenire") {
         events.push({
           at: a.time,
-          actor: "Ion (Inspector)",
+          actor: "Vali (Restrâns)",
           type: "REVENIRE",
           summary: `Marcat Revenire 30 zile • ${formatRejectSummary(a) || "Fără detalii"}`
+        });
+      } else if (a.visitType === "REVENIRE") {
+        events.push({
+          at: "11:18",
+          actor: "Gabi (Restrâns)",
+          type: "REPROGRAMAT",
+          summary: `Programat ca vizită de revenire (din ${formatDateRo(a.parentDate)})`
         });
       }
       state.appointmentHistory.push({
         id: a.id,
         initialSnapshot: makeSnapshot(a),
-        createdAt: a.time,
-        createdBy: "Mihai (Admin)",
+        createdAt: a.visitType === "REVENIRE" ? "11:18" : a.time,
+        createdBy: a.visitType === "REVENIRE" ? "Gabi (Restrâns)" : "Laud (Admin)",
         deleted: false,
         events
       });
@@ -748,16 +785,23 @@
     return m ? m.enabled : false;
   }
 
-  function setRole(role) {
-    state.role = role;
-    document.getElementById("btnRoleAdmin").classList.toggle("active", role === "admin");
-    document.getElementById("btnRoleUser").classList.toggle("active", role === "user");
-    const adminViews = ["audit", "module", "utilizatori"];
-    if (role !== "admin" && adminViews.includes(state.currentView)) {
+  function switchDemoUser(userId) {
+    const u = state.demoUsers.find(x => x.id === userId) || state.demoUsers[0];
+    state.currentUserId = u.id;
+    state.role = u.role;
+    document.querySelectorAll("#demoUserSwitcher [data-user-id]").forEach(btn => {
+      btn.classList.toggle("active", btn.getAttribute("data-user-id") === u.id);
+    });
+    const adminViews = ["module", "utilizatori"];
+    if (u.role !== "admin" && adminViews.includes(state.currentView)) {
       state.currentView = "azi";
     }
-    showToast(role === "admin" ? "Mod activ: Administrator (drepturi depline)" : "Mod activ: Utilizator restrâns");
+    showToast(`Utilizator activ: ${u.name} (${u.title})`);
     renderAll();
+  }
+
+  function setRole(role) {
+    switchDemoUser(role === "admin" ? "laud" : "vali");
   }
 
   function getBsApi() {
@@ -966,7 +1010,6 @@
     const oldStatus = item.status;
     item.status = newStatus;
     recordHistoryEvent(item, "MODIFICAT", `Status schimbat: ${oldStatus} → ${newStatus}`);
-    addAudit("programari", "STATUS_CHANGE", `${item.plate} (${formatDateRo(item.date)}): ${oldStatus} -> ${newStatus}`);
     showToast(`${item.plate} → ${newStatus}`);
     renderAll();
   }
@@ -1034,7 +1077,6 @@
         if (idx === -1) return;
         const removed = state.appointments.splice(idx, 1)[0];
         recordHistoryEvent(removed, "ȘTERS", `Șters din agenda zilei (${formatDateRo(removed.date)} ${removed.time}, ${removed.line})`);
-        addAudit("programari", "DELETE", `Șters ${removed.plate} (${formatDateRo(removed.date)} ${removed.time}, ${removed.line})`);
         showToast(`Programarea ${removed.plate} a fost ștearsă (păstrată în Istoric).`);
         renderAll();
       }
@@ -1053,7 +1095,6 @@
       variant: "primary",
       onConfirm: () => {
         item.contacted = !item.contacted;
-        addAudit("expirari", "UPDATE", `${item.plate} -> ${item.contacted ? "Contactat" : "Necontactat"}`);
         showToast(`${item.plate}: ${item.contacted ? "marcat contactat" : "marcat necontactat"}`);
         renderAll();
       }
@@ -1074,7 +1115,6 @@
       onCancel: () => renderAll(),
       onConfirm: () => {
         m.enabled = willEnable;
-        addAudit("core", "MODULE_TOGGLE", `Modul "${m.name}" -> ${m.enabled ? "ACTIV" : "INACTIV"}`);
         showToast(`Modulul "${m.name}" este acum ${m.enabled ? "activ" : "dezactivat"}.`);
         renderAll();
       }
@@ -1091,36 +1131,74 @@
       confirmText: "Rulează backup",
       variant: "primary",
       onConfirm: () => {
-        addAudit("core", "BACKUP", "Backup manual itp.db");
         showToast("Backup itp.db salvat în /backups/ (demo)");
         renderAll();
       }
     });
   }
 
-  function getFilteredAuditLogs() {
-    const q = state.search.trim().toLowerCase();
-    return state.auditLogs.filter(l => {
-      const okA = state.auditFilterAction === "TOATE" || l.action === state.auditFilterAction;
-      const okU = state.auditFilterUser === "TOȚI" || l.user === state.auditFilterUser;
-      const okQ = !q || [l.user, l.module, l.action, l.details, l.ip].some(s => s.toLowerCase().includes(q));
-      return okA && okU && okQ;
-    });
+  function resetHistoryFilters() {
+    state.historyFilter = "Toate";
+    state.historyUserFilter = "TOȚI";
+    state.search = "";
+    const searchEl = document.getElementById("globalSearch");
+    if (searchEl) searchEl.value = "";
+    renderAll();
   }
 
-  function exportAuditCsv() {
-    const rows = [["Ora", "Utilizator", "Modul", "Acțiune", "Detalii", "IP / Dispozitiv"]];
-    const filtered = getFilteredAuditLogs();
-    filtered.forEach(l => rows.push([l.time, l.user, l.module, l.action, l.details, l.ip]));
+  function getFilteredHistoryEntries() {
+    initAppointmentHistory();
+    const q = state.search.trim().toLowerCase();
+    const entries = state.appointmentHistory.map(h => {
+      const hasModified = h.events.some(ev => ev.type === "MODIFICAT" || ev.type === "REPROGRAMAT");
+      const hasRevenire = h.events.some(ev => ev.type === "REVENIRE");
+      const isDeleted = !!h.deleted;
+      const actors = Array.from(new Set([h.createdBy, ...h.events.map(ev => ev.actor)].filter(Boolean)));
+      const badge = isDeleted
+        ? `<span class="badge bg-red-lt text-red">Șters din agendă</span>`
+        : (hasModified
+          ? `<span class="badge bg-orange-lt text-orange">Modificat</span>`
+          : (hasRevenire ? `<span class="badge bg-purple-lt text-purple">Revenire</span>` : `<span class="badge bg-blue-lt text-blue">Inițial intact</span>`));
+      return { ...h, hasModified, hasRevenire, isDeleted, actors, badge };
+    });
+
+    const bySearchAndUser = entries.filter(h => {
+      const s = h.initialSnapshot;
+      const okUser = state.historyUserFilter === "TOȚI" || h.actors.includes(state.historyUserFilter);
+      const okQ = !q || [s.plate, s.vehicle, s.client, s.phone, formatDateRo(s.date), s.time, s.line, ...h.actors, ...h.events.map(ev => ev.summary)]
+        .some(v => String(v || "").toLowerCase().includes(q));
+      return okUser && okQ;
+    });
+
+    const filtered = bySearchAndUser
+      .filter(h => {
+        if (state.historyFilter === "Modificate") return h.hasModified;
+        if (state.historyFilter === "Reveniri") return h.hasRevenire;
+        if (state.historyFilter === "Șterse") return h.isDeleted;
+        return true;
+      })
+      .sort((a, b) => (b.isDeleted - a.isDeleted) || (b.hasModified - a.hasModified) || b.initialSnapshot.date.localeCompare(a.initialSnapshot.date) || b.initialSnapshot.time.localeCompare(a.initialSnapshot.time));
+
+    return { entries, bySearchAndUser, filtered };
+  }
+
+  function exportHistoryCsv() {
+    if (state.role !== "admin") return;
+    const { filtered } = getFilteredHistoryEntries();
+    const rows = [["Nr. Auto", "Dată Inițială", "Oră Inițială", "Linie Inițială", "Vehicul", "Client", "Telefon", "Creat de", "Stare", "Evenimente Ulterioare"]];
+    filtered.forEach(h => {
+      const s = h.initialSnapshot;
+      const st = h.isDeleted ? "Șters" : (h.hasModified ? "Modificat" : (h.hasRevenire ? "Revenire" : "Inițial intact"));
+      const evTxt = h.events.map(ev => `${ev.at} ${ev.actor}: ${ev.summary}`).join(" | ");
+      rows.push([s.plate, formatDateRo(s.date), s.time, s.line, s.vehicle, s.client, s.phone, `${h.createdAt} ${h.createdBy}`, st, evTxt]);
+    });
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "itp_audit_log_demo.csv";
+    a.download = "itp_istoric_imutabil_demo.csv";
     a.click();
-    addAudit("core", "EXPORT", `Export CSV Audit Log (${filtered.length} intrări)`);
-    showToast(`Audit Log exportat în format CSV (${filtered.length} intrări).`);
-    renderAll();
+    showToast(`Istoric Imutabil exportat în format CSV (${filtered.length} intrări).`);
   }
 
   function renderNav() {
@@ -1143,7 +1221,6 @@
     if (state.role === "admin") {
       adminGroup.style.display = "block";
       const adminLinks = [
-        { id: "audit", label: "Audit Log (Esențial)" },
         { id: "module", label: "Module" },
         { id: "utilizatori", label: "Utilizatori & Drepturi" }
       ];
@@ -1168,8 +1245,7 @@
       { id: "azi", label: "Programări" },
       { id: "istoric", label: "Istoric" },
       ...(isModuleEnabled("clienti") ? [{ id: "clienti", label: "Mașini" }] : []),
-      ...(isModuleEnabled("expirari") ? [{ id: "expirari", label: "Expirări" }] : []),
-      ...(state.role === "admin" ? [{ id: "audit", label: "Audit" }] : [])
+      ...(isModuleEnabled("expirari") ? [{ id: "expirari", label: "Expirări" }] : [])
     ];
     document.getElementById("mobileBottomNav").innerHTML = mobItems.map(m => `
       <button type="button" class="mobile-nav-btn ${state.currentView === m.id ? "active" : ""}" onclick="switchView('${m.id}')">
@@ -1336,42 +1412,23 @@
   }
 
   function renderIstoric() {
-    initAppointmentHistory();
-    const q = state.search.trim().toLowerCase();
-    const entries = state.appointmentHistory.map(h => {
-      const hasModified = h.events.some(ev => ev.type === "MODIFICAT" || ev.type === "REPROGRAMAT");
-      const hasRevenire = h.events.some(ev => ev.type === "REVENIRE");
-      const isDeleted = !!h.deleted;
-      const badge = isDeleted
-        ? `<span class="badge bg-red-lt text-red">Șters din agendă</span>`
-        : (hasModified
-          ? `<span class="badge bg-orange-lt text-orange">Modificat</span>`
-          : (hasRevenire ? `<span class="badge bg-purple-lt text-purple">Revenire</span>` : `<span class="badge bg-blue-lt text-blue">Inițial intact</span>`));
-      return { ...h, hasModified, hasRevenire, isDeleted, badge };
-    });
-
-    const searched = entries.filter(h => {
-      const s = h.initialSnapshot;
-      if (!q) return true;
-      return [s.plate, s.vehicle, s.client, s.phone, formatDateRo(s.date), s.time, s.line, ...h.events.map(ev => ev.summary)]
-        .some(v => String(v || "").toLowerCase().includes(q));
-    });
+    const { entries, bySearchAndUser, filtered: list } = getFilteredHistoryEntries();
+    const userCounts = entries.reduce((acc, h) => {
+      h.actors.forEach(a => { acc[a] = (acc[a] || 0) + 1; });
+      return acc;
+    }, {});
+    const actorList = Object.keys(userCounts);
+    if (state.historyUserFilter !== "TOȚI" && !userCounts[state.historyUserFilter]) {
+      state.historyUserFilter = "TOȚI";
+    }
+    const hasActiveFilter = state.historyUserFilter !== "TOȚI" || state.historyFilter !== "Toate" || state.search.trim() !== "";
 
     const filters = [
-      { key: "Toate", count: searched.length },
-      { key: "Modificate", count: searched.filter(h => h.hasModified).length },
-      { key: "Reveniri", count: searched.filter(h => h.hasRevenire).length },
-      { key: "Șterse", count: searched.filter(h => h.isDeleted).length }
+      { key: "Toate", count: bySearchAndUser.length },
+      { key: "Modificate", count: bySearchAndUser.filter(h => h.hasModified).length },
+      { key: "Reveniri", count: bySearchAndUser.filter(h => h.hasRevenire).length },
+      { key: "Șterse", count: bySearchAndUser.filter(h => h.isDeleted).length }
     ];
-
-    const list = searched
-      .filter(h => {
-        if (state.historyFilter === "Modificate") return h.hasModified;
-        if (state.historyFilter === "Reveniri") return h.hasRevenire;
-        if (state.historyFilter === "Șterse") return h.isDeleted;
-        return true;
-      })
-      .sort((a, b) => (b.isDeleted - a.isDeleted) || (b.hasModified - a.hasModified) || b.initialSnapshot.date.localeCompare(a.initialSnapshot.date) || b.initialSnapshot.time.localeCompare(a.initialSnapshot.time));
 
     const desktopRows = list.map(h => {
       const s = h.initialSnapshot;
@@ -1408,17 +1465,31 @@
             <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase; font-weight:700;">Inițial (neschimbat)</div>
             <div class="fw-bold text-dark">${formatDateRo(s.date)} • ${esc(s.time)} • ${esc(s.line)}</div>
             <div>${esc(s.vehicle)} • ${esc(s.client)} (${esc(s.phone)})</div>
+            <div class="text-muted" style="font-size:0.75rem;">Creat inițial: ${esc(h.createdAt)} • ${esc(h.createdBy)}</div>
           </div>
           <div>${evHtml}</div>
         </div>`;
     }).join("");
 
     return `
-      <div class="alert alert-info py-2 px-3 mb-2 small">
-        <strong>Registru imutabil:</strong> starea inițială a fiecărei programări rămâne salvată permanent, chiar dacă programarea este editată, mutată sau ștearsă ulterior din agendă.
+      <div class="alert alert-info py-2 px-3 mb-2 small d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div><strong>Registru imutabil (append-only):</strong> starea inițială rămâne salvată permanent, chiar dacă programarea e editată, mutată sau ștearsă.</div>
+        ${state.role === "admin" ? `<button type="button" class="btn btn-sm btn-primary" onclick="exportHistoryCsv()">Export CSV</button>` : ""}
       </div>
-      <div class="filter-strip mb-2">
-        ${filters.map(f => `<button class="filter-pill ${state.historyFilter === f.key ? "active" : ""}" onclick="state.historyFilter='${f.key}'; renderAll();">${esc(f.key)} <strong>(${f.count})</strong></button>`).join("")}
+      <div class="card p-2 mb-2">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-lg-auto">
+            <label for="historyUserSelect" class="form-label mb-0 fw-medium text-muted small">Utilizator:</label>
+            <select id="historyUserSelect" class="form-select form-select-sm history-user-select" onchange="state.historyUserFilter = this.value; renderAll();">
+              <option value="TOȚI" ${state.historyUserFilter === "TOȚI" ? "selected" : ""}>Toți utilizatorii (${entries.length})</option>
+              ${actorList.map(a => `<option value="${esc(a)}" ${state.historyUserFilter === a ? "selected" : ""}>${esc(a)} (${userCounts[a]})</option>`).join("")}
+            </select>
+            ${hasActiveFilter ? `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetHistoryFilters()">Resetează</button>` : ""}
+          </div>
+          <div class="filter-strip mb-0">
+            ${filters.map(f => `<button class="filter-pill ${state.historyFilter === f.key ? "active" : ""}" onclick="state.historyFilter='${f.key}'; renderAll();">${esc(f.key)} <strong>(${f.count})</strong></button>`).join("")}
+          </div>
+        </div>
       </div>
       <div class="card desktop-table">
         <div class="table-responsive">
@@ -1501,81 +1572,6 @@
       </div>`;
   }
 
-  function resetAuditFilters() {
-    state.auditFilterAction = "TOATE";
-    state.auditFilterUser = "TOȚI";
-    state.search = "";
-    const searchEl = document.getElementById("globalSearch");
-    if (searchEl) searchEl.value = "";
-    renderAll();
-  }
-
-  function renderAudit() {
-    const actions = ["TOATE", "LOGIN_OK", "CREATE", "STATUS_CHANGE", "UPDATE", "DELETE", "MODULE_TOGGLE", "EXPORT", "BACKUP"];
-    const userCounts = state.auditLogs.reduce((acc, l) => {
-      acc[l.user] = (acc[l.user] || 0) + 1;
-      return acc;
-    }, {});
-    const users = Object.keys(userCounts);
-    if (state.auditFilterUser !== "TOȚI" && !userCounts[state.auditFilterUser]) {
-      state.auditFilterUser = "TOȚI";
-    }
-    const list = getFilteredAuditLogs();
-    const hasActiveFilter = state.auditFilterUser !== "TOȚI" || state.auditFilterAction !== "TOATE" || state.search.trim() !== "";
-
-    return `
-      <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div><strong>Append-only • Imutabil:</strong> Intrările de Audit Log nu pot fi editate sau șterse din aplicație.</div>
-        <button class="btn btn-sm btn-primary" onclick="exportAuditCsv()">Export CSV</button>
-      </div>
-      <div class="card p-3 mb-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-sm-auto">
-            <label for="auditUserSelect" class="form-label mb-0 fw-medium text-muted small">Utilizator:</label>
-            <select id="auditUserSelect" class="form-select form-select-sm audit-user-select" onchange="state.auditFilterUser = this.value; renderAll();">
-              <option value="TOȚI" ${state.auditFilterUser === "TOȚI" ? "selected" : ""}>Toți utilizatorii (${state.auditLogs.length})</option>
-              ${users.map(u => `<option value="${esc(u)}" ${state.auditFilterUser === u ? "selected" : ""}>${esc(u)} (${userCounts[u]})</option>`).join("")}
-            </select>
-            ${hasActiveFilter ? `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetAuditFilters()">Resetează filtrele</button>` : ""}
-          </div>
-          <div class="text-muted small">Afișate: <strong>${list.length}</strong> / ${state.auditLogs.length} evenimente</div>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-          ${actions.map(a => `<button class="filter-pill ${state.auditFilterAction === a ? "active" : ""}" onclick="state.auditFilterAction='${a}'; renderAll();">${esc(a)}</button>`).join("")}
-        </div>
-      </div>
-      <div class="card desktop-table">
-        <div class="table-responsive">
-          <table class="table table-vcenter card-table">
-            <thead><tr><th>Ora</th><th>Utilizator</th><th>Modul</th><th>Acțiune</th><th>Detalii (Before → After)</th><th>IP / Dispozitiv</th></tr></thead>
-            <tbody>
-              ${list.map(l => `
-                <tr>
-                  <td class="text-nowrap text-muted">${esc(l.time)}</td>
-                  <td class="fw-medium">${esc(l.user)}</td>
-                  <td><code>${esc(l.module)}</code></td>
-                  <td><span class="badge bg-blue-lt">${esc(l.action)}</span></td>
-                  <td>${esc(l.details)}</td>
-                  <td class="text-muted small">${esc(l.ip)}</td>
-                </tr>`).join("") || `<tr><td colspan="6" class="text-center text-muted py-4">Niciun eveniment găsit pentru filtrele selectate.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="mobile-cards">
-        ${list.map(l => `
-          <div class="card p-3">
-            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-              <span class="badge bg-blue-lt">${esc(l.action)}</span>
-              <span class="text-muted small">${esc(l.time)}</span>
-            </div>
-            <div class="fw-bold">${esc(l.user)} <code class="ms-1">${esc(l.module)}</code></div>
-            <div class="mt-1">${esc(l.details)}</div>
-            <div class="text-muted small mt-2">${esc(l.ip)}</div>
-          </div>`).join("") || `<div class="card p-4 text-center text-muted">Niciun eveniment găsit pentru filtrele selectate.</div>`}
-      </div>`;
-  }
-
   function renderModule() {
     return `
       <div class="alert alert-info mb-3">
@@ -1605,10 +1601,30 @@
 
   function renderUtilizatori() {
     return `
+      <div class="row g-2 mb-3">
+        ${state.demoUsers.map(u => {
+          const isActive = u.id === state.currentUserId;
+          return `
+            <div class="col-12 col-md-4">
+              <div class="card p-3 h-100 d-flex flex-column justify-content-between ${isActive ? "border-primary" : ""}">
+                <div>
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold fs-4">${esc(u.name)}</span>
+                    <span class="badge ${u.role === "admin" ? "bg-green-lt text-green" : "bg-blue-lt text-blue"}">${esc(u.title)}</span>
+                  </div>
+                  <div class="text-muted small mb-2">${esc(u.desc)}</div>
+                </div>
+                <button type="button" class="btn btn-sm ${isActive ? "btn-primary" : "btn-outline-primary"} w-100" onclick="switchDemoUser('${u.id}')">
+                  ${isActive ? "Utilizator activ" : `Comută pe ${esc(u.name)}`}
+                </button>
+              </div>
+            </div>`;
+        }).join("")}
+      </div>
       <div class="card desktop-table">
         <div class="table-responsive">
           <table class="table table-vcenter card-table">
-            <thead><tr><th>Profil</th><th>Descriere</th><th>Programări</th><th>Clienți</th><th>Expirări</th><th>Admin / Audit</th></tr></thead>
+            <thead><tr><th>Profil</th><th>Descriere</th><th>Programări</th><th>Clienți</th><th>Expirări</th><th>Admin / Backup</th></tr></thead>
             <tbody>
               ${state.permissions.map(p => `
                 <tr>
@@ -1678,7 +1694,6 @@
       istoric: "Istoric Imutabil",
       clienti: "Clienți & Vehicule",
       expirari: "Expirări ITP",
-      audit: "Audit Log (Jurnal Imutabil)",
       module: "Gestionare Module",
       utilizatori: "Utilizatori & Permisiuni"
     };
@@ -1686,7 +1701,7 @@
     const targetIso = state.currentView === "azi" ? state.selectedDate : TODAY_DATE;
     const isMob = window.innerWidth < 992;
     const dateLabel = isMob ? formatDateRo(targetIso) : formatDateHeading(targetIso);
-    const userLabel = state.role === "admin" ? "Mihai (Admin)" : "Ion (Inspector)";
+    const userLabel = currentActorLabel();
     document.getElementById("viewSubtitle").innerHTML = isMob
       ? `<strong class="text-dark">${esc(dateLabel)}</strong> • ${esc(state.stationConfig.lineName)} (${state.stationConfig.slotMinutes} min) • <strong class="text-dark">${esc(userLabel)}</strong>`
       : `<strong class="text-dark">${esc(dateLabel)}</strong> • ${esc(state.stationConfig.lineName)} (${state.stationConfig.slotMinutes} min) • Logat: <strong class="text-dark">${esc(userLabel)}</strong>`;
@@ -1708,7 +1723,6 @@
       istoric: renderIstoric,
       clienti: renderClienti,
       expirari: renderExpirari,
-      audit: renderAudit,
       module: renderModule,
       utilizatori: renderUtilizatori
     };
@@ -1783,7 +1797,6 @@
 
               const diffText = changes.join(" | ");
               recordHistoryEvent(target, "MODIFICAT", diffText, before);
-              addAudit("programari", "UPDATE", `Editat ${plate}: ${diffText}`);
               showToast(`Actualizat: ${plate} (${formatDateRo(date)} ${time}) — inițialul păstrat în Istoric`);
             }
             state.editingId = null;
@@ -1828,11 +1841,9 @@
         recordHistoryEvent(parent, "REPROGRAMAT", `Reprogramată revenirea pe ${formatDateRo(date)} la ${time} (${line})`);
       }
       recordHistoryEvent(newAppt, "CREAT", `Revenire programată din ${formatDateRo(draft.parentDate)}`);
-      addAudit("programari", "CREATE", `Revenire ITP: ${plate} pe ${formatDateRo(date)} la ${time} (${line}) | Din ${formatDateRo(draft.parentDate)}`);
       showToast(`Revenire programată: ${plate} (${formatDateRo(date)} ${time})`);
     } else {
       recordHistoryEvent(newAppt, "CREAT", "");
-      addAudit("programari", "CREATE", `Programare nouă: ${plate} pe ${formatDateRo(date)} la ${time} (${line})`);
       showToast(`Programare salvată: ${plate} (${formatDateRo(date)} ${time})`);
     }
     state.appointments.push(newAppt);
@@ -1868,7 +1879,6 @@
 
     const summary = formatRejectSummary(item);
     recordHistoryEvent(item, "REVENIRE", `${oldStatus === "Revenire" ? "Motiv revenire actualizat" : "Marcat Revenire 30 zile"}: ${summary}`, before);
-    addAudit("programari", "STATUS_CHANGE", `${item.plate} (${formatDateRo(item.date)}): ${oldStatus} -> ${newStatus} | Motive: ${summary}`);
     showToast(`${item.plate} → ${newStatus} (${summary})`);
 
     setModalVisible("modalRespingere", false);
