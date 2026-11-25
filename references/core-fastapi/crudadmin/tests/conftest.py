@@ -1,0 +1,496 @@
+import uuid
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from datetime import timezone
+from unittest.mock import Mock
+
+import pytest
+import pytest_asyncio
+from fastapi.testclient import TestClient
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import (
+    UUID,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.engine import URL
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.sql import func
+
+from crudadmin.admin_interface.crud_admin import CRUDAdmin
+from crudadmin.core.db import DatabaseConfig
+from crudadmin.event.models import create_admin_audit_log, create_admin_event_log
+from crudadmin.event.service import EventService
+
+UTC = timezone.utc
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class CategoryModel(Base):
+    __tablename__ = "category"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(32), unique=True)
+    products = relationship("ProductModel", back_populates="category")
+
+
+class ProductModel(Base):
+    __tablename__ = "product"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(32))
+    price = Column(Integer)
+    category_id = Column(Integer, ForeignKey("category.id"), nullable=True)
+    category = relationship("CategoryModel", back_populates="products")
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True, default=None)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class UserModel(Base):
+    __tablename__ = "user"
+    id = Column(Integer, primary_key=True)
+    username = Column(String(32), unique=True)
+    email = Column(String(64), unique=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+
+
+class CategoryCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+
+
+class CategoryRead(BaseModel):
+    id: int
+    name: str
+
+
+class CategoryUpdate(BaseModel):
+    name: str
+
+
+class ProductCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    price: int
+    category_id: int | None = None
+
+
+class ProductRead(BaseModel):
+    id: int
+    name: str
+    price: int
+    category_id: int | None
+
+
+class ProductUpdate(BaseModel):
+    name: str | None = None
+    price: int | None = None
+    category_id: int | None = None
+
+
+class UserCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    username: str
+    email: str
+    is_active: bool = True
+
+
+class UserRead(BaseModel):
+    id: int
+    username: str
+    email: str
+    is_active: bool
+
+
+class UserUpdate(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    is_active: bool | None = None
+
+
+class UUIDModel(Base):
+    """Test model with UUID primary key."""
+
+    __tablename__ = "uuid_test_model"
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
+    name = Column(String(255))
+    description = Column(Text)
+    created_at = Column(DateTime(timezone=False), server_default=func.now())
+
+
+class EmailQueryConfig(Base):
+    """Model replicating the original user's error case."""
+
+    __tablename__ = "email_query_configs"
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
+    template_id = Column(String(255))
+    query_name = Column(String(255))
+    query_text = Column(Text)
+    query_type = Column(String(50))
+    created_at = Column(DateTime(timezone=False), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=False), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class UUIDModelCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    description: str
+
+
+class UUIDModelRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str
+
+
+class UUIDModelUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class UUIDModelUpdateInternal(UUIDModelUpdate):
+    id: uuid.UUID
+
+
+class EmailQueryConfigCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template_id: str
+    query_name: str
+    query_text: str
+    query_type: str
+
+
+class EmailQueryConfigRead(BaseModel):
+    id: uuid.UUID
+    template_id: str
+    query_name: str
+    query_text: str
+    query_type: str
+
+
+class EmailQueryConfigUpdate(BaseModel):
+    template_id: str | None = None
+    query_name: str | None = None
+    query_text: str | None = None
+    query_type: str | None = None
+
+
+class EmailQueryConfigUpdateInternal(EmailQueryConfigUpdate):
+    id: uuid.UUID
+
+
+@asynccontextmanager
+async def _async_session(url: str | URL) -> AsyncGenerator[AsyncSession]:
+    async_engine = create_async_engine(url, echo=False, future=True)
+
+    session = async_sessionmaker(async_engine, expire_on_commit=False)
+
+    async with session() as s:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        yield s
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await async_engine.dispose()
+
+
+@asynccontextmanager
+async def _admin_async_session(url: str) -> AsyncGenerator[AsyncSession]:
+    async_engine = create_async_engine(url, echo=False, future=True)
+
+    session = async_sessionmaker(async_engine, expire_on_commit=False)
+
+    async with session() as s:
+        admin_base = create_admin_base()
+        async with async_engine.begin() as conn:
+            await conn.run_sync(admin_base.metadata.create_all)
+
+        yield s
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(admin_base.metadata.drop_all)
+
+    await async_engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def async_session() -> AsyncGenerator[AsyncSession]:
+    async with _async_session(url="sqlite+aiosqlite:///:memory:") as session:
+        yield session
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_async_session() -> AsyncGenerator[AsyncSession]:
+    async with _admin_async_session(url="sqlite+aiosqlite:///:memory:") as session:
+        yield session
+
+
+@pytest.fixture(scope="function")
+def test_data() -> list[dict]:
+    return [
+        {"id": 1, "name": "Laptop", "price": 1000, "category_id": 1},
+        {"id": 2, "name": "Mouse", "price": 25, "category_id": 1},
+        {"id": 3, "name": "Book", "price": 15, "category_id": 2},
+        {"id": 4, "name": "Pen", "price": 2, "category_id": 2},
+        {"id": 5, "name": "Monitor", "price": 300, "category_id": 1},
+    ]
+
+
+@pytest.fixture(scope="function")
+def category_data() -> list[dict]:
+    return [
+        {"id": 1, "name": "Electronics"},
+        {"id": 2, "name": "Office"},
+    ]
+
+
+@pytest.fixture(scope="function")
+def user_data() -> list[dict]:
+    return [
+        {"id": 1, "username": "alice", "email": "alice@example.com", "is_active": True},
+        {"id": 2, "username": "bob", "email": "bob@example.com", "is_active": True},
+        {
+            "id": 3,
+            "username": "charlie",
+            "email": "charlie@example.com",
+            "is_active": False,
+        },
+    ]
+
+
+@pytest.fixture(scope="function")
+def admin_user_data() -> dict:
+    return {
+        "username": "admin",
+        "password": "SecurePass123!",
+        "is_superuser": True,
+    }
+
+
+@pytest.fixture
+def product_model():
+    return ProductModel
+
+
+@pytest.fixture
+def category_model():
+    return CategoryModel
+
+
+@pytest.fixture
+def user_model():
+    return UserModel
+
+
+@pytest.fixture
+def product_create_schema():
+    return ProductCreate
+
+
+@pytest.fixture
+def product_read_schema():
+    return ProductRead
+
+
+@pytest.fixture
+def product_update_schema():
+    return ProductUpdate
+
+
+@pytest.fixture
+def category_create_schema():
+    return CategoryCreate
+
+
+@pytest.fixture
+def category_read_schema():
+    return CategoryRead
+
+
+@pytest.fixture
+def category_update_schema():
+    return CategoryUpdate
+
+
+@pytest.fixture
+def user_create_schema():
+    return UserCreate
+
+
+@pytest.fixture
+def user_read_schema():
+    return UserRead
+
+
+@pytest.fixture
+def user_update_schema():
+    return UserUpdate
+
+
+@pytest.fixture
+def uuid_model():
+    return UUIDModel
+
+
+@pytest.fixture
+def email_query_config_model():
+    return EmailQueryConfig
+
+
+@pytest.fixture
+def uuid_model_create_schema():
+    return UUIDModelCreate
+
+
+@pytest.fixture
+def uuid_model_read_schema():
+    return UUIDModelRead
+
+
+@pytest.fixture
+def uuid_model_update_schema():
+    return UUIDModelUpdate
+
+
+@pytest.fixture
+def uuid_model_update_internal_schema():
+    return UUIDModelUpdateInternal
+
+
+@pytest.fixture
+def email_query_config_create_schema():
+    return EmailQueryConfigCreate
+
+
+@pytest.fixture
+def email_query_config_read_schema():
+    return EmailQueryConfigRead
+
+
+@pytest.fixture
+def email_query_config_update_schema():
+    return EmailQueryConfigUpdate
+
+
+@pytest.fixture
+def email_query_config_update_internal_schema():
+    return EmailQueryConfigUpdateInternal
+
+
+@pytest.fixture(scope="function")
+def uuid_test_data() -> list[dict]:
+    return [
+        {
+            "id": "93c025d9-5831-413c-9460-edb3a28cc729",
+            "name": "Test Item 1",
+            "description": "First test item with UUID",
+        },
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "name": "Test Item 2",
+            "description": "Second test item with UUID",
+        },
+    ]
+
+
+@pytest.fixture(scope="function")
+def email_query_config_data() -> list[dict]:
+    return [
+        {
+            "id": "93c025d9-5831-413c-9460-edb3a28cc729",
+            "template_id": "template_1",
+            "query_name": "User Query",
+            "query_text": "SELECT * FROM users",
+            "query_type": "select",
+        },
+        {
+            "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+            "template_id": "template_2",
+            "query_name": "Admin Query",
+            "query_text": "SELECT * FROM admin_users",
+            "query_type": "select",
+        },
+    ]
+
+
+@pytest_asyncio.fixture(scope="function")
+async def db_config(admin_async_session) -> AsyncGenerator[DatabaseConfig, None]:
+    """Create a DatabaseConfig instance for testing."""
+    admin_base = create_admin_base()
+
+    admin_event_log = create_admin_event_log(admin_base)
+    admin_audit_log = create_admin_audit_log(admin_base)
+
+    config = DatabaseConfig(
+        base=admin_base,
+        session=admin_async_session,
+        admin_db_url="sqlite+aiosqlite:///:memory:",
+        admin_event_log=admin_event_log,
+        admin_audit_log=admin_audit_log,
+    )
+
+    await config.initialize_admin_db()
+
+    yield config
+
+    await config.admin_engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def event_service(db_config) -> EventService:
+    """Create an EventService instance for testing."""
+    return EventService(db_config=db_config)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def crud_admin(async_session) -> CRUDAdmin:
+    """Create a CRUDAdmin instance for testing."""
+    admin = CRUDAdmin(
+        session=async_session,
+        admin_db_url="sqlite+aiosqlite:///:memory:",
+        SECRET_KEY="test-secret-key-for-testing-only-min-32-chars",
+        setup_on_initialization=False,
+    )
+
+    await admin.initialize()
+
+    return admin
+
+
+@pytest.fixture
+def test_client(crud_admin):
+    """Create a test client for the CRUDAdmin FastAPI app."""
+    return TestClient(crud_admin.app)
+
+
+@pytest.fixture
+def mock_request():
+    """Create a mock request object for testing."""
+    request = Mock()
+    request.client.host = "127.0.0.1"
+    request.headers = {"user-agent": "test-agent"}
+    return request
+
+
+def create_admin_base() -> type[DeclarativeBase]:
+    """Create a unique AdminBase class for each test to avoid table conflicts."""
+
+    class AdminBase(DeclarativeBase):
+        pass
+
+    return AdminBase

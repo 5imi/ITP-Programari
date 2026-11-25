@@ -1,0 +1,18 @@
+{
+    "typeCheckingMode": "basic",
+    "include": [
+        "app"
+    ],
+    "exclude": [
+        "tests"
+    ],
+    "executionEnvironments": [
+        {
+            "root": "app",
+            "extraPaths": [
+                "app"
+            ]
+        }
+    ],
+    "reportMissingTypeStubs": false
+}

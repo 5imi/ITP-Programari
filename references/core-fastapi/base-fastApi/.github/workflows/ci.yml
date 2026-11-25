@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, devel, test, release]
+  pull_request:
+name: CI
+
+on:
+  push:
+    branches: [main, master, devel, test, release]
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/astral-sh/uv:alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install just
+        run: |
+          apk add --no-cache bash curl ca-certificates
+          update-ca-certificates
+          curl -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Run tests
+        run: just test -- -m "unit or integration or e2e" -v
+
+  quality:
+    name: Quality
+    needs: test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/astral-sh/uv:alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install just
+        run: |
+          apk add --no-cache bash curl ca-certificates
+          update-ca-certificates
+          curl -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Run lint and type checks
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          just mypy-report
+
+  security:
+    name: Security
+    needs: test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/astral-sh/uv:alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install just
+        run: |
+          apk add --no-cache bash curl ca-certificates
+          update-ca-certificates
+          curl -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Run security audit
+        run: |
+          uv export --locked --format requirements-txt --no-hashes > req.txt
+          uv tool run pip-audit -r req.txt || true

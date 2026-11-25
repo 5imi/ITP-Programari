@@ -1,0 +1,14 @@
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.local
+data/*.db
+data/*.db-shm
+data/*.db-wal
+backups/
+*.log
+.DS_Store
+Thumbs.db

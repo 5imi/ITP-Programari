@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FastAPI Admin{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_prefix }}/static/favicon.png?v=1">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="htmx-config" content='{"allowEval": false, "allowScriptTags": false}'>
+    <meta name="csrf-cookie-name" content="{{ csrf_cookie_name|default('crudadmin_csrf', true) }}">
+    <script src="{{ url_prefix }}/static/htmx.min.js"></script>
+    <script src="{{ url_prefix }}/static/admin.js" defer></script>
+    <style>
+        /* Modern CSS Reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Theme Variables */
+        :root {
+            /* Colors */
+            --primary-color: #009688;
+            --primary-dark: #00796B;
+            --primary-light: #B2DFDB;
+            --accent-color: #607D8B;
+
+            /* Light Theme */
+            --bg-primary-light: #ffffff;
+            --bg-secondary-light: #f7f7f7;
+            --text-primary-light: #333333;
+            --text-secondary-light: #666666;
+            --border-light: #e0e0e0;
+
+            /* Dark Theme */
+            --bg-primary-dark: #1e2129;
+            --bg-secondary-dark: #282c34;
+            --text-primary-dark: #ffffff;
+            --text-secondary-dark: #b0b0b0;
+            --border-dark: #3a3f4c;
+
+            /* Status Colors */
+            --success-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+
+            /* Layout */
+            --header-height: 64px;
+            --sidebar-width: 260px;
+            --content-max-width: 1200px;
+
+            /* Components */
+            --border-radius-sm: 4px;
+            --border-radius-md: 8px;
+            --border-radius-lg: 12px;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Base Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.5;
+            color: var(--text-primary-light);
+            background: var(--bg-secondary-light);
+            min-height: 100vh;
+        }
+
+        body.dark-theme {
+            color: var(--text-primary-dark);
+            background: var(--bg-secondary-dark);
+        }
+
+        /* Layout */
+        .admin-container {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            grid-template-rows: var(--header-height) 1fr;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .admin-header {
+            grid-column: 1 / -1;
+            background: var(--primary-color);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+            color: white;
+        }
+
+        .brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand:hover {
+            color: var(--primary-light);
+        }
+
+        /* Sidebar */
+        .admin-sidebar {
+            background: var(--bg-primary-light);
+            border-right: 1px solid var(--border-light);
+            padding: 1.5rem 0;
+            overflow-y: auto;
+            grid-row: 2;
+        }
+
+        .dark-theme .admin-sidebar {
+            background: var(--bg-primary-dark);
+            border-color: var(--border-dark);
+        }
+
+        .sidebar-section {
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-section-header {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-secondary-light);
+            transition: all 0.2s;
+        }
+
+        .dark-theme .sidebar-section-header {
+            color: var(--text-secondary-dark);
+        }
+
+        .sidebar-section-header:hover {
+            background: var(--bg-secondary-light);
+        }
+
+        .dark-theme .sidebar-section-header:hover {
+            background: var(--bg-secondary-dark);
+        }
+
+        .sidebar-section-title {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .sidebar-section-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .sidebar-section-toggle::before {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid currentColor;
+            transition: transform 0.2s;
+        }
+
+        .sidebar-section.collapsed .sidebar-section-toggle::before {
+            transform: rotate(-90deg);
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+
+        .sidebar-section.collapsed .sidebar-nav {
+            max-height: 0;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem 0.75rem 2rem;
+            color: var(--text-primary-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .dark-theme .sidebar-link {
+            color: var(--text-primary-dark);
+        }
+
+        .sidebar-link:hover {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+        }
+
+        .dark-theme .sidebar-link:hover {
+            background: var(--primary-dark);
+            color: var(--primary-light);
+        }
+
+        .sidebar-link.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .badge-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Brand */
+        .brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .brand:hover {
+            color: var(--primary-light);
+        }
+
+        .admin-main {
+            grid-column: 2;
+            padding: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .logout-form {
+            margin: 0;
+        }
+
+        .logout-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font: inherit;
+            color: white;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .logout-button:hover {
+            color: var(--primary-light);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{{ theme|default('dark-theme', true) }}">
+    {% set include_sidebar_and_header = include_sidebar_and_header | default(false) %}
+
+    <div class="{% if include_sidebar_and_header %}admin-container{% endif %}">
+        {% if include_sidebar_and_header %}
+            <header class="admin-header">
+                <a href="{{ url_prefix }}/" class="brand">
+                    <img src="{{ url_prefix }}/static/favicon.png" alt="FastAPI Admin" class="brand-icon">
+                    FastAPI Admin
+                </a>
+                <div class="flex items-center gap-4">
+                    <form method="post" action="{{ url_prefix }}/logout" class="logout-form">
+                        <button type="submit" class="logout-button">
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </header>
+
+            <aside class="admin-sidebar">
+                <nav>
+                    <!-- Dashboard Section -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-header" data-action="toggle-sidebar-section">
+                            <h3 class="sidebar-section-title">Navigation</h3>
+                            <span class="sidebar-section-toggle"></span>
+                        </div>
+                        <ul class="sidebar-nav">
+                            <li>
+                                <a href="{{ url_prefix }}/" class="sidebar-link active">
+                                    Dashboard
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Management Section -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-header" data-action="toggle-sidebar-section">
+                            <h3 class="sidebar-section-title">Management</h3>
+                            <span class="sidebar-section-toggle"></span>
+                        </div>
+                        <ul class="sidebar-nav">
+                            <li>
+                                <a href="{{ url_prefix }}/management/health" class="sidebar-link">
+                                    Health Checks
+                                    <span class="badge badge-primary">System</span>
+                                </a>
+                            </li>
+                            {% if track_events %}
+                            <li>
+                                <a href="{{ url_prefix }}/management/events" class="sidebar-link">
+                                    Event Logs
+                                    <span class="badge badge-primary">System</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+
+                    <!-- Authentication Section -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-header" data-action="toggle-sidebar-section">
+                            <h3 class="sidebar-section-title">Authentication</h3>
+                            <span class="sidebar-section-toggle"></span>
+                        </div>
+                        <ul class="sidebar-nav">
+                            {% if is_superuser %}
+                            {% for auth_table_name in auth_table_names %}
+                            <li>
+                                <a href="{{ url_prefix }}/{{ auth_table_name }}/" class="sidebar-link">
+                                    {{ auth_table_name }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% endif %}
+                            <li>
+                                <a href="{{ url_prefix }}/management/sessions" class="sidebar-link">
+                                    Sessions
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Models Section -->
+                    {% if table_names %}
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-header" data-action="toggle-sidebar-section">
+                            <h3 class="sidebar-section-title">Models</h3>
+                            <span class="sidebar-section-toggle"></span>
+                        </div>
+                        <ul class="sidebar-nav">
+                            {% for table_name in table_names %}
+                            <li>
+                                <a href="{{ url_prefix }}/{{ table_name }}/" class="sidebar-link">
+                                    {{ table_name }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </nav>
+            </aside>
+        {% endif %}
+
+        <main class="admin-main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+</body>
+</html>

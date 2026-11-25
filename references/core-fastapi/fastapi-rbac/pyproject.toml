@@ -1,0 +1,191 @@
+[project]
+name = "kb-fastapi-rbac"
+version = "0.1.2"
+description = "Production-grade Role-Based Access Control (RBAC) system for FastAPI applications"
+readme = "README.md"
+authors = [
+    { name = "Munya Junior (khalid)", email = "info@kwantabit.com" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: FastAPI",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["fastapi", "rbac", "security", "authorization", "permissions", "multi-tenant"]
+requires-python = ">=3.13"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi>=0.135.1",
+    "PyJWT>=2.8.0",
+    "passlib[argon2]>=1.7.4",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.2",
+    "python-jose[cryptography]>=3.5.0",
+    "sqlalchemy>=2.0.47",
+    "uvicorn>=0.41.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=26.1.0",
+    "isort>=8.0.1",
+    "mypy>=1.19.1",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-benchmark>=5.2.3",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.15.4",
+    "uvicorn[standard]>=0.41.0",
+    "watchdog>=6.0.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.22.0",
+    "mkdocs-include-markdown-plugin>=5.0.0",
+]
+postgres = [
+    "asyncpg>=0.27.0",
+    "psycopg2-binary>=2.9.0",
+]
+mysql = [
+    "aiomysql>=0.2.0",
+    "pymysql>=1.0.0",
+]
+redis = [
+    "redis>=4.5.0",
+]
+ldap = [
+    "ldap3>=2.9.1",
+]
+keycloak = [
+    "httpx>=0.23.0",
+    "python-keycloak>=3.0.0",
+    "jwcrypto>=1.5.0",
+]
+all = [
+    "asyncpg>=0.27.0",
+    "redis>=4.5.0",
+    "ldap3>=2.9.1",
+    "httpx>=0.23.0",
+    "python-keycloak>=3.0.0",
+    "jwcrypto>=1.5.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/KwantaBit-Technologies/fastapi-rbac"
+"Documentation" = "https://fastapi-rbac.readthedocs.io"
+"Repository" = "https://github.com/KwantaBit-Technologies/fastapi-rbac.git"
+"Changelog" = "https://github.com/KwantaBit-Technologies/fastapi-rbac/blob/main/CHANGELOG.md"
+"Issues" = "https://github.com/KwantaBit-Technologies/fastapi-rbac/issues"
+
+[project.scripts]
+rbac-cli = "rbac.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rbac"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    # tests/, examples/ and docs/ all live under src/, so "/src" already covers them.
+    "/src",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "ARG", "SIM"]
+ignore = [
+    # FastAPI intentionally uses dependency calls in default values.
+    "B008",
+    # SQLAlchemy column expressions require explicit boolean comparisons.
+    "E712",
+    # Framework callbacks, fixtures, and examples often keep named unused args.
+    "ARG001",
+    "ARG002",
+    # Re-raising FastAPI HTTPException from broad demo handlers is acceptable in examples.
+    "B904",
+    # Tests often use short loop variables in compact assertions.
+    "E741",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "PLR2004"]
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+strict_equality = true
+no_implicit_optional = false
+disable_error_code = [
+    # SQLAlchemy Core statements, Redis clients, FastAPI decorators, and example
+    # app snippets are intentionally dynamic until the public API gets full types.
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "dict-item",
+    "no-any-return",
+    "no-redef",
+    "operator",
+    "return-value",
+    "truthy-function",
+    "var-annotated",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --cov=rbac --cov-report=term-missing --cov-report=html"
+testpaths = [
+    "src/tests",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["rbac"]
+omit = ["*/tests/*", "*/examples/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "except ImportError:",
+    "@abstractmethod",
+    "typing.cast",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
