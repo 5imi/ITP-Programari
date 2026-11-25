@@ -213,10 +213,69 @@
       .mobile-cards {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
+      }
+      .page-body {
+        padding-top: 0.4rem;
+        padding-bottom: 0.75rem;
       }
       .page-wrapper {
-        padding-bottom: 66px;
+        padding-bottom: 58px;
+      }
+      .itp-topbar {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.25rem !important;
+      }
+      .aw-logo-nav {
+        width: 30px;
+        height: 30px;
+      }
+      .itp-mob-card {
+        padding: 7px 9px !important;
+        border-radius: 10px;
+      }
+      .itp-mob-plate {
+        font-size: 0.78rem;
+        padding: 1px 5px;
+      }
+      .itp-mob-act {
+        min-height: 30px;
+        padding: 0.18rem 0.42rem;
+        font-size: 0.76rem;
+        font-weight: 600;
+        line-height: 1.1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        white-space: nowrap;
+      }
+      .itp-mob-icon-btn {
+        min-width: 34px;
+        padding-left: 0.35rem;
+        padding-right: 0.35rem;
+        flex: 0 0 auto;
+      }
+      .itp-filter-card {
+        padding: 6px 8px !important;
+        margin-bottom: 6px !important;
+      }
+      .itp-date-btn {
+        min-width: 30px;
+        min-height: 30px !important;
+        padding: 0 7px;
+      }
+      .filter-pill {
+        padding: 2px 8px;
+        font-size: 0.74rem;
+      }
+      .itp-all-days-btn {
+        font-size: 0.72rem;
+        padding: 0.22rem 0.48rem;
+        white-space: nowrap;
+      }
+      .itp-filter-group {
+        width: 100%;
       }
       .mobile-bottom-nav {
         display: flex;
@@ -252,15 +311,15 @@
         color: var(--itp-primary);
       }
       .touch-btn {
-        min-height: 34px;
-        padding: 0.25rem 0.4rem;
-        font-size: 0.8rem;
+        min-height: 32px;
+        padding: 0.22rem 0.4rem;
+        font-size: 0.78rem;
         font-weight: 600;
       }
       .toast-container-itp {
         left: 12px;
         right: 12px;
-        top: 64px;
+        top: 56px;
       }
     }
 
@@ -423,17 +482,23 @@
   <!-- PC Sidebar -->
   <aside class="navbar navbar-vertical navbar-expand-lg itp-sidebar" id="sidebarMenu">
     <div class="container-fluid">
-      <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1">
+      <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1 gap-2">
         <a href="#" class="navbar-brand text-decoration-none d-flex align-items-center gap-2 m-0" onclick="switchView('azi'); return false;">
           <img src="references/ui-libs/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-nav">
           <div class="lh-1">
-            <div class="fw-bold text-dark" style="font-size: 0.96rem;">ACW - Fălticeni</div>
-            <div class="text-muted" style="font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;">STAȚIE ITP</div>
+            <div class="fw-bold text-dark" style="font-size: 0.92rem;">ACW - Fălticeni</div>
+            <div class="text-muted" style="font-size: 0.64rem; font-weight: 600; letter-spacing: 0.04em;">STAȚIE ITP</div>
           </div>
         </a>
-        <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-nav" aria-label="Meniu">
-          <span class="navbar-toggler-icon"></span>
-        </button>
+        <div class="d-flex align-items-center gap-1 d-lg-none">
+          <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2" id="btnNewApptMob" onclick="openNewAppointmentModal()" style="min-height: 30px; font-size: 0.76rem; font-weight: 600;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            <span>Programare</span>
+          </button>
+          <button class="navbar-toggler p-1" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-nav" aria-label="Meniu">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        </div>
       </div>
 
       <div class="collapse navbar-collapse" id="sidebar-nav">
@@ -443,6 +508,13 @@
         <div id="sidebar-admin-group">
           <div class="itp-section-label">Administrare (Doar Admin)</div>
           <ul class="navbar-nav" id="sidebar-admin-links"></ul>
+        </div>
+
+        <div class="d-lg-none border-top mt-2 pt-2 pb-2 px-2">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <div class="small text-muted">Logat: <strong class="text-dark" id="mobDrawerUser">Laur (Admin)</strong></div>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="btnLogoutMob" onclick="requestLogout()">Deconectare</button>
+          </div>
         </div>
 
         <div class="mt-auto p-3 d-none d-lg-block">
@@ -459,17 +531,18 @@
   <div class="page-wrapper">
     <!-- Top Bar -->
     <header class="navbar navbar-expand-md itp-topbar py-1">
-      <div class="container-xl gap-2 flex-wrap">
-        <div class="itp-search-wrap flex-md-grow-1">
+      <div class="container-xl gap-2 d-flex align-items-center flex-nowrap flex-lg-wrap">
+        <div class="itp-search-wrap flex-grow-1">
           <div class="input-icon">
             <span class="input-icon-addon">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </span>
-            <input type="search" id="globalSearch" class="form-control form-control-sm" placeholder="Caută nr. înmatriculare, telefon, client...">
+            <input type="search" id="globalSearch" class="form-control form-control-sm" placeholder="Caută nr. auto, telefon, client...">
           </div>
         </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary d-lg-none flex-shrink-0 itp-all-days-btn" id="btnMobAllDays" onclick="toggleSearchAllDays()" title="Caută în toate zilele">Toate zilele</button>
 
-        <div class="d-flex align-items-center justify-content-end gap-2 w-100 w-md-auto ms-md-auto flex-wrap">
+        <div class="d-none d-lg-flex align-items-center justify-content-end gap-2 ms-lg-auto">
           <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1" id="btnNewAppt" onclick="openNewAppointmentModal()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             <span>Programare</span>
@@ -482,7 +555,7 @@
     <!-- Page Content -->
     <div class="page-body">
       <div class="container-xl">
-        <div class="d-flex align-items-baseline justify-content-between mb-2 flex-wrap gap-1">
+        <div class="d-flex align-items-baseline justify-content-between mb-2 flex-wrap gap-1" id="pageHeaderBar">
           <h2 class="page-title mb-0 fs-3" id="viewTitle">Programări</h2>
           <div class="text-muted small" id="viewSubtitle">Se încarcă...</div>
           <div id="viewActions"></div>
@@ -1974,6 +2047,11 @@
     showToast(`Istoric Imutabil exportat în format CSV (${filtered.length} intrări).`);
   }
 
+  function toggleSearchAllDays() {
+    state.searchAllDays = !state.searchAllDays;
+    renderAll();
+  }
+
   function renderNav() {
     const opLinks = [
       { id: "azi", label: "Programări", enabled: true },
@@ -1990,8 +2068,21 @@
       </li>
     `).join("");
 
+    const canAdd = userCan("canEdit");
     const btnNewAppt = document.getElementById("btnNewAppt");
-    if (btnNewAppt) btnNewAppt.classList.toggle("d-none", !userCan("canEdit"));
+    if (btnNewAppt) btnNewAppt.classList.toggle("d-none", !canAdd);
+    const btnNewApptMob = document.getElementById("btnNewApptMob");
+    if (btnNewApptMob) btnNewApptMob.classList.toggle("d-none", !canAdd);
+
+    const mobDrawerUser = document.getElementById("mobDrawerUser");
+    if (mobDrawerUser) mobDrawerUser.textContent = currentActorLabel();
+
+    const btnMobAllDays = document.getElementById("btnMobAllDays");
+    if (btnMobAllDays) {
+      btnMobAllDays.classList.toggle("d-none", state.currentView !== "azi");
+      btnMobAllDays.classList.toggle("btn-primary", !!state.searchAllDays);
+      btnMobAllDays.classList.toggle("btn-outline-secondary", !state.searchAllDays);
+    }
 
     const adminGroup = document.getElementById("sidebar-admin-group");
     if (state.role === "admin") {
@@ -2089,6 +2180,9 @@
         </tr>`;
     }).join("");
 
+    const iconPhone = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2"/></svg>`;
+    const iconTrash = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>`;
+
     const mobileCards = list.map(a => {
       const sm = STATUS_META[a.status] || STATUS_META["Programat"];
       const isRevenire = a.status === "Revenire";
@@ -2099,29 +2193,31 @@
       const rowCanRev = (a.date >= TODAY_DATE && userCan("canRevenire")) || state.role === "admin";
       const rowCanDel = userCan("canDelete");
       const canScheduleReinspection = isRevenire && !a.resolvedByReinspectionId && rowCanRev;
-      const utilCol = rowCanDel ? "col-4" : "col-6";
+      const shortLine = String(a.line || "").replace(/^Linia\s+/i, "L");
+      const shortParent = a.parentDate ? formatDateRo(a.parentDate).slice(0, 5) : "";
       return `
-        <div class="card p-2">
-          <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <span class="plate-badge">${esc(a.plate)}</span>
-              <span class="fw-bold small">${showDateInTime ? `${formatDateRo(a.date)} • ` : ""}${esc(a.time)} • ${esc(a.line)}</span>
+        <div class="card itp-mob-card">
+          <div class="d-flex justify-content-between align-items-center gap-1 mb-1">
+            <div class="d-flex align-items-center gap-1 flex-nowrap min-w-0">
+              <span class="plate-badge itp-mob-plate">${esc(a.plate)}</span>
+              <span class="fw-bold text-nowrap" style="font-size: 0.8rem;">${showDateInTime ? `${formatDateRo(a.date).slice(0, 5)} ` : ""}${esc(a.time)}</span>
+              <span class="text-muted text-nowrap" style="font-size: 0.75rem;">• ${esc(shortLine)}</span>
             </div>
-            <div class="text-end flex-shrink-0">
-              <span class="badge ${sm.badge}">${esc(sm.label)}</span>
-              ${a.visitType === "REVENIRE" ? `<span class="badge bg-purple-lt text-purple ms-1">Din ${formatDateRo(a.parentDate)}</span>` : ""}
+            <div class="text-end flex-shrink-0 d-flex align-items-center gap-1">
+              ${a.visitType === "REVENIRE" ? `<span class="badge bg-purple-lt text-purple" style="font-size: 0.67rem;">Din ${esc(shortParent)}</span>` : ""}
+              <span class="badge ${sm.badge}" style="font-size: 0.7rem;">${esc(sm.label)}</span>
             </div>
           </div>
-          <div class="text-muted small mb-2">${esc(a.vehicle)} • ${esc(a.client)} • ${esc(a.phone)}</div>
-          ${a.visitType === "REVENIRE" && a.verifyNotes ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 small mb-2"><strong>De verificat:</strong> ${esc(a.verifyNotes)}</div>` : ""}
-          ${rejectSummary ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 small mb-2" style="${rowCanRev ? "cursor:pointer;" : ""}" onclick="${rowCanRev ? `openRejectModal(${a.id})` : ""}"><strong>Motiv:</strong> ${esc(rejectSummary)} <span class="text-muted">(30z: ${formatDateRo(deadline)}${rowCanRev ? " • apasă pt. modificare" : ""})</span></div>` : ""}
-          <div class="row g-1">
-            ${canScheduleReinspection ? `<div class="col-12"><button class="btn btn-purple w-100 touch-btn" onclick="openReinspectionModal(${a.id})">+ Reprogramează revenire (30 zile)</button></div>` : ""}
-            ${rowCanEdit ? `<div class="${rowCanRev && !isRevenire ? "col-6" : "col-12"}"><button class="btn btn-outline-primary w-100 touch-btn" onclick="openEditAppointmentModal(${a.id})">Editează</button></div>` : ""}
-            ${rowCanRev && !isRevenire ? `<div class="${rowCanEdit ? "col-6" : "col-12"}"><button class="btn btn-outline-purple w-100 touch-btn" onclick="openRejectModal(${a.id})">Revenire</button></div>` : ""}
-            <div class="${utilCol}"><a class="btn btn-outline-secondary w-100 touch-btn" href="tel:${esc(a.phone)}">Sună</a></div>
-            <div class="${utilCol}"><a class="btn btn-outline-success w-100 touch-btn" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${waMsg}">WA</a></div>
-            ${rowCanDel ? `<div class="${utilCol}"><button class="btn btn-outline-danger w-100 touch-btn" onclick="deleteAppointment(${a.id})">Șterge</button></div>` : ""}
+          <div class="text-muted text-truncate mb-1" style="font-size: 0.77rem;">${esc(a.vehicle)} • ${esc(a.client)} • ${esc(a.phone)}</div>
+          ${a.visitType === "REVENIRE" && a.verifyNotes ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem; line-height: 1.25;"><strong>De verificat:</strong> ${esc(a.verifyNotes)}</div>` : ""}
+          ${rejectSummary ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem; line-height: 1.25; ${rowCanRev ? "cursor:pointer;" : ""}" onclick="${rowCanRev ? `openRejectModal(${a.id})` : ""}"><strong>Motiv:</strong> ${esc(rejectSummary)} <span class="text-muted">(30z: ${formatDateRo(deadline)}${rowCanRev ? " • modifică" : ""})</span></div>` : ""}
+          <div class="d-flex align-items-center gap-1">
+            ${rowCanEdit ? `<button class="btn btn-outline-primary itp-mob-act flex-fill" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ""}
+            ${canScheduleReinspection ? `<button class="btn btn-purple itp-mob-act flex-fill" onclick="openReinspectionModal(${a.id})" title="Reprogramează revenire 30 zile">+ Reprog.</button>` : ""}
+            ${rowCanRev && !isRevenire ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Revenire</button>` : ""}
+            <a class="btn btn-outline-secondary itp-mob-act ${rowCanDel ? "itp-mob-icon-btn" : "flex-fill"}" href="tel:${esc(a.phone)}" aria-label="Sună" title="Sună">${iconPhone}${rowCanDel ? "" : `<span>Sună</span>`}</a>
+            <a class="btn btn-outline-success itp-mob-act ${rowCanDel ? "itp-mob-icon-btn" : "flex-fill"}" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${waMsg}" aria-label="WhatsApp" title="WhatsApp">WA</a>
+            ${rowCanDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="deleteAppointment(${a.id})" aria-label="Șterge" title="Șterge">${iconTrash}</button>` : ""}
           </div>
         </div>`;
     }).join("");
@@ -2165,40 +2261,42 @@
       acc[a.status] = (acc[a.status] || 0) + 1;
       return acc;
     }, {});
+    const isMob = window.innerWidth < 992;
     const filters = [
-      { key: "Toate", count: baseList.length },
-      { key: "Programat", count: countsByStatus["Programat"] || 0 },
-      { key: "Revenire", count: countsByStatus["Revenire"] || 0 }
+      { key: "Toate", label: "Toate", count: baseList.length },
+      { key: "Programat", label: isMob ? "Prog." : "Programat", count: countsByStatus["Programat"] || 0 },
+      { key: "Revenire", label: isMob ? "Rev." : "Revenire", count: countsByStatus["Revenire"] || 0 }
     ];
     const canEditDay = !isHistory || state.role === "admin";
     const dayBadge = isHistory
-      ? `<span class="badge bg-secondary-lt">Istoric • ${canEditDay ? "Doar Admin" : "Consultare"}</span>`
-      : (isFuture ? `<span class="badge bg-green-lt text-green">Zi viitoare</span>` : `<span class="badge bg-blue-lt text-blue">Azi</span>`);
+      ? `<span class="badge bg-secondary-lt flex-shrink-0">${isMob ? "Istoric" : `Istoric • ${canEditDay ? "Doar Admin" : "Consultare"}`}</span>`
+      : (isFuture ? `<span class="badge bg-green-lt text-green flex-shrink-0">${isMob ? "Viitor" : "Zi viitoare"}</span>` : `<span class="badge bg-blue-lt text-blue flex-shrink-0">Azi</span>`);
+    const dayTotalCount = state.appointments.filter(a => a.date === state.selectedDate).length;
+    const freeSlotsDay = Math.max(0, DAILY_SLOTS.length * state.stationConfig.lines.length - dayTotalCount);
 
     return `
-      <div class="card p-2 mb-2">
+      <div class="card p-2 mb-2 itp-filter-card">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1 flex-lg-grow-0">
-            <div class="d-flex align-items-center gap-1 flex-grow-1 flex-sm-grow-0">
+          <div class="d-flex align-items-center gap-1 itp-filter-group">
+            <div class="d-flex align-items-center gap-1 flex-grow-1 flex-lg-grow-0">
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(-1)" aria-label="Ziua anterioară" title="Ziua anterioară">&lsaquo;</button>
-              <input type="date" class="form-control form-control-sm fw-medium flex-grow-1 flex-sm-grow-0" style="min-height: 34px;" value="${esc(state.selectedDate)}" aria-label="Selectează data" onchange="selectDate(this.value)">
+              <input type="date" class="form-control form-control-sm fw-medium flex-grow-1 flex-lg-grow-0" style="min-height: 30px; min-width: 0;" value="${esc(state.selectedDate)}" aria-label="Selectează data" onchange="selectDate(this.value)">
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(1)" aria-label="Ziua următoare" title="Ziua următoare">&rsaquo;</button>
             </div>
-            <div class="d-flex align-items-center justify-content-between gap-2 flex-grow-1 flex-sm-grow-0">
-              <div>${dayBadge}</div>
-              <label class="d-flex align-items-center gap-2 m-0" style="cursor:pointer;">
-                <input class="form-check-input m-0" type="checkbox" ${state.searchAllDays ? "checked" : ""} onchange="state.searchAllDays = this.checked; renderAll();">
-                <span class="small text-muted">Caută în toate zilele</span>
-              </label>
-            </div>
+            ${dayBadge}
+            <span class="badge bg-blue-lt text-blue d-lg-none flex-shrink-0">${freeSlotsDay} lib.</span>
+            <label class="d-none d-lg-flex align-items-center gap-2 ms-2 m-0" style="cursor:pointer;">
+              <input class="form-check-input m-0" type="checkbox" ${state.searchAllDays ? "checked" : ""} onchange="state.searchAllDays = this.checked; renderAll();">
+              <span class="small text-muted">Caută în toate zilele</span>
+            </label>
           </div>
-          <div class="d-flex align-items-center flex-wrap gap-2">
-            <select id="lineFilterSelect" class="form-select form-select-sm itp-compact-select" style="width: auto; min-height: 32px;" aria-label="Filtrează după linie" onchange="state.lineFilter = this.value; renderAll();">
-              <option value="Toate" ${state.lineFilter === "Toate" ? "selected" : ""}>Toate liniile (${dayAndSearchList.length})</option>
-              ${state.stationConfig.lines.map(ln => `<option value="${esc(ln)}" ${state.lineFilter === ln ? "selected" : ""}>${esc(ln)} (${countsByLine[ln] || 0})</option>`).join("")}
+          <div class="d-flex align-items-center gap-1 itp-filter-group justify-content-between justify-content-lg-end">
+            <select id="lineFilterSelect" class="form-select form-select-sm itp-compact-select flex-shrink-0" style="width: auto; min-height: 28px;" aria-label="Filtrează după linie" onchange="state.lineFilter = this.value; renderAll();">
+              <option value="Toate" ${state.lineFilter === "Toate" ? "selected" : ""}>${isMob ? "Liniile" : "Toate liniile"} (${dayAndSearchList.length})</option>
+              ${state.stationConfig.lines.map(ln => `<option value="${esc(ln)}" ${state.lineFilter === ln ? "selected" : ""}>${esc(isMob ? ln.replace(/^Linia\s+/i, "L") : ln)} (${countsByLine[ln] || 0})</option>`).join("")}
             </select>
             <div class="filter-strip mb-0">
-              ${filters.map(f => `<button class="filter-pill ${state.statusFilter === f.key ? "active" : ""}" onclick="state.statusFilter='${f.key}'; renderAll();">${esc(f.key)} <strong>(${f.count})</strong></button>`).join("")}
+              ${filters.map(f => `<button class="filter-pill ${state.statusFilter === f.key ? "active" : ""}" onclick="state.statusFilter='${f.key}'; renderAll();">${esc(f.label)} <strong>(${f.count})</strong></button>`).join("")}
             </div>
           </div>
         </div>
@@ -2610,12 +2708,18 @@
       utilizatori: "Utilizatori & Permisiuni"
     };
     document.getElementById("viewTitle").textContent = titles[state.currentView] || "Dashboard";
+    const pageHeaderBar = document.getElementById("pageHeaderBar");
+    if (pageHeaderBar) {
+      pageHeaderBar.className = state.currentView === "azi"
+        ? "d-none d-lg-flex align-items-baseline justify-content-between mb-2 flex-wrap gap-1"
+        : "d-flex align-items-baseline justify-content-between mb-2 flex-wrap gap-1";
+    }
     const targetIso = state.currentView === "azi" ? state.selectedDate : TODAY_DATE;
     const isMob = window.innerWidth < 992;
     const dateLabel = isMob ? formatDateRo(targetIso) : formatDateHeading(targetIso);
     const userLabel = currentActorLabel();
     document.getElementById("viewSubtitle").innerHTML = isMob
-      ? `<strong class="text-dark">${esc(dateLabel)}</strong> • ${esc(state.stationConfig.lineName)} (${state.stationConfig.slotMinutes} min) • <strong class="text-dark">${esc(userLabel)}</strong>`
+      ? `<strong class="text-dark">${esc(userLabel)}</strong>`
       : `<strong class="text-dark">${esc(dateLabel)}</strong> • ${esc(state.stationConfig.lineName)} (${state.stationConfig.slotMinutes} min) • Logat: <strong class="text-dark">${esc(userLabel)}</strong>`;
 
     const actionsEl = document.getElementById("viewActions");
