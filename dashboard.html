@@ -586,6 +586,7 @@
       { id: 3, date: "2026-11-25", time: "09:30", line: "Linia 1", plate: "IF 89 PRO", vehicle: "Ford Transit", client: "SC Trans Rapid SRL", phone: "0733998877", status: "Programat" },
       { id: 4, date: "2026-11-25", time: "10:30", line: "Linia 1", plate: "B 104 ECO", vehicle: "Toyota Corolla", client: "Mihai Dumitru", phone: "0755443322", status: "Revenire", rejectReasons: ["Lumini / Semnalizare"], rejectNote: "Reglaj far dreapta + bec poziție" },
       { id: 5, date: "2026-11-25", time: "11:30", line: "Linia 1", plate: "PH 77 RTY", vehicle: "Skoda Octavia", client: "Elena Radu", phone: "0766221100", status: "Programat" },
+      { id: 6, date: "2026-11-25", time: "12:00", line: "Linia 1", plate: "SV 08 LZB", vehicle: "Dacia Logan", client: "Client Demo", phone: "0740111222", status: "Programat" },
 
       { id: 11, date: "2026-11-24", time: "08:00", line: "Linia 1", plate: "B 912 KLM", vehicle: "Dacia Logan", client: "Dan Stoica", phone: "0723112244", status: "Programat" },
       { id: 12, date: "2026-11-24", time: "09:00", line: "Linia 3", plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat" },
@@ -622,6 +623,21 @@
 
   function esc(str) {
     return String(str ?? "").replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[s]));
+  }
+
+  function normalizePlateKey(raw) {
+    return String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  }
+
+  function formatRoPlate(raw) {
+    const key = normalizePlateKey(raw);
+    const m = key.match(/^([A-Z]{1,2})(\d{2,3})([A-Z]{2,3})$/);
+    return m ? `${m[1]} ${m[2]} ${m[3]}` : String(raw || "").trim().toUpperCase().replace(/\s+/g, " ");
+  }
+
+  function findSameDayPlateConflict(plateKey, date, excludeId = null) {
+    if (!plateKey) return null;
+    return state.appointments.find(a => a.id !== excludeId && a.date === date && normalizePlateKey(a.plate) === plateKey) || null;
   }
 
   function cleanPhoneWa(phone) {
@@ -1735,86 +1751,7 @@
     renderAll();
   });
 
-  document.getElementById("formProgramare").addEventListener("submit", e => {
-    e.preventDefault();
-    const plate = document.getElementById("inpPlate").value.trim().toUpperCase();
-    const phone = document.getElementById("inpPhone").value.trim();
-    const clientRaw = document.getElementById("inpClient").value.trim() || "Client programat";
-    const date = document.getElementById("inpDate").value || state.selectedDate || TODAY_DATE;
-    const time = document.getElementById("inpHour").value;
-    const line = document.getElementById("inpLine").value;
-    const errEl = document.getElementById("modalErr");
-
-    const conflict = state.appointments.find(a => a.id !== state.editingId && a.date === date && a.time === time && a.line === line);
-    if (conflict) {
-      errEl.textContent = `Există deja o programare pe ${formatDateRo(date)} la ${time} pe ${line} (${conflict.plate}). Alege altă oră sau altă dată.`;
-      errEl.classList.remove("d-none");
-      return;
-    }
-    errEl.classList.add("d-none");
-
-    if (state.editingId !== null) {
-      const existing = state.appointments.find(a => a.id === state.editingId);
-      if (existing) {
-        const before = makeSnapshot(existing);
-        const changes = [];
-        if (before.date !== date) changes.push(`Dată: ${formatDateRo(before.date)} → ${formatDateRo(date)}`);
-        if (before.time !== time) changes.push(`Oră: ${before.time} → ${time}`);
-        if (before.line !== line) changes.push(`Linie: ${before.line} → ${line}`);
-        if (before.plate !== plate) changes.push(`Nr. auto: ${before.plate} → ${plate}`);
-        if (before.phone !== phone) changes.push(`Telefon: ${before.phone} → ${phone}`);
-        const prevName = before.client !== before.vehicle ? `${before.client} • ${before.vehicle}` : before.client;
-        if (prevName !== clientRaw) changes.push(`Client/Mașină: ${prevName} → ${clientRaw}`);
-
-        if (!changes.length) {
-          state.editingId = null;
-          e.target.reset();
-          setModalVisible("modalProgramare", false);
-          showToast("Nicio modificare detectată.");
-          return;
-        }
-
-        const editTargetId = existing.id;
-        setModalVisible("modalProgramare", false);
-        openConfirmModal({
-          title: "Confirmă modificările",
-          message: "Aplici aceste modificări în agendă? Starea inițială va rămâne salvată în Istoric:",
-          detail: `${plate}\n• ${changes.join("\n• ")}`,
-          confirmText: "Da, salvează",
-          variant: "primary",
-          onCancel: () => setModalVisible("modalProgramare", true),
-          onConfirm: () => {
-            const target = state.appointments.find(a => a.id === editTargetId);
-            if (target) {
-              target.date = date;
-              target.time = time;
-              target.line = line;
-              target.plate = plate;
-              target.phone = phone;
-              const parts = clientRaw.split("•").map(s => s.trim()).filter(Boolean);
-              target.client = parts[0] || clientRaw;
-              target.vehicle = parts[1] || parts[0] || clientRaw;
-
-              const diffText = changes.join(" | ");
-              recordHistoryEvent(target, "MODIFICAT", diffText, before);
-              showToast(`Actualizat: ${plate} (${formatDateRo(date)} ${time}) — inițialul păstrat în Istoric`);
-            }
-            state.editingId = null;
-            state.selectedDate = date;
-            document.getElementById("formProgramare").reset();
-            state.currentView = "azi";
-            renderAll();
-          }
-        });
-        return;
-      }
-      state.editingId = null;
-      e.target.reset();
-      setModalVisible("modalProgramare", false);
-      renderAll();
-      return;
-    }
-
+  function commitNewAppointment({ plate, phone, clientRaw, date, time, line }) {
     const newId = Date.now();
     const draft = state.reinspectionDraft;
     const parts = clientRaw.split("•").map(s => s.trim()).filter(Boolean);
@@ -1850,11 +1787,115 @@
     state.appointments.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
     state.selectedDate = date;
     state.reinspectionDraft = null;
-
-    e.target.reset();
-    setModalVisible("modalProgramare", false);
+    document.getElementById("formProgramare").reset();
     state.currentView = "azi";
     renderAll();
+  }
+
+  document.getElementById("formProgramare").addEventListener("submit", e => {
+    e.preventDefault();
+    const plate = formatRoPlate(document.getElementById("inpPlate").value);
+    const plateKey = normalizePlateKey(plate);
+    const phone = document.getElementById("inpPhone").value.trim();
+    const clientRaw = document.getElementById("inpClient").value.trim() || "Client programat";
+    const date = document.getElementById("inpDate").value || state.selectedDate || TODAY_DATE;
+    const time = document.getElementById("inpHour").value;
+    const line = document.getElementById("inpLine").value;
+    const errEl = document.getElementById("modalErr");
+
+    const conflict = state.appointments.find(a => a.id !== state.editingId && a.date === date && a.time === time && a.line === line);
+    if (conflict) {
+      errEl.textContent = `Există deja o programare pe ${formatDateRo(date)} la ${time} pe ${line} (${conflict.plate}). Alege altă oră sau altă dată.`;
+      errEl.classList.remove("d-none");
+      return;
+    }
+    errEl.classList.add("d-none");
+
+    const sameDayDup = findSameDayPlateConflict(plateKey, date, state.editingId);
+
+    if (state.editingId !== null) {
+      const existing = state.appointments.find(a => a.id === state.editingId);
+      if (existing) {
+        const before = makeSnapshot(existing);
+        const changes = [];
+        if (before.date !== date) changes.push(`Dată: ${formatDateRo(before.date)} → ${formatDateRo(date)}`);
+        if (before.time !== time) changes.push(`Oră: ${before.time} → ${time}`);
+        if (before.line !== line) changes.push(`Linie: ${before.line} → ${line}`);
+        if (before.plate !== plate) changes.push(`Nr. auto: ${before.plate} → ${plate}`);
+        if (before.phone !== phone) changes.push(`Telefon: ${before.phone} → ${phone}`);
+        const prevName = before.client !== before.vehicle ? `${before.client} • ${before.vehicle}` : before.client;
+        if (prevName !== clientRaw) changes.push(`Client/Mașină: ${prevName} → ${clientRaw}`);
+
+        if (!changes.length) {
+          state.editingId = null;
+          e.target.reset();
+          setModalVisible("modalProgramare", false);
+          showToast("Nicio modificare detectată.");
+          return;
+        }
+
+        const editTargetId = existing.id;
+        const dupNote = sameDayDup
+          ? `\nAtenție dublură: ${sameDayDup.plate} există deja pe ${formatDateRo(sameDayDup.date)} la ${sameDayDup.time} (${sameDayDup.line})`
+          : "";
+        setModalVisible("modalProgramare", false);
+        openConfirmModal({
+          title: sameDayDup ? "Atenție: număr duplicat în aceeași zi" : "Confirmă modificările",
+          message: sameDayDup
+            ? "Vehiculul are deja o programare în ziua selectată. Sigur salvezi aceste modificări?"
+            : "Aplici aceste modificări în agendă? Starea inițială va rămâne salvată în Istoric:",
+          detail: `${plate}\n• ${changes.join("\n• ")}${dupNote}`,
+          confirmText: sameDayDup ? "Salvează oricum" : "Da, salvează",
+          variant: sameDayDup ? "warning" : "primary",
+          onCancel: () => setModalVisible("modalProgramare", true),
+          onConfirm: () => {
+            const target = state.appointments.find(a => a.id === editTargetId);
+            if (target) {
+              target.date = date;
+              target.time = time;
+              target.line = line;
+              target.plate = plate;
+              target.phone = phone;
+              const parts = clientRaw.split("•").map(s => s.trim()).filter(Boolean);
+              target.client = parts[0] || clientRaw;
+              target.vehicle = parts[1] || parts[0] || clientRaw;
+
+              const diffText = changes.join(" | ");
+              recordHistoryEvent(target, "MODIFICAT", diffText, before);
+              showToast(`Actualizat: ${plate} (${formatDateRo(date)} ${time}) — inițialul păstrat în Istoric`);
+            }
+            state.editingId = null;
+            state.selectedDate = date;
+            document.getElementById("formProgramare").reset();
+            state.currentView = "azi";
+            renderAll();
+          }
+        });
+        return;
+      }
+      state.editingId = null;
+      e.target.reset();
+      setModalVisible("modalProgramare", false);
+      renderAll();
+      return;
+    }
+
+    if (sameDayDup) {
+      setModalVisible("modalProgramare", false);
+      openConfirmModal({
+        title: "Posibilă programare dublă",
+        message: "Acest număr auto are deja o programare în ziua selectată. Sigur creezi încă una?",
+        detail: `Existentă: ${sameDayDup.plate} • ${formatDateRo(sameDayDup.date)} la ${sameDayDup.time} (${sameDayDup.line}) — ${sameDayDup.client}\nNouă: ${plate} • ${formatDateRo(date)} la ${time} (${line})`,
+        confirmText: "Salvează oricum",
+        variant: "warning",
+        onCancel: () => setModalVisible("modalProgramare", true),
+        onConfirm: () => commitNewAppointment({ plate, phone, clientRaw, date, time, line })
+      });
+      return;
+    }
+
+    setModalVisible("modalProgramare", false);
+    commitNewAppointment({ plate, phone, clientRaw, date, time, line });
   });
 
   document.getElementById("formRespingere").addEventListener("submit", e => {
