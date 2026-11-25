@@ -363,7 +363,7 @@
           <button type="submit" class="btn btn-primary w-100 touch-btn fw-semibold">Intră în aplicație</button>
         </form>
         <div class="text-center text-muted small mt-2">
-          Cont demo implicit: <code>admin</code> / parolă <code>admin</code> (Laud — Administrator)
+          Cont demo implicit: <code>admin</code> / parolă <code>admin</code> (Laur — Administrator)
         </div>
         <div class="hr-text my-3">Acces rapid conturi</div>
         <div class="row g-2" id="quickLoginGrid"></div>
@@ -526,6 +526,7 @@
         <div class="alert alert-danger mt-2 mb-0 py-2 small d-none" id="rejectErr"></div>
       </div>
       <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary me-auto d-none" id="btnRevokeRevenire" onclick="revokeRevenire()">Revocă → Programat</button>
         <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
         <button type="submit" class="btn btn-sm btn-purple px-3">Salvează revenirea</button>
       </div>
@@ -542,6 +543,16 @@
         <h4 class="fw-bold mb-1" id="confirmTitle">Confirmare acțiune</h4>
         <div class="text-muted small mb-2" id="confirmMessage"></div>
         <div class="bg-light border rounded px-2 py-2 small text-dark text-start d-none" id="confirmDetail" style="white-space: pre-line;"></div>
+        <div class="mt-2 text-start d-none" id="confirmReasonWrap">
+          <label class="form-label small fw-medium mb-1" for="confirmReasonSelect">Motiv ștergere (se salvează în Istoric):</label>
+          <select class="form-select form-select-sm mb-1" id="confirmReasonSelect">
+            <option value="Anulat de client">Anulat de client</option>
+            <option value="Neprezentare (No-show)">Neprezentare (No-show)</option>
+            <option value="Programare dublată / Greșeală">Programare dublată / Greșeală</option>
+            <option value="Alt motiv">Alt motiv</option>
+          </select>
+          <input type="text" class="form-control form-control-sm" id="confirmReasonNote" placeholder="Detaliu opțional...">
+        </div>
       </div>
       <div class="modal-footer py-2">
         <div class="w-100 row g-2 m-0">
@@ -642,9 +653,9 @@
   const state = {
     isAuthenticated: false,
     role: "admin",
-    currentUserId: "laud",
+    currentUserId: "laur",
     demoUsers: [
-      { id: "laud", username: "admin", alias: "laud", password: "admin", name: "Laud", role: "admin", roleLabel: "Admin", title: "Administrator", isActive: true, locked: true, perms: { canEdit: true, canRevenire: true, canDelete: true }, desc: "Drepturi depline: programări (inclusiv zile trecute), ștergeri, utilizatori, module și backup." },
+      { id: "laur", username: "admin", alias: "laur", password: "admin", name: "Laur", role: "admin", roleLabel: "Admin", title: "Administrator", isActive: true, locked: true, perms: { canEdit: true, canRevenire: true, canDelete: true }, desc: "Drepturi depline: programări (inclusiv zile trecute), ștergeri, utilizatori, module și backup." },
       { id: "vali", username: "vali", alias: "", password: "admin", name: "Vali", role: "user", roleLabel: "Restrâns", title: "Drepturi restrânse", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." },
       { id: "gabi", username: "gabi", alias: "", password: "admin", name: "Gabi", role: "user", roleLabel: "Restrâns", title: "Drepturi restrânse", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare zi curentă, reveniri, clienți și expirări (fără ștergere)." }
     ],
@@ -789,7 +800,7 @@
           plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744000111", status: "Programat"
         },
         createdAt: "07:50",
-        createdBy: "Laud (Admin)",
+        createdBy: "Laur (Admin)",
         deleted: false,
         events: [
           { at: "08:12", actor: "Vali (Restrâns)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
@@ -803,10 +814,10 @@
           plate: "B 888 VEC", vehicle: "Renault Megane", client: "Radu Vasile", phone: "0722990011", status: "Programat"
         },
         createdAt: "08:05",
-        createdBy: "Laud (Admin)",
+        createdBy: "Laur (Admin)",
         deleted: true,
         events: [
-          { at: "09:40", actor: "Laud (Admin)", type: "ȘTERS", summary: "Șters din agenda zilei (anulat telefonic de client); slot 12:00 Linia 2 eliberat" }
+          { at: "09:40", actor: "Laur (Admin)", type: "ȘTERS", summary: "Șters din agenda zilei (anulat telefonic de client); slot 12:00 Linia 2 eliberat" }
         ]
       },
       {
@@ -1176,8 +1187,34 @@
     document.getElementById("rejectSubtitle").textContent = `${item.plate} • ${item.vehicle} (${item.client})`;
     document.getElementById("rejectNote").value = item.rejectNote || "";
     document.getElementById("rejectErr").classList.add("d-none");
+    const revokeBtn = document.getElementById("btnRevokeRevenire");
+    if (revokeBtn) revokeBtn.classList.toggle("d-none", item.status !== "Revenire");
     renderRejectReasonChips();
     setModalVisible("modalRespingere", true);
+  }
+
+  function revokeRevenire() {
+    const item = state.appointments.find(a => a.id === state.rejectTargetId);
+    if (!item || item.status !== "Revenire") return;
+    const prevSummary = formatRejectSummary(item);
+    setModalVisible("modalRespingere", false);
+    openConfirmModal({
+      title: "Revocă revenirea",
+      message: "Readuci programarea la statusul Programat și elimini motivul activ din agendă? Modificarea rămâne în Istoric Imutabil.",
+      detail: `${item.plate} • ${formatDateRo(item.date)} la ${item.time} (${item.line})${prevSummary ? `\nMotiv anterior: ${prevSummary}` : ""}`,
+      confirmText: "Da, revocă",
+      variant: "warning",
+      onCancel: () => setModalVisible("modalRespingere", true),
+      onConfirm: () => {
+        const before = makeSnapshot(item);
+        item.status = "Programat";
+        delete item.rejectReasons;
+        delete item.rejectNote;
+        recordHistoryEvent(item, "MODIFICAT", `Revenire revocată → Programat${prevSummary ? ` (anterior: ${prevSummary})` : ""}`, before);
+        showToast(`${item.plate} a fost readus la Programat.`);
+        renderAll();
+      }
+    });
   }
 
   function openNewAppointmentModal() {
@@ -1228,6 +1265,28 @@
     setModalVisible("modalProgramare", true);
   }
 
+  function updateReinspectionBanner() {
+    const draft = state.reinspectionDraft;
+    const banner = document.getElementById("reinspectionBanner");
+    const dateEl = document.getElementById("inpDate");
+    if (!draft || !banner || !dateEl) return;
+    const chosen = dateEl.value || TODAY_DATE;
+    const isExpired = chosen > draft.deadline;
+    if (isExpired) {
+      banner.className = "alert alert-danger mb-2 py-2 px-2 small";
+      banner.innerHTML = `
+        <div><strong>Termenul de 30 zile (${formatDateRo(draft.deadline)}) este depășit!</strong> Mașina necesită <strong>ITP complet</strong>, nu revenire.</div>
+        ${draft.verifySummary ? `<div class="mt-1"><strong>Istoric defecțiuni din ${formatDateRo(draft.parentDate)}:</strong> ${esc(draft.verifySummary)}</div>` : ""}
+      `;
+    } else {
+      banner.className = "alert alert-purple mb-2 py-2 px-2 small";
+      banner.innerHTML = `
+        <div><strong>Revenire din ${formatDateRo(draft.parentDate)}</strong> • Termen: <strong>${formatDateRo(draft.deadline)}</strong></div>
+        ${draft.verifySummary ? `<div class="mt-1"><strong>De verificat:</strong> ${esc(draft.verifySummary)}</div>` : ""}
+      `;
+    }
+  }
+
   function openReinspectionModal(parentId) {
     const p = state.appointments.find(a => a.id === parentId);
     if (!p) return;
@@ -1251,13 +1310,7 @@
     document.getElementById("inpDate").value = state.selectedDate >= TODAY_DATE ? state.selectedDate : TODAY_DATE;
     document.getElementById("modalErr").classList.add("d-none");
 
-    const banner = document.getElementById("reinspectionBanner");
-    banner.innerHTML = `
-      <div><strong>Revenire din ${formatDateRo(p.date)}</strong> • Termen: <strong>${formatDateRo(deadline)}</strong></div>
-      ${verifySummary ? `<div class="mt-1"><strong>De verificat:</strong> ${esc(verifySummary)}</div>` : ""}
-    `;
-    banner.classList.remove("d-none");
-
+    updateReinspectionBanner();
     refreshHourOptions();
     setModalVisible("modalProgramare", true);
   }
@@ -1282,11 +1335,12 @@
 
   let pendingConfirmAction = null;
 
-  function openConfirmModal({ title, message, detail = "", confirmText = "Confirmă", variant = "danger", onConfirm, onCancel = null }) {
-    pendingConfirmAction = { onConfirm, onCancel };
+  function openConfirmModal({ title, message, detail = "", confirmText = "Confirmă", variant = "danger", withReason = false, onConfirm, onCancel = null }) {
+    pendingConfirmAction = { onConfirm, onCancel, withReason };
     const statusBar = document.getElementById("confirmStatusBar");
     const okBtn = document.getElementById("confirmOkBtn");
     const detailEl = document.getElementById("confirmDetail");
+    const reasonWrap = document.getElementById("confirmReasonWrap");
     statusBar.className = `modal-status bg-${variant}`;
     okBtn.className = `btn btn-${variant} w-100 touch-btn`;
     okBtn.textContent = confirmText;
@@ -1298,6 +1352,13 @@
     } else {
       detailEl.textContent = "";
       detailEl.classList.add("d-none");
+    }
+    if (reasonWrap) {
+      reasonWrap.classList.toggle("d-none", !withReason);
+      if (withReason) {
+        document.getElementById("confirmReasonSelect").value = "Anulat de client";
+        document.getElementById("confirmReasonNote").value = "";
+      }
     }
     setModalVisible("modalConfirm", true);
   }
@@ -1314,10 +1375,16 @@
   document.getElementById("confirmCancelBtn").addEventListener("click", () => closeConfirmModal(true));
   document.getElementById("confirmOkBtn").addEventListener("click", () => {
     const action = pendingConfirmAction;
+    let reasonText = "";
+    if (action && action.withReason) {
+      const sel = document.getElementById("confirmReasonSelect").value;
+      const note = document.getElementById("confirmReasonNote").value.trim();
+      reasonText = note ? `${sel}: ${note}` : sel;
+    }
     pendingConfirmAction = null;
     setModalVisible("modalConfirm", false);
     if (action && typeof action.onConfirm === "function") {
-      action.onConfirm();
+      action.onConfirm(reasonText);
     }
   });
   document.getElementById("modalConfirm").addEventListener("hidden.bs.modal", () => {
@@ -1337,16 +1404,17 @@
     if (!item) return;
     openConfirmModal({
       title: "Ștergere programare",
-      message: "Ești sigur că vrei să ștergi programarea din agendă? Starea inițială va rămâne salvată în Istoric Imutabil.",
+      message: "Ești sigur că vrei să ștergi programarea din agendă? Starea inițială și motivul rămân salvate în Istoric Imutabil.",
       detail: `${item.plate} • ${formatDateRo(item.date)} la ${item.time} (${item.line})\n${item.vehicle} • ${item.client}`,
       confirmText: "Da, șterge",
       variant: "danger",
-      onConfirm: () => {
+      withReason: true,
+      onConfirm: (reasonText) => {
         const idx = state.appointments.findIndex(a => a.id === id);
         if (idx === -1) return;
         const removed = state.appointments.splice(idx, 1)[0];
-        recordHistoryEvent(removed, "ȘTERS", `Șters din agenda zilei (${formatDateRo(removed.date)} ${removed.time}, ${removed.line})`);
-        showToast(`Programarea ${removed.plate} a fost ștearsă (păstrată în Istoric).`);
+        recordHistoryEvent(removed, "ȘTERS", `Șters (${reasonText || "Neprecizat"}) — ${formatDateRo(removed.date)} ${removed.time}, ${removed.line}`);
+        showToast(`Programarea ${removed.plate} a fost ștearsă (${reasonText || "păstrată în Istoric"}).`);
         renderAll();
       }
     });
@@ -1987,6 +2055,7 @@
       hourEl.value = firstFree;
     }
     checkLivePlateDuplicate();
+    updateReinspectionBanner();
   }
 
   function renderAll() {
@@ -2166,6 +2235,25 @@
       e.target.reset();
       setModalVisible("modalProgramare", false);
       renderAll();
+      return;
+    }
+
+    const expiredReinspection = state.reinspectionDraft && date > state.reinspectionDraft.deadline;
+    if (expiredReinspection) {
+      const deadlineRo = formatDateRo(state.reinspectionDraft.deadline);
+      setModalVisible("modalProgramare", false);
+      openConfirmModal({
+        title: "Termen 30 zile depășit",
+        message: `Data aleasă (${formatDateRo(date)}) depășește termenul legal de 30 zile (${deadlineRo}). Salvezi ca programare ITP completă standard?`,
+        detail: `${plate} • ${formatDateRo(date)} la ${time} (${line})`,
+        confirmText: "Salvează ITP complet",
+        variant: "danger",
+        onCancel: () => setModalVisible("modalProgramare", true),
+        onConfirm: () => {
+          state.reinspectionDraft = null;
+          commitNewAppointment({ plate, phone, clientRaw, date, time, line });
+        }
+      });
       return;
     }
 
