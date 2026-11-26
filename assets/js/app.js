@@ -987,6 +987,18 @@
       };
     };
 
+    const actionIcons = {
+      wa: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.26-1.38c1.45.79 3.08 1.21 4.78 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.79 14.08c-.24.68-1.42 1.3-1.95 1.38-.52.08-1.18.11-1.91-.12-.44-.14-1.01-.33-1.73-.64-3.05-1.32-5.04-4.38-5.19-4.58-.15-.2-1.24-1.65-1.24-3.15s.79-2.24 1.07-2.54c.28-.3.61-.38.81-.38.2 0 .41 0 .59.01.19.01.44-.07.69.52.26.62.88 2.14.95 2.29.08.15.13.33.03.53-.1.2-.15.33-.3.51-.15.18-.32.4-.45.54-.15.15-.31.31-.13.61.18.3.78 1.29 1.68 2.09 1.15 1.03 2.13 1.35 2.43 1.5.3.15.48.13.66-.08.18-.2.76-.88.96-1.18.2-.3.4-.25.68-.15.28.1 1.77.83 2.07.98.3.15.5.23.58.36.08.13.08.75-.16 1.43z"/></svg>',
+      tel: '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"/></svg>',
+      sms: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg>',
+      admis: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      undoAdmis: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>',
+      revenire: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+      reprog: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>',
+      edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+      del: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+    };
+
     const buildDesktopRow = (a, showDateCol, isFutureRow) => {
       const m = buildRowMeta(a);
       const reprogBadge = m.isRev && a.reinspection_date
@@ -1015,14 +1027,14 @@
           </td>
           <td class="text-end itp-actions-cell">
             <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
-              <a class="btn btn-sm itp-desk-act itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WhatsApp</a>
-              <a class="btn btn-sm itp-desk-act itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Telefon</a>
-              ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
-              ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
-              ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
-              ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-              ${m.canEdit ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
-              ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
+              <a class="btn btn-sm itp-desk-act itp-desk-act-primary itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp" title="WhatsApp">${actionIcons.wa}</a>
+              <a class="btn btn-sm itp-desk-act itp-desk-act-primary itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul" title="Telefon">${actionIcons.tel}</a>
+              ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act" onclick="toggleFinalizat(${a.id}, true)" aria-label="Marchează Admis" title="Admis (Finalizat)">${actionIcons.admis}</button>` : ''}
+              ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="toggleFinalizat(${a.id}, false)" aria-label="Revocă Admis" title="Revocă Finalizat">${actionIcons.undoAdmis}</button>` : ''}
+              ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})" aria-label="Reprogramează" title="Reprogramează revenirea">${actionIcons.reprog}</button>` : ''}
+              ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})" aria-label="Marchează Revenire" title="Revenire">${actionIcons.revenire}</button>` : ''}
+              ${m.canEdit ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="openEditAppointmentModal(${a.id})" aria-label="Editează programarea" title="Editează">${actionIcons.edit}</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
+              ${m.canDel ? `<button class="btn btn-sm btn-outline-danger itp-desk-act" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">${actionIcons.del}</button>` : ''}
             </div>
           </td>
         </tr>
@@ -1059,16 +1071,16 @@
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
           ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote && !m.isExpired ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
           <div class="itp-mob-acts-line">
-            <a class="btn itp-mob-act itp-mob-act-primary itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WA</a>
-            <a class="btn itp-mob-act itp-mob-act-primary itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Sună</a>
-            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>` : ''}
-            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
-            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act" onclick="toggleFinalizat(${a.id}, false)">Revocă</button>` : ''}
-            ${m.canReprog ? `<button class="btn btn-purple itp-mob-act" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
-            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-            ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
-            ${m.canEdit ? `<button class="btn btn-outline-secondary itp-mob-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
-            ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">×</button>` : ''}
+            <a class="btn itp-mob-act itp-mob-act-primary itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp" title="WhatsApp">${actionIcons.wa}</a>
+            <a class="btn itp-mob-act itp-mob-act-primary itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul" title="Telefon">${actionIcons.tel}</a>
+            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">${actionIcons.sms}</a>` : ''}
+            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act" onclick="toggleFinalizat(${a.id}, true)" aria-label="Marchează Admis" title="Admis (Finalizat)">${actionIcons.admis}</button>` : ''}
+            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act" onclick="toggleFinalizat(${a.id}, false)" aria-label="Revocă Admis" title="Revocă Finalizat">${actionIcons.undoAdmis}</button>` : ''}
+            ${m.canReprog ? `<button class="btn btn-purple itp-mob-act" onclick="openReprogramModal(${a.id})" aria-label="Reprogramează" title="Reprogramează revenirea">${actionIcons.reprog}</button>` : ''}
+            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act" onclick="openRejectModal(${a.id})" aria-label="Marchează Revenire" title="Revenire">${actionIcons.revenire}</button>` : ''}
+            ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act" onclick="openRejectModal(${a.id})" aria-label="Motiv / Revocă revenire" title="Motiv / Revocă">${actionIcons.revenire}</button>` : ''}
+            ${m.canEdit ? `<button class="btn btn-outline-secondary itp-mob-act" onclick="openEditAppointmentModal(${a.id})" aria-label="Editează programarea" title="Editează">${actionIcons.edit}</button>` : ''}
+            ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">${actionIcons.del}</button>` : ''}
           </div>
         </div>
       `;
@@ -1104,10 +1116,10 @@
       ${isClosed ? `<div class="alert alert-warning py-1 px-2 mb-2 small"><strong>Zi închisă:</strong> în afara programului stației. Doar Administratorul poate confirma excepții.</div>` : ''}
       <div class="card p-2 mb-2 itp-filter-card">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div class="d-flex align-items-center gap-1 itp-filter-group">
-            <div class="d-flex align-items-center gap-1 flex-grow-1 flex-lg-grow-0">
+          <div class="d-flex align-items-center gap-1 itp-filter-date-group">
+            <div class="d-flex align-items-center gap-1 flex-grow-1 flex-lg-grow-0 min-w-0">
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(-1)" aria-label="Ziua anterioară">&lsaquo;</button>
-              <div class="itp-ro-date-wrap flex-grow-1 flex-lg-grow-0" style="min-width: 128px;">
+              <div class="itp-ro-date-wrap flex-grow-1 flex-lg-grow-0" style="min-width: 108px;">
                 <input type="text" class="form-control form-control-sm fw-medium itp-ro-date-text" id="agendaDateText"
                   style="min-height: 28px;" inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
                   value="${esc(formatDateSlashRo(state.selectedDate))}"
@@ -1123,7 +1135,7 @@
               <button type="button" class="btn btn-sm ${isTodaySelected ? 'btn-primary' : 'btn-outline-primary'}" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
             </div>
             ${dayBadge}
-            ${isClosed ? `<span class="badge bg-orange-lt text-orange">Închis</span>` : `<span class="badge bg-blue-lt text-blue d-lg-none">${freeDay} lib.</span>`}
+            ${isClosed ? `<span class="badge bg-orange-lt text-orange flex-shrink-0">Închis</span>` : `<span class="badge bg-blue-lt text-blue d-lg-none flex-shrink-0" id="mobFreeDayBadge">${freeDay} lib.</span>`}
             <label class="d-none d-lg-flex align-items-center gap-2 ms-2 m-0" style="cursor:pointer;">
               <input class="form-check-input m-0" type="checkbox" ${state.searchAllDays ? 'checked' : ''} onchange="toggleSearchAllDays()">
               <span class="small text-muted">Caută în toate zilele</span>

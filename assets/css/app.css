@@ -226,16 +226,22 @@ body {
 }
 
 .itp-desk-act {
+  height: 27px;
   min-height: 27px;
-  padding: 0.18rem 0.44rem !important;
+  min-width: 32px;
+  padding: 0 0.45rem !important;
   font-size: 0.74rem !important;
   font-weight: 600 !important;
-  line-height: 1.2 !important;
+  line-height: 1 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.itp-desk-act-primary {
+  min-width: 40px;
 }
 
 .itp-btn-tel {
@@ -479,13 +485,13 @@ body {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 3px;
+    gap: 4px;
   }
 
   .itp-mob-act {
     height: 28px;
     min-height: 28px;
-    padding: 0 0.36rem;
+    padding: 0 0.32rem;
     font-size: 0.71rem;
     font-weight: 600;
     line-height: 1;
@@ -494,17 +500,18 @@ body {
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .itp-mob-act-primary {
-    flex: 1 1 auto;
+    flex: 1.2 1 0;
     min-width: 0;
   }
 
   .itp-mob-icon-btn {
-    width: 28px;
-    min-width: 28px;
+    width: 32px;
+    min-width: 32px;
     padding: 0;
     flex: 0 0 auto;
   }
@@ -525,11 +532,7 @@ body {
   }
 
   .filter-strip {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    gap: 4px;
-    width: 100%;
-    padding-bottom: 0;
+    display: contents;
   }
 
   .filter-pill {
@@ -543,9 +546,15 @@ body {
     white-space: nowrap;
   }
 
+  .itp-filter-date-group {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
   .itp-filter-group {
     width: 100%;
     flex-wrap: wrap;
+    row-gap: 4px;
   }
 
   .mobile-bottom-nav {
