@@ -53,6 +53,7 @@
 3. **Pornirea pe PC-ul stației:** temporar prin `start.bat` până la migrarea pe domeniu + găzduire.
 4. **Istoric Imutabil + Jurnal Securitate:** `Istoric Imutabil` rămâne strict pe programări (cu trigger SQLite + tranzacție atomică), iar `core_audit_log` are acces discret doar pentru Admin (`Jurnal securitate / Admin`).
 5. **Motive rapide cu bife:** atât la `Revenire`, cât și la `Ștergere / Neprezentare / Anulare`, motivele folosesc **butoane-bifă rapide (1 click/tap)** în locul listei dropdown.
+6. **Autentificare prin selecție utilizator + PIN numeric (4–6 cifre):** pe ecranul de Login, utilizatorul își alege numele (ex. `Vali`) și introduce PIN-ul (inclusiv prin tastatura numerică de pe ecran); în backend PIN-ul se salvează hash-uit cu `bcrypt` și protejat cu rate-limit.
 
 ---
 

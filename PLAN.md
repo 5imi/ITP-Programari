@@ -35,8 +35,9 @@
 - **Bază de date:**
   - **SQLite WAL** într-un singur fișier local (`data/itp.db`), cu sistem automat de migrări `.sql` per modul și backup prin copiere consistentă la cald.
 - **Securitate, Sesiuni și Proxy (`cloudflared` / Hosting):**
-  - Parole stocate exclusiv cu hash `bcrypt`.
-  - Sesiuni autentificate prin cookie `HttpOnly` (cu flag `Secure` activat automat când cererea vine pe HTTPS / `X-Forwarded-Proto: https`) + protecție CSRF și rate-limiting la autentificare.
+  - **Autentificare prin selecție utilizator + PIN numeric (4–6 cifre)** (model rapid POS/atelier, cu tastatură numerică touch-friendly pe telefon/tabletă).
+  - PIN-urile sunt stocate exclusiv ca hash `bcrypt` în SQLite.
+  - Sesiuni autentificate prin cookie `HttpOnly` (cu flag `Secure` activat automat când cererea vine pe HTTPS / `X-Forwarded-Proto: https`) + protecție CSRF și rate-limiting per utilizator/IP la introducerea PIN-ului.
   - **First-Start / Setup inițial permis exclusiv local fără proxy** (blocat dacă există headere `CF-Connecting-IP` / `X-Forwarded-For`), pentru ca nimeni din internet să nu poată prelua inițializarea prin `cloudflared`.
   - Extragere controlată a IP-ului real (`CF-Connecting-IP` / `X-Forwarded-For`) doar pentru cererile venite de pe proxy local de încredere, pentru acuratețea Audit Log-ului.
   - Verificarea rolului și a permisiunilor se face **strict pe server (backend)** la fiecare cerere API.
@@ -139,6 +140,7 @@ d:\ITP programari\
 3. **Pornirea pe PC-ul stației:** variantă temporară de lucru local prin `start.bat` (după modelul `ITP-Sentinel/start_server.bat`) până la trecerea pe găzduire + domeniu propriu.
 4. **Modelul de Istoric & Audit:** tab curat **`Istoric Imutabil`** dedicat programărilor (30–60 zile implicit + căutare globală după nr. auto, cu `TRIGGER` SQLite anti-modificare) + **`core_audit_log`** silențios accesibil exclusiv Adminului printr-un buton discret **`Jurnal securitate / Admin`**.
 5. **Operare rapidă motive:** motivele de **`Revenire`** și **`Ștergere / Anulare / Neprezentare`** sunt implementate ca **butoane-bifă rapide (1 click/tap)** pentru viteză pe telefon și PC.
+6. **Autentificare rapidă cu PIN:** utilizatorul își alege profilul din ecranul de Login (`Laur`, `Vali`, `Gabi` etc.) și introduce PIN-ul numeric (4–6 cifre, inclusiv prin tastatură numerică pe ecran), fără introducere manuală de username și parolă lungă.
 
 ---
 

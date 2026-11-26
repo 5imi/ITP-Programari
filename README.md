@@ -8,14 +8,14 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 
 ## Ce este implementat în Demo (`dashboard.html`)
 
-### 1. Autentificare & Gestiune Utilizatori
+### 1. Autentificare cu PIN & Gestiune Utilizatori
 - **Ecran de Login (`#loginScreen`):**
   - Identitate vizuală **ACW - Fălticeni (`Automotive Center Werkstat • Stație ITP`)** cu sigla oficială [`references/ui-libs/aw-logo.png`](references/ui-libs/aw-logo.png) pe temă deschisă (`Tabler Light`).
-  - Cont principal implicit: utilizator **`admin`**, parolă **`admin`** (**Laur — Administrator**), plus buton `Arată / Ascunde` parolă.
-  - Butoane dinamice de **acces rapid 1-click** pentru conturile configurate (`Laur`, `Vali`, `Gabi` și orice utilizator nou adăugat).
+  - **Logare rapidă în 2 pași (selecție utilizator + PIN numeric 4–6 cifre):** utilizatorul își alege cardul (`Laur`, `Vali`, `Gabi` sau orice cont nou adăugat) și introduce PIN-ul de la tastatură sau de pe **tastatura numerică mare de pe ecran** (cu autentificare automată la introducerea PIN-ului corect).
+  - PIN-uri demo implicite: **`Laur (Admin): 1111`**, **`Vali: 2222`**, **`Gabi: 3333`**.
   - **Deconectare** cu reconfirmare explicită înainte de părăsirea sesiunii.
 - **Panou `Utilizatori & Drepturi` (doar Administrator):**
-  - **`+ Adaugă utilizator`** și **`Editează`** (nume, user login unic, parolă, profil `Administrator` / `Utilizator`).
+  - **`+ Adaugă utilizator`** și **`Editează`** (nume, user login unic, **PIN 4–6 cifre**, profil `Administrator` / `Utilizator`).
   - **Permisiuni granulare per cont:** `Editare programări` (controlează inclusiv vizibilitatea butonului `+ Programare` și accesul la modale), `Revenire 30 zile / Reprogramare`, `Ștergere programări`.
   - **`Blochează` / `Activează` cont** (cu reconfirmare și protecție împotriva blocării adminului principal); conturile blocate sunt respinse imediat din ecranul de Login.
 
@@ -62,4 +62,4 @@ Deschide `dashboard.html` direct în browser sau servește folderul prin Python:
 ```bash
 python -m http.server 8000
 ```
-Apoi accesează `http://localhost:8000/dashboard.html` (`user: admin`, `parolă: admin`).
+Apoi accesează `http://localhost:8000/dashboard.html` (`Laur` PIN `1111`, `Vali` PIN `2222`, `Gabi` PIN `3333`).
