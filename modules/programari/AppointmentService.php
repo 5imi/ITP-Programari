@@ -257,19 +257,22 @@ final class AppointmentService
                 );
             }
 
+            $effectiveDeadline = $existing['visit_type'] === 'REVENIRE'
+                ? $this->resolveReinspectionDeadline($pdo, $existing, $reinspDays)
+                : $existing['reinspection_deadline'];
+
             $overDeadline = $existing['visit_type'] === 'REVENIRE'
-                && !empty($existing['reinspection_deadline'])
-                && $validated['date'] > $existing['reinspection_deadline'];
+                && !empty($effectiveDeadline)
+                && $validated['date'] > $effectiveDeadline;
 
             if ($overDeadline && empty($body['confirm_over_deadline'])) {
                 throw new HttpException(
                     409,
                     'OVER_DEADLINE',
                     sprintf(
-                        'Data aleasă (%s) depășește termenul de %d zile (%s). Dacă salvezi, trece pe ITP complet.',
+                        'Data aleasă (%s) depășește termenul limită (%s). Dacă salvezi, trece pe ITP complet.',
                         Validators::formatDateRo($validated['date']),
-                        $reinspDays,
-                        Validators::formatDateRo((string) $existing['reinspection_deadline'])
+                        Validators::formatDateRo((string) $effectiveDeadline)
                     )
                 );
             }
@@ -302,7 +305,10 @@ final class AppointmentService
             }
 
             $nextVisitType = $overDeadline ? 'NORMAL' : $existing['visit_type'];
-            $nextDeadline = $overDeadline ? null : $existing['reinspection_deadline'];
+            $nextDeadline = $overDeadline ? null : $effectiveDeadline;
+            if (!$overDeadline && $existing['visit_type'] === 'NORMAL' && $existing['status'] === 'Revenire' && $existing['date'] !== $validated['date']) {
+                $nextDeadline = Validators::addDaysIso($validated['date'], $reinspDays);
+            }
             $nextVerify = $overDeadline ? '' : $existing['verify_notes'];
 
             $upd = $pdo->prepare(
@@ -397,14 +403,18 @@ final class AppointmentService
                 throw new HttpException(409, 'STALE_VERSION', 'Programarea a fost modificată între timp. Reîncarcă agenda.');
             }
 
+            // R02 + R15: Pastram termenul initial (A) in lantul A -> B -> C si salvam reinspection_deadline explicit
+            $deadline = $this->resolveReinspectionDeadline($pdo, $existing, $reinspDays);
+
             $upd = $pdo->prepare(
                 "UPDATE appointments
-                 SET status = 'Revenire', reject_reasons_json = ?, reject_note = ?, version = version + 1, updated_by = ?, updated_at = ?
+                 SET status = 'Revenire', reject_reasons_json = ?, reject_note = ?, reinspection_deadline = ?, version = version + 1, updated_by = ?, updated_at = ?
                  WHERE id = ? AND version = ?"
             );
             $upd->execute([
                 json_encode($reasons, JSON_UNESCAPED_UNICODE),
                 mb_substr($note, 0, 500, 'UTF-8'),
+                $deadline,
                 (int) $user['id'],
                 $this->config->nowString(),
                 $id,
@@ -412,8 +422,10 @@ final class AppointmentService
             ]);
 
             $after = $this->repo->findActiveById($pdo, $id);
-            $deadline = Validators::addDaysIso($existing['date'], $reinspDays);
             $reasonText = implode(', ', array_filter([implode(', ', $reasons), $note]));
+            $histMsg = $existing['visit_type'] === 'REVENIRE'
+                ? sprintf('Marcat Revenire (termen inițial până la %s) • %s', Validators::formatDateRo($deadline), $reasonText)
+                : sprintf('Marcat Revenire %d zile (până la %s) • %s', $reinspDays, Validators::formatDateRo($deadline), $reasonText);
 
             $this->history->record(
                 $pdo,
@@ -421,7 +433,7 @@ final class AppointmentService
                 'REVENIRE',
                 (int) $user['id'],
                 (string) $user['actor_label'],
-                sprintf('Marcat Revenire %d zile (până la %s) • %s', $reinspDays, Validators::formatDateRo($deadline), $reasonText),
+                $histMsg,
                 $existing,
                 $after,
                 $reasonText,
@@ -464,12 +476,14 @@ final class AppointmentService
                 throw new HttpException(409, 'STALE_VERSION', 'Programarea a fost modificată între timp. Reîncarcă agenda.');
             }
 
+            $keepDeadline = $existing['visit_type'] === 'REVENIRE' ? $existing['reinspection_deadline'] : null;
+
             $upd = $pdo->prepare(
                 "UPDATE appointments
-                 SET status = 'Programat', reject_reasons_json = '[]', reject_note = '', resolved_by_reinspection_id = NULL, version = version + 1, updated_by = ?, updated_at = ?
+                 SET status = 'Programat', reject_reasons_json = '[]', reject_note = '', reinspection_deadline = ?, resolved_by_reinspection_id = NULL, version = version + 1, updated_by = ?, updated_at = ?
                  WHERE id = ? AND version = ?"
             );
-            $upd->execute([(int) $user['id'], $this->config->nowString(), $id, $expectedVersion]);
+            $upd->execute([$keepDeadline, (int) $user['id'], $this->config->nowString(), $id, $expectedVersion]);
 
             $after = $this->repo->findActiveById($pdo, $id);
             $prevReasons = implode(', ', array_filter([implode(', ', $existing['reject_reasons']), $existing['reject_note']]));
@@ -526,13 +540,14 @@ final class AppointmentService
                 throw new HttpException(422, 'BEFORE_PARENT_DATE', 'Data revenirii nu poate fi anterioară vizitei inițiale.');
             }
 
-            $deadline = Validators::addDaysIso($parent['date'], $reinspDays);
+            // R02 + R15: Termenul limita se pastreaza din parinte / vizita initiala (nu se reseteaza cu +30 zile noi)
+            $deadline = $this->resolveReinspectionDeadline($pdo, $parent, $reinspDays);
             $overDeadline = $date > $deadline;
             if ($overDeadline && empty($body['confirm_over_deadline'])) {
                 throw new HttpException(
                     409,
                     'OVER_DEADLINE',
-                    sprintf('Data aleasă (%s) depășește termenul de %d zile (%s). Confirmă pentru ITP complet.', Validators::formatDateRo($date), $reinspDays, Validators::formatDateRo($deadline))
+                    sprintf('Data aleasă (%s) depășește termenul limită (%s). Confirmă pentru ITP complet.', Validators::formatDateRo($date), Validators::formatDateRo($deadline))
                 );
             }
 
@@ -780,6 +795,45 @@ final class AppointmentService
             $pdo->prepare('DELETE FROM reasons WHERE id = ?')->execute([$id]);
             $this->audit->log($pdo, (int) $user['id'], $user['actor_label'], 'REASON_DELETE', sprintf('Șters motiv %s: "%s"', $row['kind'], $row['label']), 'programari', 'reason', (string) $id, null, null, $req);
         });
+    }
+
+    /**
+     * Determina termenul real al revenirii (pastrand termenul salvat si urcand pe lantul A -> B -> C).
+     */
+    private function resolveReinspectionDeadline(\PDO $pdo, array $row, int $reinspDays): string
+    {
+        if (!empty($row['reinspection_deadline'])) {
+            return (string) $row['reinspection_deadline'];
+        }
+
+        $cur = $row;
+        $visited = [((int) ($cur['id'] ?? 0)) => true];
+        $stmt = $pdo->prepare('SELECT id, appt_date, visit_type, parent_id, reinspection_deadline FROM appointments WHERE id = ?');
+
+        while (($cur['visit_type'] ?? 'NORMAL') === 'REVENIRE' && !empty($cur['parent_id']) && count($visited) < 10) {
+            $pid = (int) $cur['parent_id'];
+            if (isset($visited[$pid])) {
+                break;
+            }
+            $visited[$pid] = true;
+            $stmt->execute([$pid]);
+            $pRow = $stmt->fetch();
+            if (!$pRow) {
+                break;
+            }
+            if (!empty($pRow['reinspection_deadline'])) {
+                return (string) $pRow['reinspection_deadline'];
+            }
+            $cur = [
+                'id' => (int) $pRow['id'],
+                'date' => (string) $pRow['appt_date'],
+                'visit_type' => (string) $pRow['visit_type'],
+                'parent_id' => $pRow['parent_id'] !== null ? (int) $pRow['parent_id'] : null,
+                'reinspection_deadline' => $pRow['reinspection_deadline'],
+            ];
+        }
+
+        return Validators::addDaysIso((string) $cur['date'], $reinspDays);
     }
 
     /**

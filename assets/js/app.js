@@ -168,6 +168,23 @@
     return cur;
   }
 
+  function getLastOpenDayOnOrBefore(iso) {
+    if (!iso || !iso.includes('-')) return iso || '';
+    let cur = iso;
+    for (let i = 0; i < 14; i++) {
+      if (!isClosedDayIso(cur)) return cur;
+      cur = addDaysIso(cur, -1);
+    }
+    return iso;
+  }
+
+  function diffDaysIso(fromIso, toIso) {
+    if (!fromIso || !toIso || !fromIso.includes('-') || !toIso.includes('-')) return null;
+    const [y1, m1, d1] = fromIso.split('-').map(Number);
+    const [y2, m2, d2] = toIso.split('-').map(Number);
+    return Math.round((Date.UTC(y2, (m2 || 1) - 1, d2 || 1) - Date.UTC(y1, (m1 || 1) - 1, d1 || 1)) / 86400000);
+  }
+
   function formatDateHeading(iso) {
     const dt = new Date(`${iso}T12:00:00`);
     const days = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
@@ -183,12 +200,20 @@
     return digits;
   }
 
-  function buildAppointmentWaMsg(a, rejectSummary, deadline) {
+  function buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline) {
     const sig = state.stationConfig.station_signature || state.stationConfig.station_name;
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
     if (a.status === 'Revenire') {
+      const isChainChild = a.visit_type === 'REVENIRE';
+      const termDays = (deadline ? diffDaysIso(a.date, deadline) : null) ?? reinspDays;
+      const closedNote = effectiveDeadline && effectiveDeadline !== deadline
+        ? ` (ultima zi lucrătoare: ${formatDateRo(effectiveDeadline)})`
+        : '';
+      const termPhrase = isChainChild
+        ? `până la termenul inițial ${formatDateRo(deadline)}${closedNote}`
+        : `în ${termDays} zile, până la ${formatDateRo(deadline)}${closedNote}`;
       return encodeURIComponent(
-        `Bună ziua! Vehiculul ${a.plate} are status ITP Revenire (${formatDateRo(a.date)}).${rejectSummary ? ` Motive: ${rejectSummary}.` : ''} Revenire posibilă în ${reinspDays} zile, până la ${formatDateRo(deadline)}. ${sig}`
+        `Bună ziua! Vehiculul ${a.plate} are status ITP Revenire (${formatDateRo(a.date)}).${rejectSummary ? ` Motive: ${rejectSummary}.` : ''} Revenire posibilă ${termPhrase}. ${sig}`
       );
     }
     return encodeURIComponent(
@@ -856,15 +881,27 @@
       const isRev = a.status === 'Revenire';
       const reasons = Array.isArray(a.reject_reasons) ? a.reject_reasons : [];
       const rejectSummary = [reasons.join(', '), a.reject_note || ''].filter(Boolean).join(' — ');
-      const deadline = isRev ? addDaysIso(a.date, reinspDays) : '';
-      const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline);
+      // R02 + R15: Preferam reinspection_deadline salvat in DB (pastrat si pe lant A -> B -> C)
+      const deadline = isRev ? (a.reinspection_deadline || addDaysIso(a.date, reinspDays)) : '';
+      const effectiveDeadline = deadline && isClosedDayIso(deadline) ? getLastOpenDayOnOrBefore(deadline) : deadline;
+      const deadlineClosedNote = deadline && effectiveDeadline && effectiveDeadline !== deadline
+        ? `(zi închisă — ultima zi utilă: ${formatDateRo(effectiveDeadline)})`
+        : '';
+      const termDays = deadline ? (diffDaysIso(a.date, deadline) ?? reinspDays) : reinspDays;
+      const isChainChild = a.visit_type === 'REVENIRE';
+      const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline);
       const smsHref = buildSmsHref(a.phone, waMsg);
+      const hasRevPerm = userCan('programari.revenire') || isAdmin();
       const canEdit = (a.date >= state.todayDate && userCan('programari.edit')) || isAdmin();
       const canRev = (a.date >= state.todayDate && userCan('programari.revenire')) || isAdmin();
       const canDel = (a.date >= state.todayDate && userCan('programari.delete')) || isAdmin();
-      const canReprog = isRev && !a.resolved_by_reinspection_id && canRev;
+      // R01: User cu programari.revenire poate reprograma inclusiv respingerile din zilele trecute
+      const canReprog = isRev && !a.resolved_by_reinspection_id && hasRevPerm;
       const badgeCls = isRev ? 'bg-purple-lt text-purple' : 'bg-blue-lt text-blue';
-      return { isRev, rejectSummary, deadline, reinspDays, waMsg, smsHref, canEdit, canRev, canDel, canReprog, badgeCls };
+      return {
+        isRev, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild,
+        reinspDays, waMsg, smsHref, canEdit, canRev, canDel, canReprog, badgeCls,
+      };
     };
 
     const buildDesktopRow = (a, showDateCol, isFutureRow) => {
@@ -886,7 +923,7 @@
             ${isFutureRow ? `<div class="itp-future-date-note">${esc(formatDateRo(a.date))}</div>` : ''}
             ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="text-purple small mt-1"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
             ${m.rejectSummary ? `<div>${m.canRev ? `<button type="button" class="btn btn-link p-0 text-start text-purple small mt-1 text-decoration-none text-wrap" onclick="openRejectModal(${a.id})">${esc(m.rejectSummary)}</button>` : `<div class="text-purple small mt-1">${esc(m.rejectSummary)}</div>`}</div>` : ''}
-            ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted small mt-1">Termen ${m.reinspDays} zile: ${formatDateRo(m.deadline)}</div>` : ''}
+            ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted small mt-1">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} ${formatDateRo(m.deadline)}${m.deadlineClosedNote ? `<div class="text-orange small fw-medium">${esc(m.deadlineClosedNote)}</div>` : ''}</div>` : ''}
           </td>
           <td class="text-end itp-actions-cell">
             <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
@@ -923,7 +960,7 @@
           ${m.rejectSummary ? (m.canRev
             ? `<button type="button" class="btn bg-purple-lt text-purple rounded px-2 py-1 mb-1 w-100 text-start border-0 text-wrap fw-normal" style="font-size: 0.74rem; line-height: 1.3;" onclick="openRejectModal(${a.id})" aria-label="Editează sau revocă motivul revenirii"><strong>Motiv:</strong> ${esc(m.rejectSummary)} <span class="ms-1 text-decoration-underline fw-semibold">(editează)</span></button>`
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
-          ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted mb-1" style="font-size: 0.72rem;">Termen ${m.reinspDays} zile: <strong>${formatDateRo(m.deadline)}</strong></div>` : ''}
+          ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
           <div class="d-flex align-items-center gap-1">
             ${m.canEdit ? `<button class="btn btn-outline-primary itp-mob-act flex-fill" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
             ${m.canReprog ? `<button class="btn btn-purple itp-mob-act flex-fill" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
@@ -1206,8 +1243,15 @@
     document.getElementById('modalErr').classList.add('d-none');
     document.getElementById('plateAutofillHint').classList.add('d-none');
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
+    const deadline = p.reinspection_deadline || addDaysIso(p.date, reinspDays);
+    const effectiveDeadline = deadline && isClosedDayIso(deadline) ? getLastOpenDayOnOrBefore(deadline) : deadline;
+    const isChainChild = p.visit_type === 'REVENIRE';
+    const termDays = (deadline ? diffDaysIso(p.date, deadline) : null) ?? reinspDays;
+    const closedInfo = effectiveDeadline && effectiveDeadline !== deadline
+      ? ` (ultima zi utilă: ${formatDateRo(effectiveDeadline)})`
+      : '';
     const banner = document.getElementById('reinspectionBanner');
-    banner.textContent = `Reprogramare revenire ${reinspDays} zile din ${formatDateRo(p.date)} (${p.plate})`;
+    banner.textContent = `Reprogramare revenire ${isChainChild ? '(termen inițial)' : `${termDays} zile`} din ${formatDateRo(p.date)} (${p.plate}) • Limită: ${formatDateRo(deadline)}${closedInfo}`;
     banner.classList.remove('d-none');
 
     document.getElementById('modalProgramareTitle').textContent = `Reprogramează revenire • ${p.plate}`;
@@ -1342,13 +1386,16 @@
       errEl.classList.add('d-none');
       const reinspDays = Number(state.stationConfig.reinspection_days || 30);
       try {
-        await api.post(`api/m/programari/appointments/${state.rejectTarget.id}/revenire`, {
+        const res = await api.post(`api/m/programari/appointments/${state.rejectTarget.id}/revenire`, {
           version: state.rejectTarget.version,
           reasons: state.rejectSelectedReasons,
           note: document.getElementById('rejectNote').value.trim(),
         });
         setModalVisible('modalRespingere', false);
-        showToast(`${state.rejectTarget.plate} marcat Revenire ${reinspDays} zile.`);
+        const savedDeadline = res && res.appointment && res.appointment.reinspection_deadline
+          ? res.appointment.reinspection_deadline
+          : addDaysIso(state.rejectTarget.date, reinspDays);
+        showToast(`${state.rejectTarget.plate} marcat Revenire (termen ${formatDateRo(savedDeadline)}).`);
         lastAgendaSignature = '';
         await loadAndRenderCurrentView();
       } catch (err) {

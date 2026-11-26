@@ -193,12 +193,23 @@ $rev1 = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/reveni
     'reasons' => ['Frâne'],
     'note' => 'Test frână spate',
 ], $csrf, $cookieFile);
-assertTrue($rev1['status'] === 200 && ($rev1['body']['appointment']['status'] ?? '') === 'Revenire', 'Marcare Revenire eșuată');
+$expectedDeadline = (new DateTimeImmutable($testDate))->modify('+30 days')->format('Y-m-d');
+assertTrue(
+    $rev1['status'] === 200
+    && ($rev1['body']['appointment']['status'] ?? '') === 'Revenire'
+    && ($rev1['body']['appointment']['reinspection_deadline'] ?? '') === $expectedDeadline,
+    'Marcare Revenire eșuată sau reinspection_deadline lipsă'
+);
 
 $revoke = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revoke", [
     'version' => 3,
 ], $csrf, $cookieFile);
-assertTrue($revoke['status'] === 200 && ($revoke['body']['appointment']['status'] ?? '') === 'Programat', 'Revocare Revenire eșuată');
+assertTrue(
+    $revoke['status'] === 200
+    && ($revoke['body']['appointment']['status'] ?? '') === 'Programat'
+    && ($revoke['body']['appointment']['reinspection_deadline'] ?? 'x') === null,
+    'Revocare Revenire eșuată'
+);
 
 $rev2 = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revenire", [
     'version' => 4,
