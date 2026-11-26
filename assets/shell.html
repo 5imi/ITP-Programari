@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ro" data-bs-theme="light">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ACW - Fălticeni • Programări ITP</title>
+  <link rel="icon" type="image/png" href="references/ui-libs/aw-logo.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="references/ui-libs/tabler/tabler.min.css">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+
+<body>
+  <!-- First-Start Setup (activ doar cand tabela users este goala) -->
+  <div class="page page-center d-none" id="setupScreen" style="min-height: 100vh;">
+    <div class="container py-4" style="max-width: 540px;">
+      <div class="text-center mb-3">
+        <img src="references/ui-libs/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-login mb-2">
+        <div class="fw-bold fs-3 text-dark lh-sm">Inițializare Sistem Stație ITP</div>
+        <div class="text-muted small">Configurare unică la prima pornire — fără credențiale hardcodate</div>
+      </div>
+      <div class="card aw-login-card">
+        <div class="card-body p-3 p-sm-4">
+          <form id="formFirstStart" autocomplete="off">
+            <div class="mb-2">
+              <label class="form-label small fw-semibold mb-1 required">Denumire stație</label>
+              <input type="text" class="form-control form-control-sm" id="setupStationName"
+                value="ACW - Fălticeni • Stație ITP" required>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-sm-6">
+                <label class="form-label small fw-semibold mb-1 required">Nume Administrator Principal</label>
+                <input type="text" class="form-control form-control-sm" id="setupAdminName" placeholder="ex. Laur"
+                  required>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label small fw-semibold mb-1 required">Username</label>
+                <input type="text" class="form-control form-control-sm" id="setupAdminUser" value="admin" required>
+              </div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-sm-6">
+                <label class="form-label small fw-semibold mb-1 required">PIN Uzual (4–6 cifre)</label>
+                <input type="password" class="form-control form-control-sm pin-input" id="setupAdminPin"
+                  inputmode="numeric" maxlength="6" placeholder="••••" required>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label small fw-semibold mb-1 required">PIN Secret Master (8–12 cifre)</label>
+                <input type="password" class="form-control form-control-sm pin-input" id="setupMasterPin"
+                  inputmode="numeric" maxlength="12" placeholder="••••••••" required>
+              </div>
+            </div>
+            <div class="mb-2 d-none" id="setupTokenWrap">
+              <label class="form-label small fw-semibold mb-1 required">Token instalare (FIRST_START_TOKEN)</label>
+              <input type="password" class="form-control form-control-sm" id="setupTokenInput"
+                placeholder="Tokenul din config/env.php">
+            </div>
+
+            <div class="border-top pt-2 mt-2 mb-2">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small fw-semibold">Colegi / Utilizatori inițiali (opțional)</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addSetupUserRow()">+ Adaugă
+                  utilizator</button>
+              </div>
+              <div id="setupExtraUsersList" class="d-flex flex-column gap-2"></div>
+            </div>
+
+            <div class="alert alert-danger py-2 px-2 small d-none mb-2" id="setupErr"></div>
+            <button type="submit" class="btn btn-aw w-100 touch-btn fw-semibold">Finalizează instalarea și
+              intră</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Screen -->
+  <div class="page page-center d-none" id="loginScreen" style="min-height: 100vh;">
+    <div class="container container-tight py-4">
+      <div class="text-center mb-3">
+        <img src="references/ui-libs/aw-logo.png" alt="ACW - Automotive Center Werkstat Fălticeni"
+          class="aw-logo-login mb-2">
+        <div class="fw-bold fs-3 text-dark lh-sm" id="loginStationTitle">ACW - Fălticeni</div>
+        <div class="text-muted small fw-semibold" style="letter-spacing: 0.06em; font-size: 0.72rem;">STAȚIE ITP • ACCES
+          SECURIZAT</div>
+      </div>
+      <div class="card card-md aw-login-card">
+        <div class="card-body p-3 p-sm-4">
+          <h2 class="h3 text-center fw-bold mb-1">Autentificare cu PIN</h2>
+          <div class="text-muted small text-center mb-3">1. Alege utilizatorul • 2. Introdu PIN-ul</div>
+
+          <div class="row g-2 mb-3" id="pinUserGrid"></div>
+
+          <form id="formLogin" autocomplete="off">
+            <div id="normalPinBox">
+              <div class="mb-2">
+                <label class="form-label small fw-semibold mb-1" for="loginPin">
+                  PIN pentru <span class="text-danger fw-bold" id="selectedPinUserName">-</span>
+                </label>
+                <div class="input-group input-group-flat">
+                  <input type="password" class="form-control pin-input" id="loginPin" inputmode="numeric"
+                    pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="one-time-code">
+                  <button type="button" class="btn btn-outline-secondary btn-sm px-2" id="btnTogglePwd"
+                    onclick="toggleLoginPassword()">Arată</button>
+                </div>
+              </div>
+
+              <div class="row g-1 mb-2" id="pinKeypad">
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('1')">1</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('2')">2</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('3')">3</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('4')">4</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('5')">5</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('6')">6</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('7')">7</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('8')">8</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('9')">9</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-danger w-100 pin-keypad-btn"
+                    onclick="clearPinInput()">C</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="pressPinKey('0')">0</button></div>
+                <div class="col-4"><button type="button" class="btn btn-outline-secondary w-100 pin-keypad-btn"
+                    onclick="backspacePinInput()">⌫</button></div>
+              </div>
+
+              <button type="submit" class="btn btn-aw w-100 touch-btn fw-semibold">Intră în aplicație</button>
+              <button type="button" class="btn btn-link btn-sm text-danger w-100 mt-1" id="btnShowMasterRecovery"
+                onclick="toggleMasterRecoveryMode(true)">PIN Secret Admin (Preia controlul)</button>
+            </div>
+
+            <div id="masterRecoveryBox" class="d-none">
+              <div class="alert alert-warning py-2 px-2 small mb-2">
+                <strong>Recuperare / Preluare comandă Admin:</strong> deloghează toate celelalte sesiuni active și
+                înlocuiește vechiul PIN uzual.
+              </div>
+              <div class="mb-2">
+                <label class="form-label small fw-semibold mb-1" for="loginMasterPin">PIN Secret Admin (8–12 cifre)</label>
+                <input type="password" class="form-control pin-input" id="loginMasterPin" inputmode="numeric"
+                  maxlength="12" placeholder="••••••••">
+              </div>
+              <div class="mb-2">
+                <label class="form-label small fw-semibold mb-1" for="newAdminPin">Noul PIN uzual Admin (4–6 cifre)</label>
+                <input type="password" class="form-control pin-input" id="newAdminPin" inputmode="numeric"
+                  maxlength="6" placeholder="••••">
+              </div>
+              <button type="submit" class="btn btn-danger w-100 touch-btn fw-semibold">Preia comanda și schimbă PIN-ul</button>
+              <button type="button" class="btn btn-link btn-sm text-secondary w-100 mt-1"
+                onclick="toggleMasterRecoveryMode(false)">Înapoi la PIN uzual</button>
+            </div>
+
+            <div class="alert alert-danger py-2 px-2 small d-none mt-2 mb-0" id="loginErr"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Shell -->
+  <div class="page d-none" id="appShell">
+    <aside class="navbar navbar-vertical navbar-expand-lg itp-sidebar" id="sidebarMenu">
+      <div class="container-fluid">
+        <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1 gap-2">
+          <a href="#" class="navbar-brand text-decoration-none d-flex align-items-center gap-2 m-0"
+            onclick="switchView('azi'); return false;">
+            <img src="references/ui-libs/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-nav">
+            <div class="lh-1">
+              <div class="fw-bold text-dark" style="font-size: 0.92rem;" id="navStationShort">ACW - Fălticeni</div>
+              <div class="text-muted" style="font-size: 0.64rem; font-weight: 600; letter-spacing: 0.04em;">STAȚIE ITP
+              </div>
+            </div>
+          </a>
+          <div class="d-flex align-items-center gap-1 d-lg-none">
+            <button type="button"
+              class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2"
+              id="btnMobSearchToggle" onclick="toggleMobileSearch()" aria-label="Căutare"
+              title="Caută nr. auto, telefon, client" style="min-height: 30px; min-width: 32px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </button>
+            <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2" id="btnNewApptMob"
+              onclick="openNewAppointmentModal()" style="min-height: 30px; font-size: 0.75rem; font-weight: 600;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              <span>Programare</span>
+            </button>
+            <button class="navbar-toggler p-1" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-nav"
+              aria-label="Meniu">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="collapse navbar-collapse" id="sidebar-nav">
+          <div class="itp-section-label">Operațional</div>
+          <ul class="navbar-nav" id="sidebar-module-links"></ul>
+
+          <div id="sidebar-admin-group" class="d-none">
+            <div class="itp-section-label">Administrare (Doar Admin)</div>
+            <ul class="navbar-nav" id="sidebar-admin-links"></ul>
+          </div>
+
+          <div class="d-lg-none border-top mt-2 pt-2 pb-2 px-2">
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+              <div class="small text-muted">Logat: <strong class="text-dark" id="mobDrawerUser">-</strong></div>
+              <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openChangePinModal()">Schimbă
+                  PIN</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="requestLogout()">Deconectare</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-auto p-3 d-none d-lg-block">
+            <div class="card bg-azure-lt border-0 p-3">
+              <div class="small fw-bold text-dark">Producție MariaDB InnoDB</div>
+              <div class="text-muted small mt-1">Date salvate tranzacțional pe server (`Europe/Bucharest`).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="page-wrapper">
+      <header class="navbar navbar-expand-md itp-topbar sticky-top" id="itpTopbar">
+        <div class="container-xl d-flex align-items-center justify-content-between gap-2">
+          <div class="itp-search-wrap flex-grow-1">
+            <div class="input-icon">
+              <span class="input-icon-addon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </span>
+              <input type="search" id="globalSearch" class="form-control form-control-sm"
+                placeholder="Caută nr. auto, telefon, client...">
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary d-lg-none flex-shrink-0 itp-all-days-btn"
+            id="btnMobAllDays" onclick="toggleSearchAllDays()" title="Caută în toate zilele">Toate zilele</button>
+
+          <div class="d-none d-lg-flex align-items-center justify-content-end gap-2 ms-lg-auto">
+            <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1" id="btnNewAppt"
+              onclick="openNewAppointmentModal()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              <span>Programare</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openChangePinModal()">Schimbă
+              PIN</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="requestLogout()">Deconectare</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="page-body">
+        <div class="container-xl">
+          <div class="d-flex align-items-baseline justify-content-between mb-2 flex-wrap gap-1" id="pageHeaderBar">
+            <h2 class="page-title mb-0 fs-3" id="viewTitle">Programări</h2>
+            <div class="text-muted small" id="viewSubtitle">Se încarcă...</div>
+          </div>
+          <div id="viewRoot"></div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="mobile-bottom-nav" id="mobileBottomNav"></nav>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container-itp" id="toastContainer"></div>
+
+  <!-- Modal: Programare Noua / Editare / Reprogramare -->
+  <div class="modal modal-blur fade" id="modalProgramare" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <form id="formProgramare" class="modal-content">
+        <div class="modal-header py-2">
+          <h5 class="modal-title fw-bold mb-0" id="modalProgramareTitle">Programare nouă ITP</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="alert alert-purple mb-2 py-2 px-2 small d-none" id="reinspectionBanner"></div>
+          <div class="row g-1 g-sm-2">
+            <div class="col-5">
+              <label class="form-label small mb-1 required">Data</label>
+              <input type="date" class="form-control form-control-sm" id="inpDate" onchange="refreshHourOptions()"
+                required>
+            </div>
+            <div class="col-3">
+              <label class="form-label small mb-1 required">Ora</label>
+              <select class="form-select form-select-sm" id="inpHour"></select>
+            </div>
+            <div class="col-4">
+              <label class="form-label small mb-1 required">Linie (libere)</label>
+              <select class="form-select form-select-sm" id="inpLine" onchange="refreshHourOptions()"></select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small mb-1 required">Nr. auto</label>
+              <input type="text" class="form-control form-control-sm text-uppercase fw-bold" id="inpPlate"
+                placeholder="SV 08 LZB" oninput="onPlateInput()" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small mb-1 required">Telefon</label>
+              <input type="tel" class="form-control form-control-sm" id="inpPhone" placeholder="0740 111 222" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label small mb-1">Client / Mașină</label>
+              <input type="text" class="form-control form-control-sm" id="inpClient" placeholder="Ion Popescu • Logan">
+            </div>
+          </div>
+          <div class="text-primary small mt-2 d-none" id="plateAutofillHint"></div>
+          <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="modalErr"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3" id="modalProgramareSubmitBtn">Salvează
+            programarea</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Motiv Revenire -->
+  <div class="modal modal-blur fade" id="modalRespingere" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <form id="formRespingere" class="modal-content">
+        <div class="modal-header py-2">
+          <div>
+            <h5 class="modal-title fw-bold mb-0">Motiv revenire ITP</h5>
+            <div class="text-muted small" id="rejectSubtitle">Vehicul</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="mb-2">
+            <label class="form-label small mb-1">Cauze rapide (bifează una sau mai multe)</label>
+            <div class="row g-2" id="rejectReasonsGrid"></div>
+          </div>
+          <div>
+            <label for="rejectNote" class="form-label small mb-1">Observații / detalii suplimentare (opțional)</label>
+            <textarea class="form-control form-control-sm" id="rejectNote" rows="2"
+              placeholder="ex. Pivot stânga față cu joc"></textarea>
+          </div>
+          <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="rejectErr"></div>
+        </div>
+        <div class="modal-footer py-2 justify-content-between">
+          <button type="button" class="btn btn-sm btn-outline-danger d-none" id="btnRevokeReject"
+            onclick="revokeRevenireFromModal()">Revocă revenirea</button>
+          <div class="d-flex gap-2 ms-auto">
+            <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
+            <button type="submit" class="btn btn-sm btn-purple px-3">Salvează motivul</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Confirmare & Motiv Stergere -->
+  <div class="modal modal-blur fade" id="modalConfirm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <div class="modal-content">
+        <div class="modal-status bg-danger" id="confirmStatusBar"></div>
+        <div class="modal-body text-center py-3 px-3">
+          <h4 class="fw-bold mb-1" id="confirmTitle">Confirmare acțiune</h4>
+          <div class="text-muted small mb-2" id="confirmMessage"></div>
+          <div class="bg-light border rounded px-2 py-2 small text-dark text-start d-none" id="confirmDetail"
+            style="white-space: pre-line;"></div>
+          <div class="mt-2 text-start d-none" id="confirmReasonWrap">
+            <label class="form-label small fw-medium mb-1">Motiv ștergere / anulare (1 click — se salvează în
+              Istoric):</label>
+            <div class="row g-2 mb-2" id="confirmReasonsGrid"></div>
+            <input type="text" class="form-control form-control-sm" id="confirmReasonNote"
+              placeholder="Detaliu opțional...">
+          </div>
+        </div>
+        <div class="modal-footer py-2">
+          <div class="w-100 row g-2 m-0">
+            <div class="col-6 p-0 pe-1">
+              <button type="button" class="btn btn-outline-secondary w-100 touch-btn"
+                id="confirmCancelBtn">Renunță</button>
+            </div>
+            <div class="col-6 p-0 ps-1">
+              <button type="button" class="btn btn-danger w-100 touch-btn" id="confirmOkBtn">Confirmă</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Utilizator -->
+  <div class="modal modal-blur fade" id="modalUser" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <form id="formUser" class="modal-content">
+        <div class="modal-header py-2">
+          <h5 class="modal-title fw-bold mb-0" id="modalUserTitle">Adaugă utilizator</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="row g-2">
+            <div class="col-sm-6">
+              <label class="form-label small mb-1 required">Nume afișat</label>
+              <input type="text" class="form-control form-control-sm" id="userNameInp" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small mb-1 required">Username</label>
+              <input type="text" class="form-control form-control-sm" id="userUsernameInp" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small mb-1">Rol sistem</label>
+              <select class="form-select form-select-sm" id="userRoleInp" onchange="onUserRoleSelectChange()">
+                <option value="user">Utilizator operațional</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small mb-1" id="userPinLabel">PIN (4–6 cifre)</label>
+              <input type="password" class="form-control form-control-sm pin-input" id="userPinInp" inputmode="numeric"
+                maxlength="6" placeholder="••••">
+            </div>
+            <div class="col-12 d-none" id="userMasterPinWrap">
+              <label class="form-label small mb-1">PIN Secret Master Admin (8–12 cifre, opțional la editare)</label>
+              <input type="password" class="form-control form-control-sm pin-input" id="userMasterPinInp"
+                inputmode="numeric" maxlength="12" placeholder="••••••••">
+            </div>
+            <div class="col-12" id="userPermsWrap">
+              <label class="form-label small mb-1">Drepturi granulare</label>
+              <div class="border rounded p-2 d-flex flex-column gap-2 bg-light">
+                <label class="form-check m-0">
+                  <input class="form-check-input" type="checkbox" id="permEditInp" checked>
+                  <span class="form-check-label small fw-medium">Adăugare & editare programări</span>
+                </label>
+                <label class="form-check m-0">
+                  <input class="form-check-input" type="checkbox" id="permRevInp" checked>
+                  <span class="form-check-label small fw-medium">Marcare revenire, revocare & reprogramare</span>
+                </label>
+                <label class="form-check m-0">
+                  <input class="form-check-input" type="checkbox" id="permDelInp">
+                  <span class="form-check-label small fw-medium text-danger">Ștergere programări</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="userErr"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3">Salvează utilizatorul</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Schimba PIN Propriu -->
+  <div class="modal modal-blur fade" id="modalChangePin" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+      <form id="formChangePin" class="modal-content">
+        <div class="modal-header py-2">
+          <h5 class="modal-title fw-bold mb-0">Schimbă PIN-ul meu</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="mb-2">
+            <label class="form-label small mb-1 required">PIN actual</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="changePinCurrent"
+              inputmode="numeric" maxlength="6" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1 required">PIN nou (4–6 cifre)</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="changePinNew" inputmode="numeric"
+              maxlength="6" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1 required">Confirmă PIN nou</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="changePinConfirm"
+              inputmode="numeric" maxlength="6" required>
+          </div>
+          <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="changePinErr"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3">Actualizează PIN</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Jurnal Securitate (Admin) -->
+  <div class="modal modal-blur fade" id="modalSecurityLog" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <div>
+            <h5 class="modal-title fw-bold mb-0">Jurnal Securitate & Sistem</h5>
+            <div class="text-muted small">Audit imutabil din MariaDB (`core_audit_log`)</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <select id="secLogFilterSelect" class="form-select form-select-sm" style="max-width: 240px;"
+              onchange="loadSecurityLog()">
+              <option value="TOATE">Toate categoriile</option>
+              <option value="AUTH">Autentificare & PIN</option>
+              <option value="USERS">Utilizatori & Drepturi</option>
+              <option value="CONFIG">Motive, Setări & Backup</option>
+            </select>
+            <a class="btn btn-sm btn-outline-primary" href="api/admin/audit.csv" target="_blank" rel="noopener">Export
+              CSV</a>
+          </div>
+          <div id="securityLogBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="references/ui-libs/tabler/tabler.min.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+
+</html>

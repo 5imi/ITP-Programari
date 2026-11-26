@@ -1,0 +1,15 @@
+Options -Indexes
+ServerSignature Off
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Blocare acces HTTP direct la foldere si fisiere interne sensibile
+  RewriteRule ^(\.git|\.env|config/|core/|modules/|backups/|tests/) - [F,L]
+  RewriteRule \.(sql|md|log|db|sqlite|bak)$ - [F,L]
+
+  # Lasa fisierele statice publice existente (assets, references/ui-libs, robots.txt, manifest.json)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>

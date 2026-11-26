@@ -1,0 +1,105 @@
+<?php
+declare(strict_types=1);
+
+namespace Core;
+
+/**
+ * Backup la cerere (snapshot JSON consistent al tabelelor MariaDB) in directorul `backups/`.
+ * Pe Romarg cPanel ruleaza suplimentar backup-ul zilnic Acronis.
+ */
+final class BackupService
+{
+    public function __construct(
+        private readonly Database $db,
+        private readonly Config $config
+    ) {
+    }
+
+    public function backupsDir(): string
+    {
+        return $this->config->baseDir() . DIRECTORY_SEPARATOR . 'backups';
+    }
+
+    public function createSnapshot(string $actorName): array
+    {
+        $dir = $this->backupsDir();
+        if (!is_dir($dir) && !mkdir($dir, 0750, true) && !is_dir($dir)) {
+            throw new HttpException(500, 'BACKUP_DIR_ERROR', 'Nu s-a putut crea directorul backups/.');
+        }
+
+        $pdo = $this->db->pdo();
+        $tablesStmt = $pdo->query('SHOW TABLES');
+        $tables = array_map('strval', $tablesStmt->fetchAll(\PDO::FETCH_COLUMN));
+
+        $snapshotTables = [];
+        foreach ($tables as $table) {
+            if ($table === 'sessions') {
+                // Token-urile de sesiune active nu au nevoie de export in backup
+                continue;
+            }
+            $rows = $pdo->query('SELECT * FROM `' . str_replace('`', '', $table) . '`')->fetchAll();
+            $snapshotTables[$table] = $rows;
+        }
+
+        $now = $this->config->now();
+        $filename = 'itp_backup_' . $now->format('Ymd_His') . '.json';
+        $payload = [
+            'meta' => [
+                'app' => (string) $this->config->get('APP_NAME', 'ACW - Fălticeni • Stație ITP'),
+                'created_at' => $now->format(\DateTimeInterface::ATOM),
+                'created_by' => $actorName,
+                'tables_count' => count($snapshotTables),
+            ],
+            'tables' => $snapshotTables,
+        ];
+
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            throw new HttpException(500, 'BACKUP_ENCODE_ERROR', 'Eroare la serializarea snapshot-ului.');
+        }
+
+        $target = $dir . DIRECTORY_SEPARATOR . $filename;
+        file_put_contents($target, $json, LOCK_EX);
+
+        return [
+            'filename' => $filename,
+            'size_bytes' => filesize($target) ?: strlen($json),
+            'created_at' => $now->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * @return array<int, array{filename: string, size_bytes: int, modified_at: string}>
+     */
+    public function listBackups(): array
+    {
+        $dir = $this->backupsDir();
+        if (!is_dir($dir)) {
+            return [];
+        }
+        $files = glob($dir . DIRECTORY_SEPARATOR . 'itp_backup_*.json') ?: [];
+        rsort($files, SORT_STRING);
+
+        $out = [];
+        foreach ($files as $path) {
+            $out[] = [
+                'filename' => basename($path),
+                'size_bytes' => (int) (filesize($path) ?: 0),
+                'modified_at' => date('Y-m-d H:i:s', filemtime($path) ?: time()),
+            ];
+        }
+        return $out;
+    }
+
+    public function resolveBackupFile(string $filename): string
+    {
+        if (preg_match('/^itp_backup_\d{8}_\d{6}\.json$/', $filename) !== 1) {
+            throw new HttpException(400, 'INVALID_BACKUP_NAME', 'Nume fișier de backup invalid.');
+        }
+        $path = $this->backupsDir() . DIRECTORY_SEPARATOR . $filename;
+        if (!is_file($path)) {
+            throw new HttpException(404, 'BACKUP_NOT_FOUND', 'Fișierul de backup nu există.');
+        }
+        return $path;
+    }
+}

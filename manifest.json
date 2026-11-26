@@ -1,0 +1,16 @@
+{
+  "name": "ACW - Fălticeni • Stație ITP",
+  "short_name": "ACW ITP",
+  "description": "Programări ITP și evidență stație ACW Fălticeni",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "references/ui-libs/aw-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

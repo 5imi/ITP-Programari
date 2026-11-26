@@ -1,0 +1,8 @@
+{
+  "id": "programari",
+  "name": "Programări ITP",
+  "description": "3 linii ITP, slot 30 min, blocaj anti-suprapuneri, reveniri 30 zile și Istoric Imutabil.",
+  "version": "1.0.0",
+  "locked": true,
+  "enabled_by_default": true
+}
