@@ -12,7 +12,8 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 - **Ecran de Login (`#loginScreen`):**
   - Identitate vizuală **ACW - Fălticeni (`Automotive Center Werkstat • Stație ITP`)** cu sigla oficială [`references/ui-libs/aw-logo.png`](references/ui-libs/aw-logo.png) pe temă deschisă (`Tabler Light`).
   - **Logare rapidă în 2 pași (selecție utilizator + PIN numeric 4–6 cifre):** utilizatorul își alege cardul (`Laur`, `Vlad`, `Gabi` sau orice cont nou adăugat) și introduce PIN-ul de la tastatură sau de pe **tastatura numerică mare de pe ecran** (cu autentificare automată la introducerea PIN-ului corect).
-  - PIN-uri demo implicite: **`Laur (Admin): 1111`**, **`Vlad: 2222`**, **`Gabi: 3333`**.
+  - **Dual-PIN Admin (`Laur`):** pe lângă PIN-ul uzual (`1111`), Administratorul principal are butonul discret **`PIN Secret Admin (Preia controlul)`** (PIN Secret demo `12345678`) care invalidează vechiul PIN uzual, setează un PIN uzual nou și deloghează celelalte sesiuni.
+  - PIN-uri demo implicite: **`Laur (Admin): 1111`** *(Secret: `12345678`)*, **`Vlad: 2222`**, **`Gabi: 3333`**.
   - **Deconectare** cu reconfirmare explicită înainte de părăsirea sesiunii.
 - **Panou `Utilizatori & Drepturi` (doar Administrator):**
   - **`+ Adaugă utilizator`** și **`Editează`** (nume, user login unic, **PIN 4–6 cifre**, profil `Administrator` / `Utilizator`).
@@ -62,4 +63,4 @@ Deschide `dashboard.html` direct în browser sau servește folderul prin Python:
 ```bash
 python -m http.server 8000
 ```
-Apoi accesează `http://localhost:8000/dashboard.html` (`Laur` PIN `1111`, `Vlad` PIN `2222`, `Gabi` PIN `3333`).
+Apoi accesează `http://localhost:8000/dashboard.html` (`Laur` PIN `1111` / Secret `12345678`, `Vlad` PIN `2222`, `Gabi` PIN `3333`).
