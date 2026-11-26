@@ -11,8 +11,8 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 ### 1. Autentificare cu PIN & Gestiune Utilizatori
 - **Ecran de Login (`#loginScreen`):**
   - Identitate vizuală **ACW - Fălticeni (`Automotive Center Werkstat • Stație ITP`)** cu sigla oficială [`references/ui-libs/aw-logo.png`](references/ui-libs/aw-logo.png) pe temă deschisă (`Tabler Light`).
-  - **Logare rapidă în 2 pași (selecție utilizator + PIN numeric 4–6 cifre):** utilizatorul își alege cardul (`Laur`, `Vali`, `Gabi` sau orice cont nou adăugat) și introduce PIN-ul de la tastatură sau de pe **tastatura numerică mare de pe ecran** (cu autentificare automată la introducerea PIN-ului corect).
-  - PIN-uri demo implicite: **`Laur (Admin): 1111`**, **`Vali: 2222`**, **`Gabi: 3333`**.
+  - **Logare rapidă în 2 pași (selecție utilizator + PIN numeric 4–6 cifre):** utilizatorul își alege cardul (`Laur`, `Vlad`, `Gabi` sau orice cont nou adăugat) și introduce PIN-ul de la tastatură sau de pe **tastatura numerică mare de pe ecran** (cu autentificare automată la introducerea PIN-ului corect).
+  - PIN-uri demo implicite: **`Laur (Admin): 1111`**, **`Vlad: 2222`**, **`Gabi: 3333`**.
   - **Deconectare** cu reconfirmare explicită înainte de părăsirea sesiunii.
 - **Panou `Utilizatori & Drepturi` (doar Administrator):**
   - **`+ Adaugă utilizator`** și **`Editează`** (nume, user login unic, **PIN 4–6 cifre**, profil `Administrator` / `Utilizator`).
@@ -37,7 +37,7 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 ### 3. `Istoric Imutabil` (Append-only) & Persistență Demo
 - Păstrează **starea inițială protejată** a fiecărei programări chiar dacă aceasta este mutată, editată, revocată sau ștearsă ulterior din agendă.
 - Afișează cronologic toate modificările (`oră • utilizator • modificare`), fără posibilitate de ștergere din UI.
-- Include filtrare după stare (`Toate`, `Modificate`, `Reveniri`, `Șterse`), filtru după utilizator (`Laur`, `Vali`, `Gabi`, conturi noi), căutare globală și **Export CSV** (pentru Administrator).
+- Include filtrare după stare (`Toate`, `Modificate`, `Reveniri`, `Șterse`), filtru după utilizator (`Laur`, `Vlad`, `Gabi`, conturi noi), căutare globală și **Export CSV** (pentru Administrator).
 - **Persistență locală (`localStorage`) + `Resetează Demo`:** modificările făcute în demo rezistă la reîncărcarea paginii (`F5`), iar Administratorul poate reveni oricând la datele inițiale prin opțiunea reconfirmată `Resetează Demo` din meniu.
 
 ### 4. Regula de Reconfirmare Universală (`#modalConfirm`)
@@ -62,4 +62,4 @@ Deschide `dashboard.html` direct în browser sau servește folderul prin Python:
 ```bash
 python -m http.server 8000
 ```
-Apoi accesează `http://localhost:8000/dashboard.html` (`Laur` PIN `1111`, `Vali` PIN `2222`, `Gabi` PIN `3333`).
+Apoi accesează `http://localhost:8000/dashboard.html` (`Laur` PIN `1111`, `Vlad` PIN `2222`, `Gabi` PIN `3333`).

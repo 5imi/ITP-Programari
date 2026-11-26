@@ -15,7 +15,7 @@
   - **Pe Telefon:** meniu inferior / sertar lateral, carduri ușor de citit și butoane mari pentru operare cu o singură mână.
 - **Multi-utilizator cu niveluri de acces și Istoric Imutabil:**
   - **Administrator (`Laur`):** drepturi depline asupra tuturor modulelor, utilizatorilor, setărilor, exportului și backup-urilor.
-  - **Utilizatori (`Vali`, `Gabi`):** acces controlat granular per modul și acțiune; cei cu drept de `Editare` pot modifica **orice programare** din agendă (inclusiv cele create de colegi).
+  - **Utilizatori (`Vlad`, `Gabi`):** acces controlat granular per modul și acțiune; cei cu drept de `Editare` pot modifica **orice programare** din agendă (inclusiv cele create de colegi).
   - **Istoric Imutabil al programărilor (trasabilitate completă):** orice creare, editare (oră/linie/dată/client), marcare `Revenire`, revocare, reprogramare 30 zile sau ștergere din agendă păstrează **starea inițială intactă** + evenimentele ulterioare cu utilizatorul activ (tabel `appointment_history` append-only în SQLite cu `TRIGGER`-e de blocare `UPDATE`/`DELETE`), încărcat implicit pe ultimele **30–60 de zile** (cu căutare globală pe tot istoricul după nr. înmatriculare) și completat în spate de `core_audit_log` accesibil discret doar Administratorului (`Jurnal securitate / Admin`), fără tab separat în meniul zilnic.
 
 ---
@@ -121,7 +121,7 @@ d:\ITP programari\
 2. **Faza 1 (Livrarea Inițială MVP) – Modul 1: `programari`**
    - Aplicația pornește concentrată **strict pe programări**:
      - Configurare implicită: **3 linii ITP (`Linia 1`, `Linia 2`, `Linia 3`)**, program **Luni – Sâmbătă (`08:00–17:30`)**, durată slot **30 min** (extensibil din Setări stație fără modificări de cod).
-     - **Editare colaborativă:** utilizatorii cu permisiune de `Editare` (`Vali`, `Gabi`) pot modifica **orice programare** din agendă, nu doar pe cele create de ei.
+     - **Editare colaborativă:** utilizatorii cu permisiune de `Editare` (`Vlad`, `Gabi`) pot modifica **orice programare** din agendă, nu doar pe cele create de ei.
      - **Blocaj strict anti-suprapunere & soft-delete:** `appointments` folosește soft-delete (`deleted_at`) + index unic parțial `CREATE UNIQUE INDEX idx_appt_slot ON appointments(date, time, line) WHERE deleted_at IS NULL;` — garantat tranzacțional pe server chiar și la acces simultan de pe mai multe telefoane, păstrând intacte referințele în istoric. Verificare duplicare nr. auto în aceeași zi (`b458itp` = `B 458 ITP`) cu avertizare live și reconfirmare.
      - **Operare ultra-rapidă prin bife (1-tap chips) & reconfirmare (`#modalConfirm`):** atât motivele de **`Revenire 30 zile`**, cât și motivele de **`Ștergere / Anulare / Neprezentare`** folosesc **butoane-bifă rapide (1 click/tap)** (în loc de liste dropdown lente) + detaliu opțional. Nicio acțiune destructivă sau sensibilă (`Șterge` programare, `Editează` cu rezumatul modificărilor, `Revocă revenirea`, depășire termen `30 zile`, comutare `Module`/`Utilizatori`, status `Contactat`, `Backup`, `Deconectare`) nu se execută dintr-un singur click accidental.
      - Vedere unificată **`Programări`** cu navigator pe zile (`‹`, dată calendaristică, `›`, comutator `Caută în toate zilele`; modificare pe zile trecute doar Admin), acțiuni coerente (`Editează`, `Revenire` / `+ Reprogramează`, editare motiv prin click pe etichetă, `Sună`, `WA`, `Șterge`), secțiune dedicată Admin **`Motive`** (adăugare/editare/ștergere motive salvate pentru `Revenire 30 zile` și `Ștergere/Anulare`), plus tab dedicat **`Istoric Imutabil`** (tabel `appointment_history` append-only în SQLite cu `TRIGGER`-e `BEFORE UPDATE`/`DELETE`, scris **în aceeași tranzacție** cu orice acțiune pe `appointments`, păstrând permanent `initial_snapshot` intact, cu afișare implicită pe ultimele 30–60 zile și căutare globală după nr. auto pe tot istoricul). Fără câmp de `Categorie` pe formularul de programare (Data, Ora, Linie, Nr. auto, Telefon, Client/Mașină).
@@ -137,11 +137,11 @@ d:\ITP programari\
 ## 6. Decizii Operaționale Confirmate (Pregătit pentru Faza 0)
 
 1. **Programul orar al stației:** **Luni – Sâmbătă**, interval implicit `08:00–17:30` (sloturi de 30 min pe 3 linii, configurabil ulterior din Setări).
-2. **Editarea programărilor colegilor:** utilizatorii cu drept de `Editare` (`Vali`, `Gabi`) pot modifica **orice programare** din agendă; ștergerea rămâne separată prin permisiunea dedicată (`Ștergere`).
+2. **Editarea programărilor colegilor:** utilizatorii cu drept de `Editare` (`Vlad`, `Gabi`) pot modifica **orice programare** din agendă; ștergerea rămâne separată prin permisiunea dedicată (`Ștergere`).
 3. **Pornirea pe PC-ul stației:** variantă temporară de lucru local prin `start.bat` (după modelul `ITP-Sentinel/start_server.bat`) până la trecerea pe găzduire + domeniu propriu.
 4. **Modelul de Istoric & Audit:** tab curat **`Istoric Imutabil`** dedicat programărilor (30–60 zile implicit + căutare globală după nr. auto, cu `TRIGGER` SQLite anti-modificare) + **`core_audit_log`** silențios accesibil exclusiv Adminului printr-un buton discret **`Jurnal securitate / Admin`**.
 5. **Operare rapidă motive:** motivele de **`Revenire`** și **`Ștergere / Anulare / Neprezentare`** sunt implementate ca **butoane-bifă rapide (1 click/tap)** pentru viteză pe telefon și PC.
-6. **Autentificare rapidă cu PIN:** utilizatorul își alege profilul din ecranul de Login (`Laur`, `Vali`, `Gabi` etc.) și introduce PIN-ul numeric (4–6 cifre, inclusiv prin tastatură numerică pe ecran), fără introducere manuală de username și parolă lungă.
+6. **Autentificare rapidă cu PIN:** utilizatorul își alege profilul din ecranul de Login (`Laur`, `Vlad`, `Gabi` etc.) și introduce PIN-ul numeric (4–6 cifre, inclusiv prin tastatură numerică pe ecran), fără introducere manuală de username și parolă lungă.
 
 ---
 

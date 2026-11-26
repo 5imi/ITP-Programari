@@ -616,7 +616,7 @@
             <button type="submit" class="btn btn-aw w-100 touch-btn fw-semibold">Intră în aplicație</button>
           </form>
           <div class="text-center text-muted small mt-2">
-            PIN-uri demo: <code>Laur 1111</code> • <code>Vali 2222</code> • <code>Gabi 3333</code>
+            PIN-uri demo: <code>Laur 1111</code> • <code>Vlad 2222</code> • <code>Gabi 3333</code>
           </div>
         </div>
       </div>
@@ -992,7 +992,7 @@
       return {
         demoUsers: [
           { id: "laur", username: "admin", alias: "laur", pin: "1111", name: "Laur", role: "admin", roleLabel: "Admin", title: "Administrator", isActive: true, locked: true, perms: { canEdit: true, canRevenire: true, canDelete: true }, desc: "Drepturi depline: programări (inclusiv zile trecute), ștergeri, utilizatori, module și backup." },
-          { id: "vali", username: "vali", alias: "", pin: "2222", name: "Vali", role: "user", roleLabel: "User", title: "Utilizator", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare orice programare, reveniri, clienți și expirări (fără ștergere)." },
+          { id: "vlad", username: "vlad", alias: "", pin: "2222", name: "Vlad", role: "user", roleLabel: "User", title: "Utilizator", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare orice programare, reveniri, clienți și expirări (fără ștergere)." },
           { id: "gabi", username: "gabi", alias: "", pin: "3333", name: "Gabi", role: "user", roleLabel: "User", title: "Utilizator", isActive: true, locked: false, perms: { canEdit: true, canRevenire: true, canDelete: false }, desc: "Acces operațional: programări azi/viitor, editare orice programare, reveniri, clienți și expirări (fără ștergere)." }
         ],
         modules: [
@@ -1108,15 +1108,28 @@
         const saved = JSON.parse(raw);
         if (!saved || typeof saved !== "object") return;
         if (Array.isArray(saved.demoUsers) && saved.demoUsers.length) {
-          const defaultPins = { laur: "1111", vali: "2222", gabi: "3333" };
-          state.demoUsers = saved.demoUsers.map(u => ({
-            ...u,
-            pin: (u.pin && /^\d{4,6}$/.test(String(u.pin))) ? String(u.pin) : (defaultPins[u.id] || "1234")
-          }));
+          const defaultPins = { laur: "1111", vlad: "2222", gabi: "3333" };
+          state.demoUsers = saved.demoUsers.map(u => {
+            const migrated = u.id === "vali"
+              ? { ...u, id: "vlad", username: u.username === "vali" ? "vlad" : u.username, name: u.name === "Vali" ? "Vlad" : u.name }
+              : u;
+            return {
+              ...migrated,
+              pin: (migrated.pin && /^\d{4,6}$/.test(String(migrated.pin))) ? String(migrated.pin) : (defaultPins[migrated.id] || "1234")
+            };
+          });
         }
         if (Array.isArray(saved.modules) && saved.modules.length) state.modules = saved.modules;
         if (Array.isArray(saved.appointments)) state.appointments = saved.appointments;
-        if (Array.isArray(saved.appointmentHistory)) state.appointmentHistory = saved.appointmentHistory;
+        if (Array.isArray(saved.appointmentHistory)) {
+          state.appointmentHistory = saved.appointmentHistory.map(h => ({
+            ...h,
+            createdBy: h.createdBy === "Vali (User)" ? "Vlad (User)" : h.createdBy,
+            events: Array.isArray(h.events)
+              ? h.events.map(ev => ({ ...ev, actor: ev.actor === "Vali (User)" ? "Vlad (User)" : ev.actor }))
+              : []
+          }));
+        }
         if (Array.isArray(saved.vehicles) && saved.vehicles.length) state.vehicles = saved.vehicles;
         if (Array.isArray(saved.expirations) && saved.expirations.length) state.expirations = saved.expirations;
         if (Array.isArray(saved.rejectionReasons) && saved.rejectionReasons.length) state.rejectionReasons = saved.rejectionReasons;
@@ -1339,7 +1352,7 @@
           createdBy: "Laur (Admin)",
           deleted: false,
           events: [
-            { at: "08:12", actor: "Vali (User)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
+            { at: "08:12", actor: "Vlad (User)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
             { at: "08:35", actor: "Gabi (User)", type: "MODIFICAT", summary: "Telefon: 0744000111 → 0744112233 (număr confirmat pe WhatsApp)" }
           ]
         },
@@ -1366,7 +1379,7 @@
           createdBy: "Gabi (User)",
           deleted: false,
           events: [
-            { at: "11:05", actor: "Vali (User)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
+            { at: "11:05", actor: "Vlad (User)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
             { at: "11:18", actor: "Gabi (User)", type: "REPROGRAMAT", summary: `Reprogramată revenirea pe ${formatDateRo(dP1)} la 10:00 (Linia 2)` }
           ]
         },
@@ -1390,7 +1403,7 @@
         if (a.status === "Revenire") {
           events.push({
             at: a.time,
-            actor: "Vali (User)",
+            actor: "Vlad (User)",
             type: "REVENIRE",
             summary: `Marcat Revenire 30 zile • ${formatRejectSummary(a) || "Fără detalii"}`
           });
@@ -1698,7 +1711,7 @@
     }
 
     function setRole(role) {
-      switchDemoUser(role === "admin" ? "laur" : "vali");
+      switchDemoUser(role === "admin" ? "laur" : "vlad");
     }
 
     function getBsApi() {
