@@ -261,8 +261,10 @@ final class AppointmentRepo
         string $eventType,
         string $actor,
         string $intactFilter,
-        string $sinceDateTime
+        string $sinceDateTime,
+        int $maxEntries = 500
     ): array {
+        $maxEntries = max(50, min(1000, $maxEntries));
         $sql = 'SELECT h.*, a.appt_date, a.appt_time, a.line, a.plate, a.plate_key, a.vehicle, a.client, a.phone, a.status,
                        a.deleted_at, a.created_at AS appt_created_at, u.display_name AS creator_name, u.role AS creator_role
                 FROM appointment_history h
@@ -270,6 +272,12 @@ final class AppointmentRepo
                 LEFT JOIN users u ON u.id = a.created_by
                 WHERE 1=1';
         $args = [];
+
+        if ($eventType === 'Șterse') {
+            $sql .= ' AND a.deleted_at IS NOT NULL';
+        } elseif ($eventType === 'Intacte' || $intactFilter === 'intacte') {
+            $sql .= ' AND a.deleted_at IS NULL';
+        }
 
         if ($q !== '') {
             $like = '%' . $q . '%';
@@ -288,7 +296,8 @@ final class AppointmentRepo
             $args[] = $sinceDateTime;
         }
 
-        $sql .= ' ORDER BY h.appointment_id DESC, h.id ASC';
+        $sqlLimit = $maxEntries * 5;
+        $sql .= ' ORDER BY h.appointment_id DESC, h.id ASC LIMIT ' . $sqlLimit;
         $stmt = $pdo->prepare($sql);
         $stmt->execute($args);
         $rows = $stmt->fetchAll();
@@ -353,6 +362,9 @@ final class AppointmentRepo
                 continue;
             }
             if ($eventType !== '' && $eventType !== 'Toate') {
+                if ($eventType === 'Finalizate' && !isset($entry['event_types']['FINALIZAT'])) {
+                    continue;
+                }
                 if ($eventType === 'Șterse' && !$entry['deleted']) {
                     continue;
                 }
@@ -378,9 +390,18 @@ final class AppointmentRepo
         }
 
         usort($out, static fn(array $a, array $b): int => strcmp((string) $b['last_action_at'], (string) $a['last_action_at']) ?: ((int) $b['last_event_id'] <=> (int) $a['last_event_id']));
+        $truncated = count($out) > $maxEntries || count($rows) >= ($maxEntries * 5);
+        if (count($out) > $maxEntries) {
+            $out = array_slice($out, 0, $maxEntries);
+        }
         $allActors = array_keys($allActorsSet);
         sort($allActors, SORT_NATURAL | SORT_FLAG_CASE);
-        return ['entries' => $out, 'all_actors' => $allActors];
+        return [
+            'entries' => $out,
+            'all_actors' => $allActors,
+            'truncated' => $truncated,
+            'limit' => $maxEntries,
+        ];
     }
 
     /**

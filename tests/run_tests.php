@@ -392,6 +392,89 @@ $delPhoneAppt = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$phone
 assertTrue($delPhoneAppt['status'] === 200, 'Curățare programare test P03/P06 eșuată');
 echo "[PASS] Pasul 4 verificat (P01 now_time, P03 căutare telefon compactă în Agendă + Istoric, P06 lookup same_day_conflict).\n";
 
+// 5c. Teste Pasul 5: A02 (/api/auth/users minim), T02 (Finalizat/Admis + garda Revenire), D01 (protectie setari), D02 (soft-delete + reactivare motive), D04 (Istoric limit/truncated)
+$pubUsers = httpReq('GET', "$baseUrl/api/auth/users");
+assertTrue($pubUsers['status'] === 200 && !empty($pubUsers['body']['users']), '/api/auth/users trebuie să întoarcă utilizatori');
+$firstPubUser = $pubUsers['body']['users'][0];
+assertTrue(
+    !array_key_exists('username', $firstPubUser)
+    && !array_key_exists('is_primary_admin', $firstPubUser)
+    && array_key_exists('display_name', $firstPubUser),
+    'A02: /api/auth/users nu trebuie să expună username sau is_primary_admin'
+);
+
+// T02 pe $winnerId (inca Revenire -> 409 IN_REVENIRE, apoi Revoca -> Programat -> Finalizat -> garda Revenire -> revocat Finalizat)
+$finBlockedRev = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/finalizat", [
+    'version' => (int) $parentAfter['version'],
+    'finalizat' => true,
+], $csrf, $cookieFile);
+assertTrue(
+    $finBlockedRev['status'] === 409 && ($finBlockedRev['body']['error'] ?? '') === 'IN_REVENIRE',
+    'T02: trebuia blocată marcarea Finalizat pe o programare în Revenire (409 IN_REVENIRE)'
+);
+$revokedForFin = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revoke", [
+    'version' => (int) $parentAfter['version'],
+], $csrf, $cookieFile);
+assertTrue($revokedForFin['status'] === 200, 'T02 pregătire: revocare Revenire -> Programat eșuată');
+
+$finOn = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/finalizat", [
+    'version' => (int) $revokedForFin['body']['appointment']['version'],
+    'finalizat' => true,
+], $csrf, $cookieFile);
+assertTrue(
+    $finOn['status'] === 200 && ($finOn['body']['appointment']['status'] ?? '') === 'Finalizat',
+    'T02: marcarea Finalizat (Admis) a eșuat: ' . ($finOn['raw'] ?? '')
+);
+$revWhileFin = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revenire", [
+    'version' => (int) $finOn['body']['appointment']['version'],
+    'reasons' => ['Frâne'],
+], $csrf, $cookieFile);
+assertTrue(
+    $revWhileFin['status'] === 409 && ($revWhileFin['body']['error'] ?? '') === 'ALREADY_FINALIZAT',
+    'T02: trebuia blocată marcarea Revenire peste un Finalizat fără revocare prealabilă'
+);
+$histFin = httpReq('GET', "$baseUrl/api/m/programari/history?q=SV%2099%20VER&event_type=Finalizate", null, '', $cookieFile);
+assertTrue(
+    count($histFin['body']['entries'] ?? []) >= 1 && isset($histFin['body']['truncated']) && (int) ($histFin['body']['limit'] ?? 0) === 500,
+    'T02/D04: filtrul Istoric Finalizate sau metadatele limit=500/truncated lipsesc'
+);
+$finOff = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/finalizat", [
+    'version' => (int) $finOn['body']['appointment']['version'],
+    'finalizat' => false,
+], $csrf, $cookieFile);
+assertTrue(
+    $finOff['status'] === 200 && ($finOff['body']['appointment']['status'] ?? '') === 'Programat',
+    'T02: readucerea din Finalizat -> Programat a eșuat'
+);
+$parentAfter = $finOff['body']['appointment'];
+
+// D01: incercare eliminare Linia 1 cat timp $winnerId e activ pe Linia 1 in viitor -> 409 SETTINGS_IMPACT_CONFIRM_REQUIRED
+$settingsBefore = httpReq('GET', "$baseUrl/api/admin/settings", null, '', $cookieFile);
+assertTrue($settingsBefore['status'] === 200, 'Citire setări eșuată');
+$cfgOrig = $settingsBefore['body']['station_config'];
+$badSettings = httpReq('PUT', "$baseUrl/api/admin/settings", array_merge($cfgOrig, [
+    'lines' => ['Linia 2', 'Linia 3'],
+]), $csrf, $cookieFile);
+assertTrue(
+    $badSettings['status'] === 409
+    && ($badSettings['body']['error'] ?? '') === 'SETTINGS_IMPACT_CONFIRM_REQUIRED'
+    && (int) ($badSettings['body']['impact']['line_conflicts'] ?? 0) >= 1,
+    'D01: modificarea setărilor cu programări active afectate trebuia să ceară confirmare 409 SETTINGS_IMPACT_CONFIRM_REQUIRED'
+);
+
+// D02: add -> update -> soft-delete -> reactivare motiv cu acelasi label
+$rAdd = httpReq('POST', "$baseUrl/api/m/programari/reasons", ['kind' => 'revenire', 'label' => 'Test D02 Motiv'], $csrf, $cookieFile);
+assertTrue($rAdd['status'] === 201, 'D02: adăugare motiv eșuată');
+$rid = (int) ($rAdd['body']['reason']['id'] ?? 0);
+$rUpd = httpReq('PUT', "$baseUrl/api/m/programari/reasons/$rid", ['label' => 'Test D02 Editat'], $csrf, $cookieFile);
+assertTrue($rUpd['status'] === 200 && ($rUpd['body']['reason']['label'] ?? '') === 'Test D02 Editat', 'D02: editare motiv eșuată');
+$rDel = httpReq('DELETE', "$baseUrl/api/m/programari/reasons/$rid", [], $csrf, $cookieFile);
+assertTrue($rDel['status'] === 200, 'D02: soft-delete motiv eșuat');
+$rReadd = httpReq('POST', "$baseUrl/api/m/programari/reasons", ['kind' => 'revenire', 'label' => 'Test D02 Editat'], $csrf, $cookieFile);
+assertTrue($rReadd['status'] === 201 && (int) ($rReadd['body']['reason']['id'] ?? 0) === $rid, 'D02: reactivare motiv soft-deleted cu același label a eșuat');
+httpReq('DELETE', "$baseUrl/api/m/programari/reasons/$rid", [], $csrf, $cookieFile);
+echo "[PASS] Pasul 5 verificat (A02, T02 Finalizat/Admis, D01 gardă setări, D02 soft-delete+reactivare motive, D04 Istoric limit=500).\n";
+
 // Curatare programare test
 $delParent = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$winnerId", [
     'version' => (int) $parentAfter['version'],

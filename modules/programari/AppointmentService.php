@@ -512,6 +512,13 @@ final class AppointmentService
             if ((int) $existing['version'] !== $expectedVersion) {
                 throw new HttpException(409, 'STALE_VERSION', 'Programarea a fost modificată între timp. Reîncarcă agenda.');
             }
+            if ($existing['status'] === 'Finalizat') {
+                throw new HttpException(
+                    409,
+                    'ALREADY_FINALIZAT',
+                    'Programarea este marcată Finalizat (Admis). Readuceți-o la Programat înainte de a o trece pe Revenire.'
+                );
+            }
 
             // R02 + R15: Pastram termenul initial (A) in lantul A -> B -> C si salvam reinspection_deadline explicit
             $deadline = $this->resolveReinspectionDeadline($pdo, $existing, $reinspDays);
@@ -575,6 +582,87 @@ final class AppointmentService
                 }
             }
 
+            return $after ?? [];
+        });
+    }
+
+    /**
+     * T02: Marcheaza programarea ca Finalizat (ITP Admis) sau o readuce la Programat.
+     */
+    public function setFinalizat(int $id, array $body, array $user, Request $req): array
+    {
+        $expectedVersion = (int) ($body['version'] ?? 0);
+        if ($expectedVersion <= 0) {
+            throw new HttpException(422, 'VERSION_REQUIRED', 'Lipsește câmpul version.');
+        }
+
+        return $this->db->transaction(function (\PDO $pdo) use ($id, $body, $expectedVersion, $user, $req): array {
+            $existing = $this->repo->lockActiveByIdForUpdate($pdo, $id);
+            if (!$existing) {
+                throw new HttpException(404, 'APPOINTMENT_NOT_FOUND', 'Programarea nu există.');
+            }
+            $today = $this->config->todayIso();
+            if ($existing['date'] < $today && $user['role'] !== 'admin') {
+                throw new HttpException(403, 'PAST_DAY_ADMIN_ONLY', 'Zilele din istoric pot fi modificate doar de Administrator.');
+            }
+            if ($existing['date'] > $today && $user['role'] !== 'admin') {
+                throw new HttpException(422, 'FUTURE_DAY_FINALIZAT', 'Doar Administratorul poate finaliza o programare dintr-o zi viitoare.');
+            }
+            if ((int) $existing['version'] !== $expectedVersion) {
+                throw new HttpException(409, 'STALE_VERSION', 'Programarea a fost modificată între timp. Reîncarcă agenda.');
+            }
+
+            $done = array_key_exists('finalizat', $body)
+                ? (bool) $body['finalizat']
+                : ($existing['status'] !== 'Finalizat');
+
+            if ($done) {
+                if ($existing['status'] === 'Revenire') {
+                    throw new HttpException(409, 'IN_REVENIRE', 'Programarea este în stare Revenire. Revocă mai întâi Revenirea.');
+                }
+                if ($existing['status'] === 'Finalizat') {
+                    return $existing;
+                }
+                $upd = $pdo->prepare(
+                    "UPDATE appointments SET status = 'Finalizat', version = version + 1, updated_by = ?, updated_at = ? WHERE id = ? AND version = ?"
+                );
+                $upd->execute([(int) $user['id'], $this->config->nowString(), $id, $expectedVersion]);
+                $after = $this->repo->findActiveById($pdo, $id);
+                $this->history->record(
+                    $pdo,
+                    $id,
+                    'FINALIZAT',
+                    (int) $user['id'],
+                    (string) $user['actor_label'],
+                    'Marcat Finalizat (ITP Admis)',
+                    $existing,
+                    $after,
+                    null,
+                    $req->clientIp()
+                );
+                return $after ?? [];
+            }
+
+            if ($existing['status'] !== 'Finalizat') {
+                throw new HttpException(409, 'NOT_FINALIZAT', 'Programarea nu este marcată Finalizat.');
+            }
+            $upd = $pdo->prepare(
+                "UPDATE appointments SET status = 'Programat', version = version + 1, updated_by = ?, updated_at = ? WHERE id = ? AND version = ?"
+            );
+            $upd->execute([(int) $user['id'], $this->config->nowString(), $id, $expectedVersion]);
+            $after = $this->repo->findActiveById($pdo, $id);
+            $this->history->record(
+                $pdo,
+                $id,
+                'MODIFICAT',
+                (int) $user['id'],
+                (string) $user['actor_label'],
+                'Readus din Finalizat (Admis) → Programat',
+                $existing,
+                $after,
+                null,
+                $req->clientIp()
+            );
             return $after ?? [];
         });
     }
@@ -881,10 +969,12 @@ final class AppointmentService
         $intactFilter = trim((string) ($query['scope'] ?? ''));
         $since = $this->config->now()->modify('-60 days')->format('Y-m-d 00:00:00');
 
-        $res = $this->repo->listHistoryEntries($this->db->pdo(), $q, $eventType, $actor, $intactFilter, $since);
+        $res = $this->repo->listHistoryEntries($this->db->pdo(), $q, $eventType, $actor, $intactFilter, $since, 500);
         return [
             'entries' => $res['entries'],
             'all_actors' => $res['all_actors'],
+            'truncated' => $res['truncated'],
+            'limit' => $res['limit'],
         ];
     }
 
@@ -902,6 +992,20 @@ final class AppointmentService
         }
 
         return $this->db->transaction(function (\PDO $pdo) use ($kind, $label, $user, $req): array {
+            $findStmt = $pdo->prepare('SELECT id, label, is_active FROM reasons WHERE kind = ? AND label = ? FOR UPDATE');
+            $findStmt->execute([$kind, $label]);
+            $existing = $findStmt->fetch();
+            if ($existing) {
+                if ((int) $existing['is_active'] === 1) {
+                    throw new HttpException(409, 'REASON_EXISTS', sprintf('Motivul "%s" există deja în listă.', $label));
+                }
+                // D02: Reactivare motiv arhivat anterior prin soft-delete
+                $id = (int) $existing['id'];
+                $pdo->prepare('UPDATE reasons SET label = ?, is_active = 1 WHERE id = ?')->execute([$label, $id]);
+                $this->audit->log($pdo, (int) $user['id'], $user['actor_label'], 'REASON_ADD', sprintf('Reactivat motiv %s: "%s"', $kind, $label), 'programari', 'reason', (string) $id, null, null, $req);
+                return ['id' => $id, 'kind' => $kind, 'label' => $label];
+            }
+
             try {
                 $stmt = $pdo->prepare('INSERT INTO reasons (kind, label, sort_order, is_active) VALUES (?, ?, 200, 1)');
                 $stmt->execute([$kind, $label]);
@@ -925,7 +1029,7 @@ final class AppointmentService
         }
 
         return $this->db->transaction(function (\PDO $pdo) use ($id, $label, $user, $req): array {
-            $stmt = $pdo->prepare('SELECT * FROM reasons WHERE id = ? FOR UPDATE');
+            $stmt = $pdo->prepare('SELECT * FROM reasons WHERE id = ? AND is_active = 1 FOR UPDATE');
             $stmt->execute([$id]);
             $row = $stmt->fetch();
             if (!$row) {
@@ -948,7 +1052,7 @@ final class AppointmentService
     public function deleteReason(int $id, array $user, Request $req): void
     {
         $this->db->transaction(function (\PDO $pdo) use ($id, $user, $req): void {
-            $stmt = $pdo->prepare('SELECT * FROM reasons WHERE id = ? FOR UPDATE');
+            $stmt = $pdo->prepare('SELECT * FROM reasons WHERE id = ? AND is_active = 1 FOR UPDATE');
             $stmt->execute([$id]);
             $row = $stmt->fetch();
             if (!$row) {
@@ -957,10 +1061,11 @@ final class AppointmentService
             $cntStmt = $pdo->prepare('SELECT COUNT(*) FROM reasons WHERE kind = ? AND is_active = 1');
             $cntStmt->execute([$row['kind']]);
             if ((int) $cntStmt->fetchColumn() <= 1) {
-                throw new HttpException(409, 'LAST_REASON_PROTECTED', 'Trebuie să rămână cel puțin un motiv în listă.');
+                throw new HttpException(409, 'LAST_REASON_PROTECTED', 'Trebuie să rămână cel puțin un motiv activ în listă.');
             }
-            $pdo->prepare('DELETE FROM reasons WHERE id = ?')->execute([$id]);
-            $this->audit->log($pdo, (int) $user['id'], $user['actor_label'], 'REASON_DELETE', sprintf('Șters motiv %s: "%s"', $row['kind'], $row['label']), 'programari', 'reason', (string) $id, null, null, $req);
+            // D02: Soft-delete motiv (is_active = 0) pentru pastrarea istoricului/reveniri vechi
+            $pdo->prepare('UPDATE reasons SET is_active = 0 WHERE id = ?')->execute([$id]);
+            $this->audit->log($pdo, (int) $user['id'], $user['actor_label'], 'REASON_DELETE', sprintf('Dezactivat motiv %s: "%s"', $row['kind'], $row['label']), 'programari', 'reason', (string) $id, null, null, $req);
         });
     }
 

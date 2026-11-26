@@ -183,17 +183,16 @@ final class AuthController
 
     public function listLoginUsers(Request $req): array
     {
+        // A02: Nu expunem username-ul intern sau flag-ul is_primary_admin pe endpoint-ul public de login
         $stmt = $this->db->pdo()->query(
-            'SELECT id, username, display_name, role, is_primary_admin, is_active, (master_pin_hash IS NOT NULL) AS has_master_pin
+            'SELECT id, display_name, role, is_active, (master_pin_hash IS NOT NULL) AS has_master_pin
              FROM users
              ORDER BY sort_order ASC, id ASC'
         );
         $rows = array_map(static fn(array $r): array => [
             'id' => (int) $r['id'],
-            'username' => $r['username'],
             'display_name' => $r['display_name'],
             'role' => $r['role'],
-            'is_primary_admin' => (int) $r['is_primary_admin'] === 1,
             'is_active' => (int) $r['is_active'] === 1,
             'has_master_pin' => (int) $r['has_master_pin'] === 1,
         ], $stmt->fetchAll());

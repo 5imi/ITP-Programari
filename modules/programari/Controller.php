@@ -102,6 +102,13 @@ final class Controller
             return Response::json(['ok' => true, 'appointment' => $child], 201);
         });
 
+        $router->add('POST', '/api/m/programari/appointments/{id}/finalizat', function (Request $req, array $params): array {
+            $this->assertEnabled();
+            $ctx = $this->auth->requireAnyPermission($req, ['programari.edit', 'programari.revenire'], true);
+            $updated = $this->service->setFinalizat((int) $params['id'], $req->json(), $ctx['user'], $req);
+            return Response::json(['ok' => true, 'appointment' => $updated]);
+        });
+
         $router->add('DELETE', '/api/m/programari/appointments/{id}', function (Request $req, array $params): array {
             $this->assertEnabled();
             $ctx = $this->auth->requirePermission($req, 'programari.delete', true);

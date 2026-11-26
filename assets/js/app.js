@@ -44,6 +44,9 @@
     historyUserFilter: 'TOȚI',
     historyEntries: [],
     historyActors: [],
+    historyTruncated: false,
+    historyLimit: 500,
+    editingReasonId: null,
 
     adminUsers: [],
     adminBackups: [],
@@ -244,6 +247,9 @@
         ? `până la termenul inițial ${formatDateRo(deadline)}${closedNote}`
         : `în ${termDays} zile, până la ${formatDateRo(deadline)}${closedNote}`;
       return `Bună ziua! Vehiculul ${a.plate} are status ITP Revenire (${formatDateRo(a.date)}).${rejectSummary ? ` Motive: ${rejectSummary}.` : ''} Revenire posibilă ${termPhrase}. ${sig}`;
+    }
+    if (a.status === 'Finalizat') {
+      return `Bună ziua! Vă mulțumim pentru vizita ITP cu vehiculul ${a.plate} (status: Admis). ${sig}`;
     }
     if (a.visit_type === 'REVENIRE') {
       return `Bună ziua! Vă confirmăm programarea de REVENIRE ITP pentru ${a.plate} în data de ${formatDateRo(a.date)} la ora ${a.time} (${a.line}) - ${sig}.`;
@@ -604,6 +610,12 @@
     }
     const mobUserEl = document.getElementById('mobDrawerUser');
     if (mobUserEl) mobUserEl.textContent = state.user.actor_label;
+    const mobHeaderBadge = document.getElementById('mobHeaderUserBadge');
+    if (mobHeaderBadge) {
+      mobHeaderBadge.textContent = `${state.user.display_name} • Schimbă`;
+      mobHeaderBadge.title = `Logat: ${state.user.actor_label} — apasă pentru schimbare coleg`;
+    }
+    syncOfflineBanner();
 
     const lineSel = document.getElementById('inpLine');
     if (lineSel) {
@@ -790,6 +802,17 @@
         }
         lastAgendaSignature = sig;
 
+        // C03: Trecere automata pe noua zi dupa miezul noptii cand utilizatorul ramasese pe Azi
+        const prevToday = state.todayDate;
+        const serverToday = data.today_date;
+        if (prevToday && serverToday && serverToday > prevToday && state.selectedDate === prevToday) {
+          state.todayDate = serverToday;
+          state.nowTime = data.now_time || state.nowTime;
+          state.selectedDate = serverToday;
+          lastAgendaSignature = '';
+          return await loadAndRenderCurrentView({ isPoll: false });
+        }
+
         state.todayDate = data.today_date;
         state.nowTime = data.now_time || state.nowTime;
         state.selectedDate = data.selected_date;
@@ -824,6 +847,8 @@
         if (reqSeq !== viewRequestSeq || state.currentView !== 'istoric') return;
         state.historyEntries = data.entries || [];
         state.historyActors = Array.isArray(data.all_actors) ? data.all_actors : [];
+        state.historyTruncated = Boolean(data.truncated);
+        state.historyLimit = Number(data.limit || 500);
         titleEl.textContent = 'Istoric Imutabil';
         subEl.textContent = `Audit complet pe programări (Dată + Oră + Utilizator) • ${state.user.actor_label}`;
         root.innerHTML = renderIstoricView();
@@ -915,11 +940,12 @@
     }).join('');
 
     const isOpenRevFilter = state.statusFilter === 'Reveniri deschise';
-    const statusFilters = ['Toate', 'Programat', 'Revenire', 'Reveniri deschise'];
+    const statusFilters = ['Toate', 'Programat', 'Finalizat', 'Revenire', 'Reveniri deschise'];
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
 
     const buildRowMeta = (a) => {
       const isRev = a.status === 'Revenire';
+      const isFinal = a.status === 'Finalizat';
       const reasons = Array.isArray(a.reject_reasons) ? a.reject_reasons : [];
       const rejectSummary = [reasons.join(', '), a.reject_note || ''].filter(Boolean).join(' — ');
       // R02 + R15: Preferam reinspection_deadline salvat in DB (pastrat si pe lant A -> B -> C)
@@ -939,21 +965,25 @@
       const hasRevPerm = userCan('programari.revenire') || isAdmin();
       const canEdit = (a.date >= state.todayDate && userCan('programari.edit')) || isAdmin();
       const canRev = (a.date >= state.todayDate && userCan('programari.revenire')) || isAdmin();
+      const canFinal = ((a.date === state.todayDate && (userCan('programari.edit') || userCan('programari.revenire'))) || isAdmin());
       const canDel = (a.date >= state.todayDate && userCan('programari.delete')) || isAdmin();
       // R01: User cu programari.revenire poate reprograma inclusiv respingerile din zilele trecute
       const canReprog = isRev && !a.resolved_by_reinspection_id && hasRevPerm;
-      // R10: Badge distinct pentru cele 4 stari
+      // R10 + T02: Badge distinct pentru stari (Programat / Finalizat Admis / Revenire / Revenire prog.)
       let statusLabel = a.status;
       let badgeCls = 'bg-blue-lt text-blue';
-      if (isRev) {
+      if (isFinal) {
+        statusLabel = 'Finalizat (Admis)';
+        badgeCls = 'bg-green-lt text-green';
+      } else if (isRev) {
         badgeCls = 'bg-purple-lt text-purple';
       } else if (isChainChild) {
         statusLabel = 'Revenire prog.';
         badgeCls = 'bg-indigo-lt text-indigo';
       }
       return {
-        isRev, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild, isExpired,
-        reinspDays, waMsg, smsHref, telHref, isLandline, canEdit, canRev, canDel, canReprog, statusLabel, badgeCls,
+        isRev, isFinal, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild, isExpired,
+        reinspDays, waMsg, smsHref, telHref, isLandline, canEdit, canRev, canFinal, canDel, canReprog, statusLabel, badgeCls,
       };
     };
 
@@ -986,7 +1016,9 @@
           <td class="text-end itp-actions-cell">
             <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
               ${m.canEdit ? `<button class="btn btn-sm btn-outline-primary itp-desk-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
-              ${m.canRev && !m.isRev ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+              ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
+              ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
+              ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
               ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
               <a class="btn btn-sm btn-outline-secondary itp-desk-act" href="tel:${esc(m.telHref)}">Sună</a>
               <a class="btn btn-sm btn-outline-success itp-desk-act" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}">WA</a>
@@ -1026,10 +1058,12 @@
             ? `<button type="button" class="btn bg-purple-lt text-purple rounded px-2 py-1 mb-1 w-100 text-start border-0 text-wrap fw-normal" style="font-size: 0.74rem; line-height: 1.3;" onclick="openRejectModal(${a.id})" aria-label="Editează sau revocă motivul revenirii"><strong>Motiv:</strong> ${esc(m.rejectSummary)} <span class="ms-1 text-decoration-underline fw-semibold">(editează)</span></button>`
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
           ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote && !m.isExpired ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
-          <div class="d-flex align-items-center gap-1">
+          <div class="d-flex align-items-center flex-wrap gap-1">
             ${m.canEdit ? `<button class="btn btn-outline-primary itp-mob-act flex-fill" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
+            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act flex-fill" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
+            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act flex-fill" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
             ${m.canReprog ? `<button class="btn btn-purple itp-mob-act flex-fill" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
-            ${m.canRev && !m.isRev ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
             ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
             <a class="btn btn-outline-secondary itp-mob-act itp-mob-icon-btn" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Tel</a>
             <a class="btn btn-outline-success itp-mob-act itp-mob-icon-btn" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WA</a>
@@ -1629,9 +1663,19 @@
 
   function renderRejectReasonButtons() {
     const grid = document.getElementById('rejectReasonsGrid');
-    grid.innerHTML = state.reasonsRevenire.map(r => {
-      const active = state.rejectSelectedReasons.includes(r.label);
-      return `<div class="col-6"><button type="button" class="reason-check-btn ${active ? 'active' : ''}" data-itp-action="toggle-reject-reason" data-itp-val="${esc(r.label)}"><span>${esc(r.label)}</span><span>${active ? '✓' : ''}</span></button></div>`;
+    const activeLabels = new Set(state.reasonsRevenire.map(r => r.label));
+    // D02: Afisam si eventuale motive arhivate (soft-deleted) inca bifate pe programare ca sa poata fi debifate
+    const archivedSelected = state.rejectSelectedReasons
+      .filter(lbl => !activeLabels.has(lbl))
+      .map(lbl => ({ label: lbl, archived: true }));
+    const buttons = [
+      ...state.reasonsRevenire.map(r => ({ label: r.label, archived: false })),
+      ...archivedSelected,
+    ];
+    grid.innerHTML = buttons.map(b => {
+      const active = state.rejectSelectedReasons.includes(b.label);
+      const disp = b.archived ? `${b.label} (arhivat)` : b.label;
+      return `<div class="col-6"><button type="button" class="reason-check-btn ${active ? 'active' : ''}" data-itp-action="toggle-reject-reason" data-itp-val="${esc(b.label)}"><span>${esc(disp)}</span><span>${active ? '✓' : ''}</span></button></div>`;
     }).join('');
   }
 
@@ -1699,6 +1743,36 @@
         }
       },
     });
+  };
+
+  window.toggleFinalizat = async (id, makeFinalizat) => {
+    const a = findAppointmentById(id);
+    if (!a) return;
+    const runToggle = async () => {
+      try {
+        await api.post(`api/m/programari/appointments/${a.id}/finalizat`, {
+          version: a.version,
+          finalizat: Boolean(makeFinalizat),
+        });
+        showToast(makeFinalizat ? `${a.plate} finalizat (Admis).` : `${a.plate} readus la Programat.`);
+        lastAgendaSignature = '';
+        await loadAndRenderCurrentView();
+      } catch (err) {
+        showToast(err.message);
+        if (err.code === 'STALE_VERSION') loadAndRenderCurrentView();
+      }
+    };
+    if (makeFinalizat) {
+      await withBusy(`finalizat_${a.id}`, null, runToggle);
+    } else {
+      openConfirmModal({
+        title: 'Revocare status Finalizat',
+        message: `Readuci ${a.plate} din „Finalizat (Admis)” înapoi la „Programat”?`,
+        variant: 'warning',
+        confirmText: 'Readu la Programat',
+        onConfirm: runToggle,
+      });
+    }
   };
 
   window.openDeleteModal = (id) => {
@@ -1790,7 +1864,7 @@
   });
 
   function renderIstoricView() {
-    const filters = ['Toate', 'Modificate', 'Reveniri', 'Revocate', 'Reprogramate', 'Șterse', 'Intacte'];
+    const filters = ['Toate', 'Finalizate', 'Modificate', 'Reveniri', 'Revocate', 'Reprogramate', 'Șterse', 'Intacte'];
     const actorPool = state.historyActors.length
       ? state.historyActors
       : Array.from(new Set(state.historyEntries.flatMap(e => e.actors || [])));
@@ -1840,6 +1914,7 @@
           </div>
         </div>
       </div>
+      ${state.historyTruncated ? `<div class="alert alert-info py-2 px-3 mb-2 small">Se afișează ultimele <strong>${state.historyLimit}</strong> programări din istoric — folosește căutarea sau filtrele pentru rezultate specifice.</div>` : ''}
       ${cards || `<div class="card p-3 text-center text-muted">Nicio înregistrare în Istoric pentru filtrul curent.</div>`}
     `;
   }
@@ -1968,10 +2043,21 @@
             <button type="button" class="btn btn-primary" onclick="addReason('${kind}')">Adaugă</button>
           </div>
           <div class="list-group list-group-flush border rounded">
-            ${items.map(r => `
-              <div class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
-                <span class="small fw-medium">${esc(r.label)}</span>
-                <button type="button" class="btn btn-sm btn-ghost-danger" onclick="deleteReason(${r.id})">Șterge</button>
+            ${items.map(r => state.editingReasonId === r.id ? `
+              <div class="list-group-item py-1 px-2">
+                <div class="input-group input-group-sm">
+                  <input type="text" class="form-control" id="editReasonInp_${r.id}" value="${esc(r.label)}" maxlength="60">
+                  <button type="button" class="btn btn-primary" onclick="saveEditReason(${r.id})">Salvează</button>
+                  <button type="button" class="btn btn-outline-secondary" onclick="cancelEditReason()">Renunță</button>
+                </div>
+              </div>
+            ` : `
+              <div class="list-group-item d-flex justify-content-between align-items-center gap-2 py-1 px-2">
+                <span class="small fw-medium text-truncate">${esc(r.label)}</span>
+                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="startEditReason(${r.id})">Editează</button>
+                  <button type="button" class="btn btn-sm btn-ghost-danger" onclick="deleteReason(${r.id})">Șterge</button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -1980,6 +2066,34 @@
     `;
     return `<div class="row g-3">${renderKind('Motive Revenire (30 zile)', 'revenire', state.reasonsRevenire)}${renderKind('Motive Ștergere / Anulare', 'stergere', state.reasonsStergere)}</div>`;
   }
+
+  window.startEditReason = (id) => {
+    state.editingReasonId = id;
+    document.getElementById('viewRoot').innerHTML = renderReasonsView();
+    const inp = document.getElementById(`editReasonInp_${id}`);
+    if (inp) { inp.focus(); inp.select(); }
+  };
+
+  window.cancelEditReason = () => {
+    state.editingReasonId = null;
+    document.getElementById('viewRoot').innerHTML = renderReasonsView();
+  };
+
+  window.saveEditReason = async (id) => {
+    const inp = document.getElementById(`editReasonInp_${id}`);
+    const label = inp ? inp.value.trim() : '';
+    if (!label) return;
+    await withBusy(`editReason_${id}`, null, async () => {
+      try {
+        await api.put(`api/m/programari/reasons/${id}`, { label });
+        state.editingReasonId = null;
+        showToast('Motiv actualizat.');
+        await loadAndRenderCurrentView();
+      } catch (err) {
+        showToast(err.message);
+      }
+    });
+  };
 
   window.addReason = async (kind) => {
     await withBusy(`addReason_${kind}`, null, async () => {
@@ -2057,8 +2171,12 @@
 
   function renderSettingsView() {
     const c = state.stationConfig;
+    const workDays = Array.isArray(c.work_days) ? c.work_days.map(Number) : [1, 2, 3, 4, 5, 6];
+    const dayLabels = [
+      [1, 'Luni'], [2, 'Marți'], [3, 'Miercuri'], [4, 'Joi'], [5, 'Vineri'], [6, 'Sâmbătă'], [7, 'Duminică'],
+    ];
     return `
-      <div class="card p-3" style="max-width: 620px;">
+      <div class="card p-3" style="max-width: 660px;">
         <form onsubmit="saveStationSettings(event)">
           <div class="mb-2">
             <label class="form-label small fw-semibold mb-1">Denumire stație</label>
@@ -2072,18 +2190,33 @@
             <label class="form-label small fw-semibold mb-1">Linii ITP (separate prin virgulă)</label>
             <input type="text" class="form-control form-control-sm" id="cfgLines" value="${esc((c.lines || []).join(', '))}" required>
           </div>
-          <div class="row g-2 mb-3">
-            <div class="col-4">
+          <div class="row g-2 mb-2">
+            <div class="col-6 col-sm-3">
               <label class="form-label small fw-semibold mb-1">Deschidere</label>
               <input type="text" class="form-control form-control-sm" id="cfgOpen" value="${esc(c.open_time)}" required>
             </div>
-            <div class="col-4">
+            <div class="col-6 col-sm-3">
               <label class="form-label small fw-semibold mb-1">Închidere</label>
               <input type="text" class="form-control form-control-sm" id="cfgClose" value="${esc(c.close_time)}" required>
             </div>
-            <div class="col-4">
+            <div class="col-6 col-sm-3">
               <label class="form-label small fw-semibold mb-1">Slot (minute)</label>
               <input type="number" class="form-control form-control-sm" id="cfgSlot" value="${esc(c.slot_minutes)}" min="15" max="60" required>
+            </div>
+            <div class="col-6 col-sm-3">
+              <label class="form-label small fw-semibold mb-1">Termen revenire (zile)</label>
+              <input type="number" class="form-control form-control-sm" id="cfgReinspectionDays" value="${esc(c.reinspection_days || 30)}" min="1" max="90" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold mb-1">Zile lucrătoare</label>
+            <div class="d-flex flex-wrap gap-3">
+              ${dayLabels.map(([num, lbl]) => `
+                <label class="form-check form-check-inline m-0">
+                  <input class="form-check-input cfg-work-day" type="checkbox" value="${num}" ${workDays.includes(num) ? 'checked' : ''}>
+                  <span class="form-check-label small">${esc(lbl)}</span>
+                </label>
+              `).join('')}
             </div>
           </div>
           <button type="submit" class="btn btn-sm btn-primary">Salvează setările</button>
@@ -2092,25 +2225,42 @@
     `;
   }
 
+  async function submitStationSettingsPayload(payload) {
+    try {
+      await api.put('api/admin/settings', payload);
+      showToast('Setări stație actualizate.');
+      await loadSessionAndEnterApp();
+    } catch (err) {
+      if (err.status === 409 && err.code === 'SETTINGS_IMPACT_CONFIRM_REQUIRED') {
+        openConfirmModal({
+          title: 'Programări active afectate',
+          message: err.message,
+          variant: 'warning',
+          confirmText: 'Salvează oricum',
+          onConfirm: () => submitStationSettingsPayload({ ...payload, confirm_impact: true }),
+        });
+        return;
+      }
+      showToast(err.message);
+    }
+  }
+
   window.saveStationSettings = async (e) => {
     e.preventDefault();
     const submitBtn = e.currentTarget ? e.currentTarget.querySelector('button[type="submit"]') : null;
     await withBusy('saveSettings', submitBtn, async () => {
-      try {
-        const lines = document.getElementById('cfgLines').value.split(',').map(s => s.trim()).filter(Boolean);
-        await api.put('api/admin/settings', {
-          station_name: document.getElementById('cfgName').value.trim(),
-          station_signature: document.getElementById('cfgSignature').value.trim(),
-          lines,
-          open_time: document.getElementById('cfgOpen').value.trim(),
-          close_time: document.getElementById('cfgClose').value.trim(),
-          slot_minutes: Number(document.getElementById('cfgSlot').value),
-        });
-        showToast('Setări stație actualizate.');
-        await loadSessionAndEnterApp();
-      } catch (err) {
-        showToast(err.message);
-      }
+      const lines = document.getElementById('cfgLines').value.split(',').map(s => s.trim()).filter(Boolean);
+      const workDays = Array.from(document.querySelectorAll('.cfg-work-day:checked')).map(el => Number(el.value));
+      await submitStationSettingsPayload({
+        station_name: document.getElementById('cfgName').value.trim(),
+        station_signature: document.getElementById('cfgSignature').value.trim(),
+        lines,
+        open_time: document.getElementById('cfgOpen').value.trim(),
+        close_time: document.getElementById('cfgClose').value.trim(),
+        slot_minutes: Number(document.getElementById('cfgSlot').value),
+        reinspection_days: Number(document.getElementById('cfgReinspectionDays').value),
+        work_days: workDays,
+      });
     });
   };
 
@@ -2258,11 +2408,28 @@
     }
   }, HISTORY_POLL_MS);
 
+  function syncOfflineBanner() {
+    const el = document.getElementById('offlineBanner');
+    if (el) el.classList.toggle('d-none', navigator.onLine !== false);
+  }
+
+  window.addEventListener('online', () => {
+    syncOfflineBanner();
+    showToast('Conexiune restabilită.');
+    if (state.user && shouldRunAgendaPoll()) {
+      loadAndRenderCurrentView({ isPoll: true });
+    }
+  });
+  window.addEventListener('offline', () => {
+    syncOfflineBanner();
+  });
+
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && shouldRunAgendaPoll()) {
       loadAndRenderCurrentView({ isPoll: true });
     }
   });
 
+  syncOfflineBanner();
   boot();
 })();

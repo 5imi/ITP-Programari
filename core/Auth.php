@@ -108,14 +108,24 @@ final class Auth
 
     public function requirePermission(Request $req, string $permission, bool $checkCsrf = false): array
     {
+        return $this->requireAnyPermission($req, [$permission], $checkCsrf);
+    }
+
+    /**
+     * @param array<int, string> $permissions
+     */
+    public function requireAnyPermission(Request $req, array $permissions, bool $checkCsrf = false): array
+    {
         $ctx = $this->requireUser($req, $checkCsrf);
         if ($ctx['user']['role'] === 'admin') {
             return $ctx;
         }
-        if (!in_array($permission, $ctx['permissions'], true)) {
-            throw new HttpException(403, 'FORBIDDEN', 'Nu ai permisiunea necesară pentru această acțiune.');
+        foreach ($permissions as $perm) {
+            if (in_array($perm, $ctx['permissions'], true)) {
+                return $ctx;
+            }
         }
-        return $ctx;
+        throw new HttpException(403, 'FORBIDDEN', 'Nu ai permisiunea necesară pentru această acțiune.');
     }
 
     public function createSessionCookie(\PDO $pdo, int $userId, int $sessionVersion, Request $req): array

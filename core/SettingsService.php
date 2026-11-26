@@ -127,6 +127,35 @@ final class SettingsService
             throw new HttpException(422, 'INVALID_SLOTS', 'Intervalul orar și durata slotului nu produc niciun interval valid.');
         }
 
+        // D01: Verifica programari active de azi inainte care devin invalide cu noile linii/sloturi/zile
+        $impact = $this->findFutureAppointmentConflicts($pdo, $next, $this->config->todayIso());
+        if ($impact['total_affected'] > 0 && empty($input['confirm_impact'])) {
+            $parts = [];
+            if ($impact['line_conflicts'] > 0) {
+                $parts[] = sprintf('pe linii eliminate: %d', $impact['line_conflicts']);
+            }
+            if ($impact['slot_conflicts'] > 0) {
+                $parts[] = sprintf('la ore incompatibile: %d', $impact['slot_conflicts']);
+            }
+            if ($impact['day_conflicts'] > 0) {
+                $parts[] = sprintf('în zile setate închise: %d', $impact['day_conflicts']);
+            }
+            $samplesSuffix = $impact['samples']
+                ? ' [ex: ' . implode('; ', $impact['samples']) . ']'
+                : '';
+            throw new HttpException(
+                409,
+                'SETTINGS_IMPACT_CONFIRM_REQUIRED',
+                sprintf(
+                    'Există %d programări active de azi înainte afectate de noile setări (%s)%s. Confirmă dacă salvezi oricum sau mută mai întâi programările.',
+                    $impact['total_affected'],
+                    implode(', ', $parts),
+                    $samplesSuffix
+                ),
+                ['impact' => $impact]
+            );
+        }
+
         $upd = $pdo->prepare(
             'INSERT INTO settings (setting_key, value_json, updated_at, updated_by)
              VALUES (?, ?, ?, ?)
@@ -141,6 +170,73 @@ final class SettingsService
         $this->cachedStationConfig = $next;
 
         return $next;
+    }
+
+    /**
+     * @return array{total_affected: int, line_conflicts: int, slot_conflicts: int, day_conflicts: int, samples: array<int, string>}
+     */
+    public function findFutureAppointmentConflicts(\PDO $pdo, array $next, string $todayIso): array
+    {
+        $hasTable = (bool) $pdo->query("SHOW TABLES LIKE 'appointments'")->fetchColumn();
+        if (!$hasTable) {
+            return [
+                'total_affected' => 0,
+                'line_conflicts' => 0,
+                'slot_conflicts' => 0,
+                'day_conflicts' => 0,
+                'samples' => [],
+            ];
+        }
+
+        $nextLines = array_map('strval', (array) ($next['lines'] ?? []));
+        $nextSlots = $this->buildDailySlots($next);
+        $nextWorkDays = array_map('intval', (array) ($next['work_days'] ?? [1, 2, 3, 4, 5, 6]));
+
+        $stmt = $pdo->prepare(
+            'SELECT appt_date, appt_time, line, plate
+             FROM appointments
+             WHERE appt_date >= ? AND deleted_at IS NULL
+             ORDER BY appt_date ASC, appt_time ASC'
+        );
+        $stmt->execute([$todayIso]);
+
+        $totalAffected = 0;
+        $lineConflicts = 0;
+        $slotConflicts = 0;
+        $dayConflicts = 0;
+        $samples = [];
+
+        foreach ($stmt->fetchAll() as $r) {
+            $lineBad = !in_array((string) $r['line'], $nextLines, true);
+            $slotBad = !in_array((string) $r['appt_time'], $nextSlots, true);
+            $dt = \DateTimeImmutable::createFromFormat('Y-m-d', (string) $r['appt_date']);
+            $dayBad = $dt ? !in_array((int) $dt->format('N'), $nextWorkDays, true) : false;
+
+            if ($lineBad) {
+                $lineConflicts++;
+            }
+            if ($slotBad) {
+                $slotConflicts++;
+            }
+            if ($dayBad) {
+                $dayConflicts++;
+            }
+            if ($lineBad || $slotBad || $dayBad) {
+                $totalAffected++;
+                if (count($samples) < 5) {
+                    $roDate = $dt ? $dt->format('d.m') : (string) $r['appt_date'];
+                    $samples[] = sprintf('%s (%s %s • %s)', (string) $r['plate'], $roDate, (string) $r['appt_time'], (string) $r['line']);
+                }
+            }
+        }
+
+        return [
+            'total_affected' => $totalAffected,
+            'line_conflicts' => $lineConflicts,
+            'slot_conflicts' => $slotConflicts,
+            'day_conflicts' => $dayConflicts,
+            'samples' => $samples,
+        ];
     }
 
     /**

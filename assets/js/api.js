@@ -19,17 +19,54 @@ window.ItpApi = (() => {
       headers['X-CSRF-Token'] = csrfToken;
     }
 
+    const timeoutMs = Number(opts && opts.timeoutMs) || 15000;
+    const timeoutCtrl = new AbortController();
+    let timedOut = false;
+    const extSignal = opts && opts.signal ? opts.signal : null;
+    const onExtAbort = () => timeoutCtrl.abort();
+    if (extSignal) {
+      if (extSignal.aborted) {
+        timeoutCtrl.abort();
+      } else {
+        extSignal.addEventListener('abort', onExtAbort, { once: true });
+      }
+    }
+    const timerId = setTimeout(() => {
+      timedOut = true;
+      timeoutCtrl.abort();
+    }, timeoutMs);
+
     const fetchOpts = {
       method: method.toUpperCase(),
       credentials: 'same-origin',
       headers,
       body: body !== null ? JSON.stringify(body) : undefined,
+      signal: timeoutCtrl.signal,
     };
-    if (opts && opts.signal) {
-      fetchOpts.signal = opts.signal;
-    }
 
-    const res = await fetch(url, fetchOpts);
+    let res;
+    try {
+      res = await fetch(url, fetchOpts);
+    } catch (netErr) {
+      if (timedOut) {
+        const timeoutErr = new Error('Conexiune slabă (timeout 15s) — verifică semnalul și reîncearcă.');
+        timeoutErr.name = 'TimeoutError';
+        timeoutErr.code = 'TIMEOUT';
+        throw timeoutErr;
+      }
+      if (extSignal && extSignal.aborted) {
+        throw netErr;
+      }
+      const offlineMsg = navigator.onLine === false
+        ? 'Ești offline — verifică conexiunea Wi-Fi / 4G și reîncearcă.'
+        : 'Nu s-a putut contacta serverul — verifică conexiunea și reîncearcă.';
+      const err = new Error(offlineMsg);
+      err.code = 'NETWORK_ERROR';
+      throw err;
+    } finally {
+      clearTimeout(timerId);
+      if (extSignal) extSignal.removeEventListener('abort', onExtAbort);
+    }
 
     let data = {};
     const contentType = res.headers.get('content-type') || '';
