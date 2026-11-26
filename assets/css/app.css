@@ -880,3 +880,28 @@ body {
   color: #1e293b !important;
   font-weight: 500;
 }
+
+/* Buton + Programare (bara de sus): Varianta A. Pentru Varianta B (rosu ACW) se schimba doar cele 3 variabile de mai jos. */
+:root {
+  --itp-newappt-bg: #1e40af;
+  --itp-newappt-border: #1e3a8a;
+  --itp-newappt-shadow: rgba(30, 64, 175, 0.35);
+}
+
+#btnNewAppt,
+#btnNewApptMob {
+  background-color: var(--itp-newappt-bg);
+  border-color: var(--itp-newappt-border);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 4px var(--itp-newappt-shadow);
+}
+
+#btnNewAppt:hover,
+#btnNewAppt:focus-visible,
+#btnNewApptMob:hover,
+#btnNewApptMob:focus-visible {
+  background-color: var(--itp-newappt-border);
+  border-color: var(--itp-newappt-border);
+  color: #ffffff;
+}
