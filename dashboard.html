@@ -660,7 +660,7 @@
 
 <!-- Modal: Reconfirmare Actiune -->
 <div class="modal modal-blur fade" id="modalConfirm" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-sm modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
     <div class="modal-content">
       <div class="modal-status bg-danger" id="confirmStatusBar"></div>
       <div class="modal-body text-center py-3 px-3">
@@ -668,13 +668,8 @@
         <div class="text-muted small mb-2" id="confirmMessage"></div>
         <div class="bg-light border rounded px-2 py-2 small text-dark text-start d-none" id="confirmDetail" style="white-space: pre-line;"></div>
         <div class="mt-2 text-start d-none" id="confirmReasonWrap">
-          <label class="form-label small fw-medium mb-1" for="confirmReasonSelect">Motiv ștergere (se salvează în Istoric):</label>
-          <select class="form-select form-select-sm mb-1" id="confirmReasonSelect">
-            <option value="Anulat de client">Anulat de client</option>
-            <option value="Neprezentare (No-show)">Neprezentare (No-show)</option>
-            <option value="Programare dublată / Greșeală">Programare dublată / Greșeală</option>
-            <option value="Alt motiv">Alt motiv</option>
-          </select>
+          <label class="form-label small fw-medium mb-1">Motiv ștergere / anulare (1 click — se salvează în Istoric):</label>
+          <div class="row g-2 mb-2" id="confirmReasonsGrid"></div>
           <input type="text" class="form-control form-control-sm" id="confirmReasonNote" placeholder="Detaliu opțional...">
         </div>
       </div>
@@ -1493,21 +1488,28 @@
     return [...base, ...extras];
   }
 
-  function renderRejectReasonChips() {
-    const grid = document.getElementById("rejectReasonsGrid");
-    if (!grid) return;
-    const pool = getRejectReasonPool();
-    const selected = new Set(state.rejectSelectedReasons);
-    grid.innerHTML = pool.map((reason, idx) => {
+  function renderReasonChipGrid(gridEl, pool, selectedList, onClickFnName) {
+    if (!gridEl) return;
+    const selected = new Set(selectedList);
+    gridEl.innerHTML = pool.map((reason, idx) => {
       const active = selected.has(reason);
       return `
         <div class="col-6">
-          <button type="button" class="reason-chip ${active ? "active" : ""}" data-idx="${idx}" onclick="toggleRejectReason(${idx})">
+          <button type="button" class="reason-chip ${active ? "active" : ""}" data-idx="${idx}" onclick="${onClickFnName}(${idx})">
             <span>${active ? "✓" : "○"}</span>
             <span>${esc(reason)}</span>
           </button>
         </div>`;
     }).join("");
+  }
+
+  function renderRejectReasonChips() {
+    renderReasonChipGrid(
+      document.getElementById("rejectReasonsGrid"),
+      getRejectReasonPool(),
+      state.rejectSelectedReasons,
+      "toggleRejectReason"
+    );
   }
 
   function toggleRejectReason(idx) {
@@ -1838,6 +1840,29 @@
   }
 
   let pendingConfirmAction = null;
+  let confirmSelectedDeleteReason = "";
+
+  function getDeleteReasonPool() {
+    return (Array.isArray(state.deleteReasons) && state.deleteReasons.length)
+      ? state.deleteReasons
+      : DEFAULT_DELETE_REASONS;
+  }
+
+  function renderDeleteReasonChips() {
+    renderReasonChipGrid(
+      document.getElementById("confirmReasonsGrid"),
+      getDeleteReasonPool(),
+      confirmSelectedDeleteReason ? [confirmSelectedDeleteReason] : [],
+      "selectDeleteReasonChip"
+    );
+  }
+
+  function selectDeleteReasonChip(idx) {
+    const pool = getDeleteReasonPool();
+    if (!pool[idx]) return;
+    confirmSelectedDeleteReason = pool[idx];
+    renderDeleteReasonChips();
+  }
 
   function openConfirmModal({ title, message, detail = "", confirmText = "Confirmă", variant = "danger", withReason = false, onConfirm, onCancel = null }) {
     pendingConfirmAction = { onConfirm, onCancel, withReason };
@@ -1860,12 +1885,9 @@
     if (reasonWrap) {
       reasonWrap.classList.toggle("d-none", !withReason);
       if (withReason) {
-        const selEl = document.getElementById("confirmReasonSelect");
-        const opts = (Array.isArray(state.deleteReasons) && state.deleteReasons.length)
-          ? state.deleteReasons
-          : DEFAULT_DELETE_REASONS;
-        selEl.innerHTML = opts.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
-        selEl.value = opts[0];
+        const opts = getDeleteReasonPool();
+        confirmSelectedDeleteReason = opts[0] || "";
+        renderDeleteReasonChips();
         document.getElementById("confirmReasonNote").value = "";
       }
     }
@@ -1886,7 +1908,7 @@
     const action = pendingConfirmAction;
     let reasonText = "";
     if (action && action.withReason) {
-      const sel = document.getElementById("confirmReasonSelect").value;
+      const sel = confirmSelectedDeleteReason || getDeleteReasonPool()[0] || "";
       const note = document.getElementById("confirmReasonNote").value.trim();
       reasonText = note ? `${sel}: ${note}` : sel;
     }
