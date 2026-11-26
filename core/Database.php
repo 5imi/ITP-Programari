@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Wrapper PDO MariaDB (InnoDB, utf8mb4, prepared statements reale si retry pe deadlock).
  */
+/* Conexiune MariaDB PDO (Database): Gestiune conexiune UTF8MB4, tranzactii atomice si detectie erori DuplicateKey/Deadlock. */
 final class Database
 {
     private \PDO $pdo;

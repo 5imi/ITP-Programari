@@ -17,6 +17,7 @@ use Core\SettingsService;
 /**
  * Controller pentru autentificare cu PIN, Dual-PIN Admin Recovery, schimbare PIN si First-Start Setup.
  */
+/* Controller Autentificare (AuthController): First-Start setup, lista utilizatori login, login PIN, recuperare PIN Secret Master, schimbare PIN si logout. */
 final class AuthController
 {
     public function __construct(

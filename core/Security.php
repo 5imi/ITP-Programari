@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Primitivi criptografici, validare PIN, verificare CSRF si rate-limit in login_attempts.
  */
+/* Securitate si Rate-Limit (Security): Hash/verificare PIN bcrypt, token-uri sesiune, validare CSRF si blocare incercari PIN. */
 final class Security
 {
     public const SESSION_COOKIE_NAME = 'itp_session';

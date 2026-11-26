@@ -1,15 +1,15 @@
-/**
- * Wrapper HTTP REST pentru backend-ul PHP + MariaDB cu gestiune automata X-CSRF-Token si erori 401/409.
- */
+/* Client HTTP REST (window.ItpApi): Wrapper fetch cu gestiune automata X-CSRF-Token, timeout 15s, detectie offline si tratare centralizata 401/409. */
 window.ItpApi = (() => {
   let csrfToken = '';
 
+  /* Actualizare token CSRF: Stocheaza tokenul primit de la server pentru cererile POST/PUT/DELETE. */
   function setCsrfToken(token) {
     csrfToken = token || '';
   }
 
   const SESSION_INVALID_CODES = new Set(['UNAUTHENTICATED', 'SESSION_INVALID', 'SESSION_EXPIRED']);
 
+  /* Executor cereri HTTP (request): Atasare header JSON/CSRF, AbortController timeout 15s, parsare raspuns si trigger logout la sesiune invalida. */
   async function request(method, url, body = null, opts = {}) {
     const headers = { Accept: 'application/json' };
     if (body !== null) {
@@ -92,6 +92,7 @@ window.ItpApi = (() => {
     return data;
   }
 
+  /* Interfata publica ItpApi: Expune metodele setCsrfToken, get, post, put si del. */
   return {
     setCsrfToken,
     get: (url, opts) => request('GET', url, null, opts),

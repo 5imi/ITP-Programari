@@ -18,6 +18,7 @@ use Core\SettingsService;
 /**
  * Controller administrare (doar rol `admin`): utilizatori, module, setari, audit securitate si backup.
  */
+/* Controller Administrare (AdminController): Rute Admin pentru utilizatori/permisiuni, module, setari statie, audit CSV si backup-uri. */
 final class AdminController
 {
     private const VALID_PERMS = [

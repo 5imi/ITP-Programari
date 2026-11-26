@@ -7,6 +7,7 @@ namespace Modules\Programari;
  * Repository SQL MariaDB pentru tabelele `appointments`, `appointment_history` si `reasons`.
  * Interdictie stricta: nu contine nicio metoda de UPDATE sau DELETE pe `appointment_history`.
  */
+/* Repository Programari (AppointmentRepo): Interogari SQL MariaDB pentru agenda, sloturi libere, cautare normalizata telefon, istoric si motive. */
 final class AppointmentRepo
 {
     public function findActiveById(\PDO $pdo, int $id): ?array

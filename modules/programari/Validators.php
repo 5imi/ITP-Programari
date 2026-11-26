@@ -8,6 +8,7 @@ use Core\HttpException;
 /**
  * Validatori de domeniu ITP (numar auto RO, telefon, zi lucratoare, slot orar, linie).
  */
+/* Validatori Modul Programari (Validators): Normalizare si validare nr. auto RO, telefon, data ISO, ora slot, linie ITP si texte. */
 final class Validators
 {
     /**

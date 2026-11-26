@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Incarca configuratia din config/env.php si expune helper-e de timp pe fusul Europe/Bucharest.
  */
+/* Configurare sistem (Config): Incarca config/env.php, seteaza fus orar Europe/Bucharest si ofera helperi de timp curent. */
 final class Config
 {
     private array $data;

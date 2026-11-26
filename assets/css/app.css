@@ -1,3 +1,4 @@
+/* Variabile globale de tema: Paleta Light cald (#e7dfd5 fundal, #f5f0e8 bara/meniu, #faf7f2 carduri), accente ACW (#dc2626 / #2563eb) si tonuri status (Programat, Finalizat, Revenire). */
 :root {
   --tblr-primary: #2563eb;
   --aw-red: #dc2626;
@@ -17,6 +18,7 @@
   --itp-border: #d8d3ca;
 }
 
+/* Fundal general al paginii: Crem cald --itp-bg (#e7dfd5) cu model SVG discret repetat si text principal #0f172a; containerele .page/.page-wrapper raman transparente. */
 body {
   background-color: var(--itp-bg);
   background-image: var(--itp-bg-pattern);
@@ -29,6 +31,7 @@ body {
   background: transparent;
 }
 
+/* Carduri si modale: Fundal alb-crem --itp-cream-card (#faf7f2), bordura --itp-border (#d8d3ca) si umbra discreta. */
 .card,
 .modal-content {
   background-color: var(--itp-cream-card);
@@ -36,6 +39,7 @@ body {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
+/* Metadate card mobil (masina, client, telefon, linie): Text inchis #1e293b cu font-weight 500 pentru lizibilitate ridicata. */
 .itp-mob-meta {
   color: #1e293b;
   font-weight: 500;
@@ -48,6 +52,7 @@ body {
   font-size: 0.78rem;
 }
 
+/* Culori status programari (randuri tabel si carduri mobile): Albastru ceata #e6f0fb pentru Programat, verde menta #e3f7df pentru Finalizat, lavanda #f9f1fb pentru Revenire. */
 .card.itp-tone-prog:not(.itp-future-mob-card),
 .itp-tone-prog:not(.itp-future-row) td {
   background-color: var(--itp-tone-prog-bg) !important;
@@ -79,6 +84,7 @@ body {
   background-color: transparent;
 }
 
+/* Insigna numar inmatriculare: Font monospace bold #0f172a pe fundal alb #ffffff, bordura #cbd5e1 si dunga stanga albastra #1d4ed8 (5px). */
 .plate-badge {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 700;
@@ -94,6 +100,7 @@ body {
   white-space: nowrap;
 }
 
+/* Butoane tactile standard: Inaltime minima 40px si aliniere flex centrata cu spatiu de 6px intre icon si text. */
 .touch-btn {
   min-height: 40px;
   display: inline-flex;
@@ -102,6 +109,7 @@ body {
   gap: 6px;
 }
 
+/* Butoane navigare calendar stanga/dreapta si buton Azi: Stil albastru soft (#eff6ff fundal, #bfdbfe contur, #1d4ed8 icon), inaltime 32px si colturi rotunjite 8px. */
 .itp-date-btn {
   min-width: 38px;
   width: 38px;
@@ -141,6 +149,7 @@ body {
   flex-shrink: 0;
 }
 
+/* Filtre Istoric Imutabil: Pastile rapide (Azi, 7 zile, Toate, Interval), selector utilizator si campuri de interval de date. */
 .itp-history-pills {
   display: flex;
   flex-wrap: wrap;
@@ -170,6 +179,7 @@ body {
   width: 138px;
 }
 
+/* Paginare Istoric Imutabil: Butoane Inapoi/Inainte in stil albastru soft (#eff6ff) si numere de pagina (#2563eb activ, #ffffff inactiv). */
 .itp-page-btn {
   height: 34px;
   padding: 0 12px;
@@ -229,6 +239,7 @@ body {
   color: #1d4ed8;
 }
 
+/* Camp data format romanesc (zz/ll/aaaa): Text vizibil tabular cu iconita calendar in dreapta si input nativ transparent suprapus. */
 .itp-ro-date-wrap {
   position: relative;
   display: flex;
@@ -264,6 +275,7 @@ body {
   border: 0;
 }
 
+/* Bara laterala (Sidebar) si bara de sus (Topbar): Fundal crem --itp-cream (#f5f0e8) cu bordura --itp-border (#d8d3ca) si element activ rosu #dc2626 pe fundal #fee2e2. */
 .itp-sidebar {
   background: var(--itp-cream);
   border-right: 1px solid var(--itp-border);
@@ -290,6 +302,7 @@ body {
   border-bottom: 1px solid var(--itp-border);
 }
 
+/* Identitate vizuala ACW (Login si Navbar): Sigla rotunda pe fundal alb #ffffff, card login cu dunga rosie sus #dc2626 (4px) si buton rosu .btn-aw. */
 .aw-logo-login {
   width: 84px;
   height: 84px;
@@ -327,6 +340,7 @@ body {
   color: #ffffff;
 }
 
+/* Ecran Login (selectie utilizator si tastatura PIN): Carduri utilizator albe cu activare rosie #dc2626, input PIN centrat si taste numerice min 44px. */
 .pin-user-card {
   border: 1.5px solid #cbd5e1;
   border-radius: 10px;
@@ -368,6 +382,7 @@ body {
   border-radius: 10px;
 }
 
+/* Banda filtre status agenda: Pastile rotunjite 999px (#ffffff inactiv, albastru #2563eb cu text alb cand sunt active). */
 .filter-strip {
   display: flex;
   gap: 6px;
@@ -393,6 +408,7 @@ body {
   color: #ffffff;
 }
 
+/* Tabel agenda desktop si butoane de actiune: Celule compacte, butoane uniforme de 27px inaltime, Telefon albastru #1e40af si WhatsApp verde #15803d. */
 .itp-compact-table td,
 .itp-compact-table th {
   padding: 0.5rem 0.5rem !important;
@@ -452,6 +468,7 @@ body {
   max-width: 260px;
 }
 
+/* Sectiune Programari in viitor (rezultate cautare): Separator gri #f1f5f9 cu bordura stanga albastra #0284c7 (3px) pe randuri si carduri mobile. */
 .itp-future-divider td {
   background: #f1f5f9 !important;
   color: #0f172a;
@@ -499,6 +516,7 @@ body {
   white-space: nowrap;
 }
 
+/* Vizibilitate implicita Desktop si camp cautare globala: Tabel vizibil pe desktop, carduri si bara de jos ascunse, cautare max 340px pe >=992px. */
 .desktop-table {
   display: block;
 }
@@ -521,6 +539,7 @@ body {
   }
 }
 
+/* Notificari Toast (colt dreapta-sus): Fundal inchis #0f172a cu text alb #ffffff, buton actiune #2563eb si animatie fadeSlide. */
 .toast-container-itp {
   position: fixed;
   top: 72px;
@@ -574,6 +593,7 @@ body {
   }
 }
 
+/* Butoane-bifa rapide pentru motive (Revenire si Stergere): Fundal alb #ffffff, mov #9333ea activ la Revenire si rosu #dc2626 activ la Stergere. */
 .reason-check-btn {
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -605,11 +625,13 @@ body {
   font-weight: 600;
 }
 
+/* Prevenire scroll orizontal accidental pe pagina: overflow-x hidden pe html si body. */
 html,
 body {
   overflow-x: hidden;
 }
 
+/* Stiluri responsive Telefon si Tableta (<= 991.98px): Ascunde tabelul desktop, afiseaza cardurile mobile (.itp-mob-card), filtrele compacte si bara fixa de jos (.mobile-bottom-nav). */
 @media (max-width: 991.98px) {
   .desktop-table {
     display: none;
@@ -824,6 +846,7 @@ body {
     border-top-color: var(--aw-red);
   }
 
+  /* Ajustari pozitie Toast pe mobil: Aliniere stanga/dreapta 12px si top 56px sub bara compacta. */
   .toast-container-itp {
     left: 12px;
     right: 12px;
@@ -831,6 +854,7 @@ body {
   }
 }
 
+/* Ajustari ecrane foarte inguste (<= 359.98px, ex. 320px): Compactare header, butoane actiune pe 2 randuri daca e necesar si butoane calendar 34px. */
 @media (max-width: 359.98px) {
   #sidebarMenu > .container-fluid {
     padding-left: 0.45rem !important;
@@ -876,6 +900,7 @@ body {
   }
 }
 
+/* Subtitlu antet pagina (data si utilizator logat): Text inchis #1e293b cu font-weight 500 pentru contrast optim. */
 #pageHeaderBar #viewSubtitle {
   color: #1e293b !important;
   font-weight: 500;
@@ -885,7 +910,7 @@ body {
 :root {
   --itp-newappt-bg: var(--tblr-primary);
   --itp-newappt-hover-bg: #1d4ed8;
-  --itp-newappt-border: #db2cb8;
+  --itp-newappt-border: #d678c3;
   --itp-newappt-fg: #ffffff;
   --itp-newappt-shadow: rgba(37, 99, 235, 0.3);
 }
@@ -900,7 +925,7 @@ body {
   --tblr-btn-active-border-color: var(--itp-newappt-border);
   --tblr-btn-color: var(--itp-newappt-fg);
   background-color: var(--itp-newappt-bg);
-  border: 5px solid var(--itp-newappt-border);
+  border: 3px solid var(--itp-newappt-border);
   border-radius: 8px;
   color: var(--itp-newappt-fg);
   font-weight: 700;

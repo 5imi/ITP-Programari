@@ -7,6 +7,7 @@ namespace Core;
  * Autoloader PSR-4 propriu, fara dependenta de Composer.
  * Mapeaza namespace-ul `Core\*` catre `core/` si `Modules\<Nume>\*` catre `modules/<nume>/`.
  */
+/* Autoloader PSR-4 intern (Autoloader): Incarcare automata clase din core/ si modules/ fara Composer. */
 final class Autoloader
 {
     private static string $baseDir = '';

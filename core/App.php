@@ -13,6 +13,7 @@ use Modules\Programari\HistoryService;
 /**
  * Bootstrap central al aplicatiei: configurare, conexiune PDO, migrari incrementale si rutare.
  */
+/* Nucleu aplicatie (App): Initializare Config, Database, Migrator, ModuleLoader, inregistrare rute Auth/Admin/Module si dispatch HTTP. */
 final class App
 {
     private Config $config;

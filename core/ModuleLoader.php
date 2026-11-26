@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Descopera modulele din `modules/<nume>/module.json`, sincronizeaza `modules_state` si inregistreaza rutele active.
  */
+/* Incarcator Module (ModuleLoader): Descoperire manifest.json din modules/*, sincronizare stare DB si verificare activare. */
 final class ModuleLoader
 {
     /** @var array<string, array> */

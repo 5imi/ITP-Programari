@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Gestioneaza sesiunile autentificate prin cookie HttpOnly si permisiunile RBAC.
  */
+/* Autentificare si RBAC (Auth): Verificare sesiune cookie httpOnly, CSRF, permisiuni granulare si rotatie session_version. */
 final class Auth
 {
     public function __construct(

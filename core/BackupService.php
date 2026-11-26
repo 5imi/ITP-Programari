@@ -7,6 +7,7 @@ namespace Core;
  * Backup la cerere (snapshot JSON consistent al tabelelor MariaDB) in directorul `backups/`.
  * Pe Romarg cPanel ruleaza suplimentar backup-ul zilnic Acronis.
  */
+/* Serviciu Backup (BackupService): Generare snapshot SQL/JSON, listare si descarcare arhive protejate din storage/backups. */
 final class BackupService
 {
     public function __construct(

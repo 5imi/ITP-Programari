@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Emite raspunsuri JSON, erori structurate, fisiere CSV (UTF-8 BOM) sau continut HTML.
  */
+/* Generator Raspunsuri HTTP (Response): Constructie si emitere raspunsuri JSON, erori structurate, CSV si HTML. */
 final class Response
 {
     public static function json(array $payload, int $status = 200): array

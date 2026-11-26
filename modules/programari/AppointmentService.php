@@ -13,6 +13,7 @@ use Core\SettingsService;
 /**
  * Logica tranzactionala anti race-condition pentru programari, reveniri 30 zile, motive si Istoric Imutabil.
  */
+/* Serviciu Programari (AppointmentService): Logica de business ITP (creare, editare, status Finalizat/Revenire, reprogramare, stergere soft, lookup nr. auto). */
 final class AppointmentService
 {
     public function __construct(

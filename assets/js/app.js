@@ -4,6 +4,7 @@
 (() => {
   const api = window.ItpApi;
 
+  /* Stare globala aplicatie (state): Date statie, utilizator curent, filtre agenda/istoric, liste admin si starea modalelor active. */
   const state = {
     todayDate: '',
     nowTime: '',
@@ -78,6 +79,7 @@
   const busyLocks = new Set();
   const HISTORY_POLL_MS = 10000;
 
+  /* Protectie dublu-click (withBusy): Blocheaza actiunile concurente pe acelasi lockKey si dezactiveaza butonul pe durata cererii. */
   async function withBusy(lockKey, btnEl, fn) {
     if (busyLocks.has(lockKey)) return;
     busyLocks.add(lockKey);
@@ -100,6 +102,7 @@
       .replace(/'/g, '&#39;');
   }
 
+  /* Utilitare formatare si calcul date calendaristice (RO dd.mm.yyyy / dd/mm/yyyy, zile lucratoare, diferente zile). */
   function formatDateRo(iso) {
     if (!iso || !String(iso).includes('-')) return iso || '';
     const [y, m, d] = String(iso).split('-');
@@ -207,6 +210,7 @@
     return `${days[dt.getDay()]}, ${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
   }
 
+  /* Utilitare telefon, WhatsApp, SMS si construire mesaje client (pastrare diacritice pe WA, eliminare diacritice GSM-7 pe SMS). */
   function cleanPhoneWa(phone) {
     const digits = String(phone || '').replace(/\D/g, '');
     if (digits.startsWith('00')) return digits.slice(2);
@@ -272,6 +276,7 @@
     return `sms:${telNum}${encodedMsg ? `${sep}body=${encodedMsg}` : ''}`;
   }
 
+  /* Permisiuni RBAC, notificari Toast (showToast) si gestiune modale Bootstrap / sidebar mobil. */
   function userCan(perm) {
     if (!state.user) return false;
     if (state.user.role === 'admin') return true;
@@ -385,6 +390,7 @@
     showLoginScreen();
   };
 
+  /* Pornire aplicatie (boot): Verifica setup-status, incarca sesiunea activa sau afiseaza ecranul de Login. */
   async function boot() {
     try {
       const setup = await api.get('api/auth/setup-status');
@@ -410,6 +416,7 @@
     }
   }
 
+  /* Modul First-Start Setup: Configurare initiala statie, admin principal si colegi cand tabela users este goala. */
   function showSetupScreen(tokenRequired) {
     showScreen('setupScreen');
     const tokWrap = document.getElementById('setupTokenWrap');
@@ -464,6 +471,7 @@
     });
   });
 
+  /* Modul Autentificare PIN & Recuperare Admin: Lista utilizatori, tastatura numerica, PIN uzual si PIN Secret Master. */
   async function showLoginScreen(initialError = '') {
     hideAllOpenModals();
     closeMobileSidebar(true);
@@ -594,6 +602,7 @@
     });
   });
 
+  /* Initializare sesiune si navigare: Incarca datele utilizatorului logat, randeaza sidebar-ul si bara fixa de jos mobil. */
   async function loadSessionAndEnterApp() {
     const me = await api.get('api/auth/me');
     state.user = me.user;
@@ -770,6 +779,7 @@
     searchReloadTimer = setTimeout(() => loadAndRenderCurrentView(), 180);
   });
 
+  /* Incarcare date si rutare vederi (loadAndRenderCurrentView): Apeleaza API-ul pentru vedere activa (azi/istoric/admin) cu AbortController. */
   async function loadAndRenderCurrentView(opts = {}) {
     const isPoll = !!(opts && opts.isPoll);
     const reqSeq = ++viewRequestSeq;
@@ -934,6 +944,7 @@
     }
   }
 
+  /* Vedere Agenda Zilnica (renderAziView): Calendar, filtre linie/status, tabel desktop compact, carduri mobile si sectiune Programari in viitor. */
   function renderAziView() {
     const isMob = window.innerWidth < 992;
     const isHistory = state.selectedDate < state.todayDate;
@@ -1218,6 +1229,7 @@
     loadAndRenderCurrentView();
   };
 
+  /* Modal Programare Noua / Editare / Reprogramare: Sloturi disponibile, autofill dupa nr. auto, detectie conflicte si submit. */
   function findAppointmentById(id) {
     return state.appointments.find(a => a.id === id) || state.futureAppointments.find(a => a.id === id) || null;
   }
@@ -1696,6 +1708,7 @@
     setModalVisible('modalRespingere', true);
   };
 
+  /* Modal Motiv Revenire (modalRespingere): Selectie bife rapide cauze respingere ITP, salvare si revocare revenire. */
   function renderRejectReasonButtons() {
     const grid = document.getElementById('rejectReasonsGrid');
     const activeLabels = new Set(state.reasonsRevenire.map(r => r.label));
@@ -1835,6 +1848,7 @@
     });
   };
 
+  /* Modal Confirmare si Stergere Programare (openConfirmModal): Reconfirmare actiuni critice si selectie motiv stergere pentru Istoric. */
   function openConfirmModal(opts) {
     state.confirmAction = opts;
     const variant = opts.variant || 'danger';
@@ -1898,6 +1912,7 @@
     }
   });
 
+  /* Vedere Istoric Imutabil (renderIstoricView): Filtre cronologice (Azi/7 zile/Toate/Interval), filtre status/actor, paginare 10/pag si Export CSV. */
   function getHistoryDateRange() {
     const today = state.todayDate || '';
     if (state.historyDatePreset === 'today' && today) {
@@ -2121,6 +2136,7 @@
     });
   };
 
+  /* Administrare Utilizatori (renderUsersView): Lista conturi, permisiuni granulare, blocare/deblocare si creare/editare colegi. */
   function renderUsersView() {
     return `
       <div class="mb-2 d-flex justify-content-between align-items-center">
@@ -2232,6 +2248,7 @@
     });
   };
 
+  /* Administrare Motive Rapide (renderReasonsView): Gestionare si editare inline motive Revenire si Stergere/Anulare. */
   function renderReasonsView() {
     const renderKind = (title, kind, items) => `
       <div class="col-md-6">
@@ -2328,6 +2345,7 @@
     });
   };
 
+  /* Administrare Module (renderModulesView): Activare/dezactivare module optionale ale aplicatiei. */
   function renderModulesView() {
     return `
       <div class="row g-2">
@@ -2368,6 +2386,7 @@
     });
   };
 
+  /* Administrare Setari Statie (renderSettingsView): Configurare denumire, semnatura mesaje, linii ITP, program orar, zile lucratoare si termen revenire. */
   function renderSettingsView() {
     const c = state.stationConfig;
     const workDays = Array.isArray(c.work_days) ? c.work_days.map(Number) : [1, 2, 3, 4, 5, 6];
@@ -2463,6 +2482,7 @@
     });
   };
 
+  /* Administrare Backup & Jurnal Securitate (renderBackupView): Export SQL/CSV, restaurare si vizualizare core_audit_log. */
   function renderBackupView() {
     return `
       <div class="card p-3">
@@ -2587,6 +2607,7 @@
     }
   };
 
+  /* Sincronizare automata (Polling 10s) si detector Offline/Online: Reimprospateaza agenda fara flicker si afiseaza bannerul offline. */
   function shouldRunAgendaPoll() {
     if (!state.user) return false;
     if (document.hidden) return false;

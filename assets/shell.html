@@ -12,7 +12,7 @@
 </head>
 
 <body>
-  <!-- First-Start Setup (activ doar cand tabela users este goala) -->
+  <!-- Ecran First-Start Setup (#setupScreen): Configurare initiala unica (statie, admin principal, PIN uzual + PIN Secret Master) activa doar cand tabela users este goala. -->
   <div class="page page-center d-none" id="setupScreen" style="min-height: 100vh;">
     <div class="container py-4" style="max-width: 540px;">
       <div class="text-center mb-3">
@@ -75,15 +75,14 @@
     </div>
   </div>
 
-  <!-- Login Screen -->
+  <!-- Ecran Autentificare (#loginScreen): Selectie utilizator (#pinUserGrid), tastatura PIN numerica (#pinKeypad) si mod recuperare PIN Secret Admin (#masterRecoveryBox). -->
   <div class="page page-center d-none" id="loginScreen" style="min-height: 100vh;">
     <div class="container container-tight py-4">
       <div class="text-center mb-3">
         <img src="assets/img/aw-logo.png" alt="ACW - Automotive Center Werkstat Fălticeni"
           class="aw-logo-login mb-2">
         <div class="fw-bold fs-3 text-dark lh-sm" id="loginStationTitle">ACW - Fălticeni</div>
-        <div class="text-muted small fw-semibold" style="letter-spacing: 0.06em; font-size: 0.72rem;">STAȚIE ITP • ACCES
-          SECURIZAT</div>
+        <div class="text-muted small fw-semibold" style="letter-spacing: 0.06em; font-size: 0.72rem;">STAȚIE ITP</div>
       </div>
       <div class="card card-md aw-login-card">
         <div class="card-body p-3 p-sm-4">
@@ -165,8 +164,9 @@
     </div>
   </div>
 
-  <!-- App Shell -->
+  <!-- Carcasa principala aplicatie (#appShell): Sidebar navigare (#sidebarMenu), bara de sus (#itpTopbar), continut dinamic (#viewRoot) si bara fixa mobil (#mobileBottomNav). -->
   <div class="page d-none" id="appShell">
+    <!-- Bara laterala / Meniu principal (#sidebarMenu): Sigla ACW, badge utilizator mobil, buton rapid + Programare mobil si linkuri module/admin. -->
     <aside class="navbar navbar-vertical navbar-expand-lg itp-sidebar" id="sidebarMenu">
       <div class="container-fluid">
         <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1 gap-2">
@@ -238,6 +238,7 @@
     </aside>
 
     <div class="page-wrapper">
+      <!-- Bara de sus (#itpTopbar): Cautare globala (#globalSearch), buton Toate zilele mobil, buton + Programare (#btnNewAppt), Schimba PIN si Deconectare. -->
       <header class="navbar navbar-expand-md itp-topbar sticky-top" id="itpTopbar">
         <div class="container-xl d-flex align-items-center justify-content-between gap-2 flex-nowrap">
           <div class="itp-search-wrap flex-grow-1">
@@ -273,6 +274,7 @@
         </div>
       </header>
 
+      <!-- Zona principala continut (#viewRoot): Banner offline (#offlineBanner), antet pagina (#pageHeaderBar) si containerul dinamic pentru vederi. -->
       <div class="page-body">
         <div class="container-xl">
           <div class="alert alert-danger py-2 px-3 mb-2 small d-none fw-semibold" id="offlineBanner" role="status">
@@ -287,13 +289,14 @@
       </div>
     </div>
 
+    <!-- Bara fixa navigare jos mobil (#mobileBottomNav): Randata dinamic din JS pentru ecrane <= 991.98px. -->
     <nav class="mobile-bottom-nav" id="mobileBottomNav"></nav>
   </div>
 
-  <!-- Toast Container -->
+  <!-- Container notificari Toast (#toastContainer): Alerte temporare in coltul dreapta-sus cu buton optional de actiune. -->
   <div class="toast-container-itp" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
 
-  <!-- Modal: Programare Noua / Editare / Reprogramare -->
+  <!-- Modal Programare Noua / Editare / Reprogramare (#modalProgramare): Data (zz/ll/aaaa), ora, linie, nr. auto, telefon, client, masina si alerte suprapunere. -->
   <div class="modal modal-blur fade" id="modalProgramare" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <form id="formProgramare" class="modal-content">
@@ -364,7 +367,7 @@
     </div>
   </div>
 
-  <!-- Modal: Motiv Revenire -->
+  <!-- Modal Motiv Revenire ITP (#modalRespingere): Bife rapide cauze respingere (#rejectReasonsGrid), observatii si buton revocare revenire. -->
   <div class="modal modal-blur fade" id="modalRespingere" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <form id="formRespingere" class="modal-content">
@@ -399,7 +402,7 @@
     </div>
   </div>
 
-  <!-- Modal: Confirmare & Motiv Stergere -->
+  <!-- Modal Confirmare & Motiv Stergere (#modalConfirm): Reconfirmare actiuni critice si selectie rapida motiv anulare/stergere pentru Istoric. -->
   <div class="modal modal-blur fade" id="modalConfirm" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
       <div class="modal-content">
@@ -432,7 +435,7 @@
     </div>
   </div>
 
-  <!-- Modal: Utilizator -->
+  <!-- Modal Utilizator (#modalUser): Creare/editare cont coleg (nume, username, rol, PIN si permisiuni granulare Editare/Revenire/Stergere). -->
   <div class="modal modal-blur fade" id="modalUser" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <form id="formUser" class="modal-content">
@@ -490,7 +493,7 @@
     </div>
   </div>
 
-  <!-- Modal: Schimba PIN Propriu -->
+  <!-- Modal Schimba PIN Propriu (#modalChangePin): Actualizare PIN numeric (4-6 cifre) de catre utilizatorul autentificat. -->
   <div class="modal modal-blur fade" id="modalChangePin" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
       <form id="formChangePin" class="modal-content">
@@ -524,7 +527,7 @@
     </div>
   </div>
 
-  <!-- Modal: Jurnal Securitate (Admin) -->
+  <!-- Modal Jurnal Securitate Admin (#modalSecurityLog): Evidenta protejata core_audit_log cu filtrare pe categorie (AUTH, USERS, CONFIG) si Export CSV. -->
   <div class="modal modal-blur fade" id="modalSecurityLog" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
       <div class="modal-content">

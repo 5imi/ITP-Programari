@@ -7,6 +7,7 @@ namespace Core;
  * Logger append-only pentru core_audit_log (Jurnal Securitate Admin).
  * Nu expune niciodata metode de UPDATE sau DELETE.
  */
+/* Jurnal Securitate (AuditLogger): Scriere evenimente append-only in core_audit_log (AUTH, USERS, CONFIG, BACKUP). */
 final class AuditLogger
 {
     public function __construct(private readonly Config $config)

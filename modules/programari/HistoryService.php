@@ -9,6 +9,7 @@ use Core\Config;
  * Serviciu append-only pentru `appointment_history` (Istoric Imutabil).
  * Extensibil: coloana event_type este VARCHAR(32), pregatita si pentru evenimente viitoare.
  */
+/* Serviciu Istoric Imutabil (HistoryService): Inregistreaza evenimente append-only in appointment_history (CREAT, MODIFICAT, FINALIZAT, REVENIRE, REPROGRAMAT, STERS). */
 final class HistoryService
 {
     public const EVENT_CATALOG = [

@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Router HTTP minimal cu suport pentru parametri de ruta `{id}` / `{slug}`.
  */
+/* Ruter HTTP (Router): Inregistrare rute REST cu parametri dinamici ({id}) si dispatch catre controlere. */
 final class Router
 {
     /** @var array<int, array{method: string, pattern: string, regex: string, handler: callable}> */

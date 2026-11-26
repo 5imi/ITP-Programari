@@ -15,6 +15,7 @@ use Core\Router;
 /**
  * Controller HTTP pentru modulul `programari` (/api/m/programari/...).
  */
+/* Controller Modul Programari (Controller): Expune rutele REST /api/m/programari/* (agenda, slots, lookup, CRUD, revenire, finalizat, istoric, CSV, motive). */
 final class Controller
 {
     public function __construct(

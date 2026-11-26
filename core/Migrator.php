@@ -7,6 +7,7 @@ namespace Core;
  * Runner incremental de migrari SQL (Core + Modules) cu verificare checksum SHA-256.
  * Trateaza fisierele `*_triggers.sql` cu fallback sigur pe shared hosting fara SUPER privilege.
  */
+/* Executor Migrari SQL (Migrator): Ruleaza idempotent fisierele .sql din core/migrations si modules/[modul]/migrations. */
 final class Migrator
 {
     public function __construct(

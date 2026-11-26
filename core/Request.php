@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Incapsuleaza cererea HTTP curenta, normalizand ruta relativa la subdirectorul aplicatiei.
  */
+/* Obiect Cerere HTTP (Request): Incapsuleaza metoda, calea, query params, headere, cookie-uri, IP si body JSON. */
 final class Request
 {
     private string $method;

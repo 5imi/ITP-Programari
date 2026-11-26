@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Runtime HTTP exception convertita unitar in raspuns JSON de Front Controller.
  */
+/* Exceptie HTTP controlata (HttpException): Transporta statusCode, errorCode si date extra catre raspunsul JSON. */
 final class HttpException extends \RuntimeException
 {
     public function __construct(

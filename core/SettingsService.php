@@ -6,6 +6,7 @@ namespace Core;
 /**
  * Gestioneaza setarile stationare persistate in tabela `settings` din MariaDB.
  */
+/* Serviciu Setari Statie (SettingsService): Configurare linii ITP, program orar, zile lucratoare, termen revenire si verificare conflicte. */
 final class SettingsService
 {
     public const KEY_STATION = 'station_config';
