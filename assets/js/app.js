@@ -1127,21 +1127,35 @@
       const takenBySlot = data.taken_by_slot || {};
       const curVal = forceTime || hourEl.value;
 
+      // R07: In aceeasi zi cu vizita parinte, blocam orele <= ora parintelui
+      let parentRef = state.reprogramParent || null;
+      if (!parentRef && state.editingAppt && state.editingAppt.parent_id) {
+        parentRef = findAppointmentById(state.editingAppt.parent_id);
+      }
+      const minTimeSameDay = (parentRef && parentRef.date === date) ? (parentRef.time || '') : '';
+
+      const selectableSlots = [];
       hourEl.innerHTML = all.map(s => {
         const isFree = free.has(s);
+        const beforeParent = Boolean(minTimeSameDay && s <= minTimeSameDay);
+        const canSelect = isFree && !beforeParent;
+        if (canSelect) selectableSlots.push(s);
+
         const busyLines = Array.isArray(takenBySlot[s]) ? takenBySlot[s] : [];
         let label = s;
-        if (!isFree) {
+        if (beforeParent) {
+          label = `${s} (înainte de ${minTimeSameDay})`;
+        } else if (!isFree) {
           label = `${s} (ocupat)`;
         } else if (busyLines.length > 0) {
           const busyShort = busyLines.map(l => String(l).replace(/^Linia\s+/i, 'L')).join(',');
           label = `${s} (${busyShort} ocup.)`;
         }
-        return `<option value="${esc(s)}" ${isFree ? '' : 'disabled'}>${esc(label)}</option>`;
+        return `<option value="${esc(s)}" ${canSelect ? '' : 'disabled'}>${esc(label)}</option>`;
       }).join('');
 
-      if (curVal && free.has(curVal)) hourEl.value = curVal;
-      else if (data.free_slots && data.free_slots.length) hourEl.value = data.free_slots[0];
+      if (curVal && selectableSlots.includes(curVal)) hourEl.value = curVal;
+      else if (selectableSlots.length) hourEl.value = selectableSlots[0];
       else if (all.length) hourEl.value = all[0];
 
       updateLineOptionsLabels();
@@ -1257,7 +1271,8 @@
     document.getElementById('modalProgramareTitle').textContent = `Reprogramează revenire • ${p.plate}`;
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Programează revenirea';
 
-    document.getElementById('inpDate').min = isAdmin() ? '' : state.todayDate;
+    const minReprogDate = isAdmin() ? p.date : (p.date > state.todayDate ? p.date : state.todayDate);
+    document.getElementById('inpDate').min = minReprogDate;
     const defaultDate = p.date >= state.todayDate
       ? addOpenDaysIso(p.date, 1)
       : (isClosedDayIso(state.todayDate) ? addOpenDaysIso(state.todayDate, 1) : state.todayDate);
@@ -1291,7 +1306,7 @@
       try {
         if (state.reprogramParent) {
           await api.post(`api/m/programari/appointments/${state.reprogramParent.id}/reprogram`, {
-            date, time, line, ...extraFlags,
+            date, time, line, phone, client, vehicle, ...extraFlags,
           });
           setModalVisible('modalProgramare', false);
           showToast(`Revenire programată: ${state.reprogramParent.plate} (${formatDateRo(date)} ${time})`, buildJumpToDateAction(date));

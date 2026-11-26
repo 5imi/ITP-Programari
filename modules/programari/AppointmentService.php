@@ -240,6 +240,33 @@ final class AppointmentService
                 );
             }
 
+            $parentRow = null;
+            if ($existing['parent_id'] !== null) {
+                $parentRow = $this->repo->findByIdIncludingDeletedForUpdate($pdo, (int) $existing['parent_id']);
+                if ($parentRow && $parentRow['deleted_at'] === null) {
+                    $this->assertAfterParentSlot($parentRow, $validated['date'], $validated['time']);
+                }
+            }
+
+            $activeChild = null;
+            if ($existing['resolved_by_reinspection_id'] !== null) {
+                $activeChild = $this->repo->lockActiveByIdForUpdate($pdo, (int) $existing['resolved_by_reinspection_id']);
+                if ($activeChild !== null) {
+                    if ($validated['date'] > $activeChild['date']
+                        || ($validated['date'] === $activeChild['date'] && $validated['time'] >= $activeChild['time'])) {
+                        throw new HttpException(
+                            422,
+                            'INVALID_PARENT_ORDER',
+                            sprintf(
+                                'Vizita inițială nu poate fi mutată la sau după reprogramarea activă (%s %s).',
+                                Validators::formatDateRo((string) $activeChild['date']),
+                                $activeChild['time']
+                            )
+                        );
+                    }
+                }
+            }
+
             $excludeParent = $existing['parent_id'];
             $dup = $this->repo->findSameDayPlateConflict($pdo, $validated['plate_key'], $validated['date'], $id, $excludeParent);
             if ($dup && empty($body['confirm_duplicate'])) {
@@ -257,15 +284,17 @@ final class AppointmentService
                 );
             }
 
-            $effectiveDeadline = $existing['visit_type'] === 'REVENIRE'
+            $hasOpenParent = $parentRow !== null && $parentRow['deleted_at'] === null && $parentRow['status'] === 'Revenire';
+            $isChildFlow = $existing['visit_type'] === 'REVENIRE' || $hasOpenParent;
+            $effectiveDeadline = $isChildFlow
                 ? $this->resolveReinspectionDeadline($pdo, $existing, $reinspDays)
                 : $existing['reinspection_deadline'];
 
-            $overDeadline = $existing['visit_type'] === 'REVENIRE'
+            $overDeadline = $isChildFlow
                 && !empty($effectiveDeadline)
                 && $validated['date'] > $effectiveDeadline;
 
-            if ($overDeadline && empty($body['confirm_over_deadline'])) {
+            if ($overDeadline && $existing['visit_type'] === 'REVENIRE' && empty($body['confirm_over_deadline'])) {
                 throw new HttpException(
                     409,
                     'OVER_DEADLINE',
@@ -276,6 +305,8 @@ final class AppointmentService
                     )
                 );
             }
+
+            $returnedInDeadline = $existing['visit_type'] === 'NORMAL' && $hasOpenParent && !$overDeadline;
 
             $changes = [];
             if ($existing['date'] !== $validated['date']) {
@@ -300,16 +331,21 @@ final class AppointmentService
                 $changes[] = sprintf('Mașină: %s → %s', $existing['vehicle'] ?? '-', $validated['vehicle'] !== '' ? $validated['vehicle'] : '-');
             }
 
-            if (empty($changes) && !$overDeadline) {
+            if (empty($changes) && !$overDeadline && !$returnedInDeadline) {
                 return $existing;
             }
 
-            $nextVisitType = $overDeadline ? 'NORMAL' : $existing['visit_type'];
+            $nextVisitType = $isChildFlow ? ($overDeadline ? 'NORMAL' : 'REVENIRE') : $existing['visit_type'];
             $nextDeadline = $overDeadline ? null : $effectiveDeadline;
             if (!$overDeadline && $existing['visit_type'] === 'NORMAL' && $existing['status'] === 'Revenire' && $existing['date'] !== $validated['date']) {
                 $nextDeadline = Validators::addDaysIso($validated['date'], $reinspDays);
             }
-            $nextVerify = $overDeadline ? '' : $existing['verify_notes'];
+            $nextVerify = $existing['verify_notes'];
+            if ($overDeadline) {
+                $nextVerify = '';
+            } elseif ($returnedInDeadline && $parentRow !== null) {
+                $nextVerify = mb_substr($this->buildVerifySummary($parentRow), 0, 500, 'UTF-8');
+            }
 
             $upd = $pdo->prepare(
                 'UPDATE appointments
@@ -350,7 +386,8 @@ final class AppointmentService
 
             $after = $this->repo->findActiveById($pdo, $id);
             $diffSummary = implode(' | ', $changes)
-                . ($overDeadline ? sprintf(' | Trecut pe ITP complet (peste %d zile)', $reinspDays) : '')
+                . ($overDeadline && $existing['visit_type'] === 'REVENIRE' ? sprintf(' | Trecut pe ITP complet (peste %d zile)', $reinspDays) : '')
+                . ($returnedInDeadline ? ' | Reîncadrat în termen ca Revenire' : '')
                 . ($dup ? ' | Duplicat confirmat' : '')
                 . ($validated['is_closed_admin'] ? ' | Excepție Admin zi închisă' : '');
 
@@ -366,6 +403,38 @@ final class AppointmentService
                 null,
                 $req->clientIp()
             );
+
+            // R14: Sincronizare nr. auto / termen pe copilul activ daca s-au corectat pe parinte
+            if ($activeChild !== null) {
+                $plateChanged = $existing['plate'] !== $validated['plate'];
+                $syncDeadline = ($existing['visit_type'] === 'NORMAL' && $activeChild['visit_type'] === 'REVENIRE'
+                    && $nextDeadline !== null && $activeChild['reinspection_deadline'] !== $nextDeadline);
+                if ($plateChanged || $syncDeadline) {
+                    $newChildDeadline = $syncDeadline ? $nextDeadline : $activeChild['reinspection_deadline'];
+                    $pdo->prepare('UPDATE appointments SET plate = ?, plate_key = ?, reinspection_deadline = ?, version = version + 1, updated_by = ?, updated_at = ? WHERE id = ?')
+                        ->execute([$validated['plate'], $validated['plate_key'], $newChildDeadline, (int) $user['id'], $this->config->nowString(), (int) $activeChild['id']]);
+                    $childAfter = $this->repo->findActiveById($pdo, (int) $activeChild['id']);
+                    $syncNotes = [];
+                    if ($plateChanged) {
+                        $syncNotes[] = sprintf('Nr. auto: %s → %s', $activeChild['plate'], $validated['plate']);
+                    }
+                    if ($syncDeadline) {
+                        $syncNotes[] = sprintf('Termen limită: %s', Validators::formatDateRo((string) $newChildDeadline));
+                    }
+                    $this->history->record(
+                        $pdo,
+                        (int) $activeChild['id'],
+                        'MODIFICAT',
+                        (int) $user['id'],
+                        (string) $user['actor_label'],
+                        'Actualizat automat din vizita inițială: ' . implode(' | ', $syncNotes),
+                        $activeChild,
+                        $childAfter,
+                        null,
+                        $req->clientIp()
+                    );
+                }
+            }
 
             return $after ?? [];
         });
@@ -439,6 +508,31 @@ final class AppointmentService
                 $reasonText,
                 $req->clientIp()
             );
+
+            // R05: Sincronizeaza `verify_notes` pe copilul activ REVENIRE daca motivele au fost actualizate pe parinte
+            if ($existing['resolved_by_reinspection_id'] !== null && $after !== null) {
+                $activeChild = $this->repo->lockActiveByIdForUpdate($pdo, (int) $existing['resolved_by_reinspection_id']);
+                if ($activeChild !== null && $activeChild['visit_type'] === 'REVENIRE') {
+                    $newVerify = mb_substr($this->buildVerifySummary($after), 0, 500, 'UTF-8');
+                    if ($activeChild['verify_notes'] !== $newVerify) {
+                        $pdo->prepare('UPDATE appointments SET verify_notes = ?, version = version + 1, updated_by = ?, updated_at = ? WHERE id = ?')
+                            ->execute([$newVerify, (int) $user['id'], $this->config->nowString(), (int) $activeChild['id']]);
+                        $childAfter = $this->repo->findActiveById($pdo, (int) $activeChild['id']);
+                        $this->history->record(
+                            $pdo,
+                            (int) $activeChild['id'],
+                            'MODIFICAT',
+                            (int) $user['id'],
+                            (string) $user['actor_label'],
+                            sprintf('Actualizat „De verificat” din vizita inițială: %s', $newVerify),
+                            $activeChild,
+                            $childAfter,
+                            null,
+                            $req->clientIp()
+                        );
+                    }
+                }
+            }
 
             return $after ?? [];
         });
@@ -536,9 +630,7 @@ final class AppointmentService
             if ($parent['resolved_by_reinspection_id'] !== null) {
                 throw new HttpException(409, 'ALREADY_REPROGRAMMED', 'Există deja o vizită de revenire programată pentru această mașină.');
             }
-            if ($date < $parent['date']) {
-                throw new HttpException(422, 'BEFORE_PARENT_DATE', 'Data revenirii nu poate fi anterioară vizitei inițiale.');
-            }
+            $this->assertAfterParentSlot($parent, $date, $time);
 
             // R02 + R15: Termenul limita se pastreaza din parinte / vizita initiala (nu se reseteaza cu +30 zile noi)
             $deadline = $this->resolveReinspectionDeadline($pdo, $parent, $reinspDays);
@@ -556,10 +648,17 @@ final class AppointmentService
                 throw new HttpException(409, 'DUPLICATE_PLATE', sprintf('Numărul %s are deja programare pe %s.', $dup['plate'], Validators::formatDateRo($date)));
             }
 
-            $verifySummary = implode(' — ', array_filter([
-                implode(', ', $parent['reject_reasons']),
-                $parent['reject_note'],
-            ]));
+            // R03: Preluam telefon / client / masina editate in modal (cu fallback la datele parintelui)
+            $childPhone = array_key_exists('phone', $body) && trim((string) $body['phone']) !== ''
+                ? Validators::normalizePhone((string) $body['phone'])
+                : (string) $parent['phone'];
+            $childClientRaw = array_key_exists('client', $body) ? trim((string) $body['client']) : (string) $parent['client'];
+            $childClient = mb_substr($childClientRaw !== '' ? $childClientRaw : (string) $parent['client'], 0, 160, 'UTF-8');
+            $childVehicle = array_key_exists('vehicle', $body)
+                ? mb_substr(trim((string) $body['vehicle']), 0, 120, 'UTF-8')
+                : (string) ($parent['vehicle'] ?? '');
+
+            $verifySummary = $this->buildVerifySummary($parent);
 
             $now = $this->config->nowString();
             try {
@@ -569,9 +668,9 @@ final class AppointmentService
                     'line' => $line,
                     'plate' => $parent['plate'],
                     'plate_key' => $parent['plate_key'],
-                    'vehicle' => $parent['vehicle'] ?? '',
-                    'phone' => $parent['phone'],
-                    'client' => $parent['client'],
+                    'vehicle' => $childVehicle,
+                    'phone' => $childPhone,
+                    'client' => $childClient,
                     'status' => 'Programat',
                     'visit_type' => $overDeadline ? 'NORMAL' : 'REVENIRE',
                     'parent_id' => $parentId,
@@ -660,6 +759,22 @@ final class AppointmentService
                 throw new HttpException(409, 'STALE_VERSION', 'Programarea a fost modificată între timp de alt coleg.');
             }
 
+            // R04: Blocare stergere parinte cat timp exista reprogramare activa legata
+            if ($existing['resolved_by_reinspection_id'] !== null) {
+                $activeChild = $this->repo->lockActiveByIdForUpdate($pdo, (int) $existing['resolved_by_reinspection_id']);
+                if ($activeChild !== null) {
+                    throw new HttpException(
+                        409,
+                        'HAS_ACTIVE_REINSPECTION',
+                        sprintf(
+                            'Există o reprogramare activă pe %s la %s. Șterge mai întâi reprogramarea înainte de a șterge această vizită.',
+                            Validators::formatDateRo((string) $activeChild['date']),
+                            $activeChild['time']
+                        )
+                    );
+                }
+            }
+
             $now = $this->config->nowString();
             $upd = $pdo->prepare(
                 'UPDATE appointments
@@ -687,13 +802,16 @@ final class AppointmentService
                 if ($parent && (int) $parent['resolved_by_reinspection_id'] === $id) {
                     $pdo->prepare('UPDATE appointments SET resolved_by_reinspection_id = NULL, version = version + 1, updated_by = ?, updated_at = ? WHERE id = ?')
                         ->execute([(int) $user['id'], $now, (int) $parent['id']]);
+                    $childKindLabel = $existing['visit_type'] === 'NORMAL'
+                        ? 'Programarea asociată (ITP complet peste termen)'
+                        : 'Programarea de revenire';
                     $this->history->record(
                         $pdo,
                         (int) $parent['id'],
                         'REPROGRAMAT',
                         (int) $user['id'],
                         (string) $user['actor_label'],
-                        sprintf('Programarea de revenire din %s a fost ștearsă (%s) — redeschisă pentru reprogramare', Validators::formatDateRo($existing['date']), $reason),
+                        sprintf('%s din %s a fost ștearsă (%s) — redeschisă pentru reprogramare', $childKindLabel, Validators::formatDateRo($existing['date']), $reason),
                         null,
                         null,
                         $reason,
@@ -795,6 +913,29 @@ final class AppointmentService
             $pdo->prepare('DELETE FROM reasons WHERE id = ?')->execute([$id]);
             $this->audit->log($pdo, (int) $user['id'], $user['actor_label'], 'REASON_DELETE', sprintf('Șters motiv %s: "%s"', $row['kind'], $row['label']), 'programari', 'reason', (string) $id, null, null, $req);
         });
+    }
+
+    private function assertAfterParentSlot(array $parent, string $date, string $time): void
+    {
+        if ($date < (string) $parent['date']) {
+            throw new HttpException(422, 'BEFORE_PARENT_DATE', 'Data revenirii nu poate fi anterioară vizitei inițiale.');
+        }
+        if ($date === (string) $parent['date'] && $time <= (string) $parent['time']) {
+            throw new HttpException(
+                422,
+                'BEFORE_PARENT_TIME',
+                sprintf('În aceeași zi, ora revenirii trebuie să fie după ora vizitei inițiale (%s).', (string) $parent['time'])
+            );
+        }
+    }
+
+    private function buildVerifySummary(array $parent): string
+    {
+        $reasons = is_array($parent['reject_reasons'] ?? null) ? $parent['reject_reasons'] : [];
+        return implode(' — ', array_filter([
+            implode(', ', $reasons),
+            (string) ($parent['reject_note'] ?? ''),
+        ], static fn(string $s): bool => $s !== ''));
     }
 
     /**

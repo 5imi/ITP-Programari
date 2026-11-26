@@ -230,7 +230,7 @@ $reprog = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/repr
 assertTrue($reprog['status'] === 201, 'Reprogramare revenire eșuată');
 $childId = (int) ($reprog['body']['appointment']['id'] ?? 0);
 
-// 4b. Test protectie revocare cat timp exista reprogramare activa (409 HAS_ACTIVE_REINSPECTION)
+// 4b. Test protectie revocare si stergere parinte cat timp exista reprogramare activa (409 HAS_ACTIVE_REINSPECTION)
 $revokeBlocked = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revoke", [
     'version' => 6,
 ], $csrf, $cookieFile);
@@ -238,9 +238,36 @@ assertTrue(
     $revokeBlocked['status'] === 409 && ($revokeBlocked['body']['error'] ?? '') === 'HAS_ACTIVE_REINSPECTION',
     'Revocarea cu reprogramare activă trebuia blocată cu 409 HAS_ACTIVE_REINSPECTION'
 );
+$deleteParentBlocked = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$winnerId", [
+    'version' => 6,
+    'reason' => 'Test blocare',
+], $csrf, $cookieFile);
+assertTrue(
+    $deleteParentBlocked['status'] === 409 && ($deleteParentBlocked['body']['error'] ?? '') === 'HAS_ACTIVE_REINSPECTION',
+    'Ștergerea părintelui cu reprogramare activă trebuia blocată cu 409 HAS_ACTIVE_REINSPECTION'
+);
+
+// 4b-2. Test R05: editare motive pe parinte sincronizeaza verify_notes pe copil
+$syncParent = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revenire", [
+    'version' => 6,
+    'reasons' => ['Frâne', 'Anvelope / Jante'],
+    'note' => 'Cauciuc dreapta',
+], $csrf, $cookieFile);
+assertTrue($syncParent['status'] === 200, 'Re-editare motive pe părinte cu copil activ a eșuat');
+$childAgenda = httpReq('GET', "$baseUrl/api/m/programari/appointments?date=" . $reprogDate->format('Y-m-d'), null, '', $cookieFile);
+$childRow = null;
+foreach ($childAgenda['body']['appointments'] ?? [] as $ca) {
+    if ((int) $ca['id'] === $childId) {
+        $childRow = $ca;
+    }
+}
+assertTrue(
+    $childRow !== null && str_contains((string) ($childRow['verify_notes'] ?? ''), 'Anvelope / Jante'),
+    'Editarea motivelor pe părinte trebuia să sincronizeze verify_notes pe copil'
+);
 
 $delChild = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$childId", [
-    'version' => 1,
+    'version' => (int) $childRow['version'],
     'reason' => 'Anulat de client',
 ], $csrf, $cookieFile);
 assertTrue($delChild['status'] === 200, 'Ștergere vizită revenire eșuată');
