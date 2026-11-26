@@ -1118,10 +1118,12 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div class="d-flex align-items-center gap-1 itp-filter-date-group">
             <div class="d-flex align-items-center gap-1 flex-grow-1 flex-lg-grow-0 min-w-0">
-              <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(-1)" aria-label="Ziua anterioară">&lsaquo;</button>
+              <button type="button" class="itp-date-btn" onclick="shiftSelectedDate(-1)" aria-label="Ziua anterioară" title="Ziua anterioară">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
               <div class="itp-ro-date-wrap flex-grow-1 flex-lg-grow-0" style="min-width: 108px;">
                 <input type="text" class="form-control form-control-sm fw-medium itp-ro-date-text" id="agendaDateText"
-                  style="min-height: 28px;" inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
+                  style="min-height: 32px;" inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
                   value="${esc(formatDateSlashRo(state.selectedDate))}"
                   onchange="onRoDateTextChange('agendaDateText', 'agendaDateNative', selectDate)">
                 <span class="itp-ro-date-cal-icon" aria-hidden="true">
@@ -1131,8 +1133,10 @@
                   value="${esc(state.selectedDate)}"
                   onchange="onRoDatePickerChange('agendaDateNative', 'agendaDateText', selectDate)">
               </div>
-              <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(1)" aria-label="Ziua următoare">&rsaquo;</button>
-              <button type="button" class="btn btn-sm ${isTodaySelected ? 'btn-primary' : 'btn-outline-primary'}" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
+              <button type="button" class="itp-date-btn" onclick="shiftSelectedDate(1)" aria-label="Ziua următoare" title="Ziua următoare">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button type="button" class="btn btn-sm itp-azi-btn ${isTodaySelected ? 'btn-primary' : 'btn-outline-primary'}" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
             </div>
             ${dayBadge}
             ${isClosed ? `<span class="badge bg-orange-lt text-orange flex-shrink-0">Închis</span>` : `<span class="badge bg-blue-lt text-blue d-lg-none flex-shrink-0" id="mobFreeDayBadge">${freeDay} lib.</span>`}

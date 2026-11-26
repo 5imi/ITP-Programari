@@ -51,6 +51,45 @@ body {
   gap: 6px;
 }
 
+.itp-date-btn {
+  min-width: 38px;
+  width: 38px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.itp-date-btn:hover,
+.itp-date-btn:focus-visible {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.itp-date-btn:active {
+  background: #bfdbfe;
+}
+
+.itp-azi-btn {
+  height: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .itp-ro-date-wrap {
   position: relative;
   display: flex;
@@ -526,9 +565,17 @@ body {
   }
 
   .itp-date-btn {
-    min-width: 28px;
-    min-height: 28px !important;
-    padding: 0 6px;
+    min-width: 38px;
+    width: 38px;
+    height: 34px;
+    min-height: 34px !important;
+    padding: 0;
+  }
+
+  .itp-filter-date-group .itp-ro-date-text,
+  .itp-azi-btn {
+    height: 34px;
+    min-height: 34px !important;
   }
 
   .filter-strip {
@@ -621,5 +668,25 @@ body {
 
   .itp-mob-acts-line {
     flex-wrap: wrap;
+  }
+
+  .itp-date-btn {
+    min-width: 34px;
+    width: 34px;
+  }
+
+  .itp-filter-date-group .itp-ro-date-text {
+    padding-left: 6px !important;
+    padding-right: 24px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .itp-filter-date-group .itp-ro-date-cal-icon {
+    right: 6px;
+  }
+
+  .itp-azi-btn {
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
   }
 }
