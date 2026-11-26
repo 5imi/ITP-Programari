@@ -261,23 +261,23 @@ body {
 }
 
 .itp-desk-act-lg {
-  min-height: 32px;
-  padding: 0.28rem 0.72rem !important;
-  font-size: 0.82rem !important;
+  min-height: 29px;
+  padding: 0.2rem 0.62rem !important;
+  font-size: 0.78rem !important;
   font-weight: 700 !important;
   line-height: 1.2 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .itp-desk-act-sm {
   min-height: 24px;
-  padding: 0.12rem 0.42rem !important;
-  font-size: 0.7rem !important;
+  padding: 0.12rem 0.4rem !important;
+  font-size: 0.69rem !important;
   font-weight: 600 !important;
   line-height: 1.2 !important;
   white-space: nowrap;
@@ -502,47 +502,54 @@ body {
     white-space: nowrap;
   }
 
-  .itp-mob-primary-acts {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin-top: 2px;
-    margin-bottom: 5px;
+  .itp-mob-acts-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 3px;
   }
 
   .itp-mob-act-lg {
-    min-height: 40px;
-    padding: 0.4rem 0.65rem;
-    font-size: 0.86rem;
+    min-height: 31px;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    line-height: 1.15;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
-
-  .itp-mob-act-sm {
-    min-height: 26px;
-    padding: 0.12rem 0.42rem;
-    font-size: 0.69rem;
-    font-weight: 600;
-    line-height: 1.15;
+    line-height: 1.1;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 3px;
     white-space: nowrap;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .itp-mob-act-sm {
+    min-height: 25px;
+    padding: 0.1rem 0.28rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    white-space: nowrap;
     flex: 0 0 auto;
   }
 
   .itp-mob-icon-btn {
-    min-width: 28px;
-    padding-left: 0.35rem;
-    padding-right: 0.35rem;
+    min-width: 23px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
     flex: 0 0 auto;
+  }
+
+  @media (max-width: 359.98px) {
+    .itp-mob-acts-line {
+      flex-wrap: wrap;
+    }
   }
 
   .itp-filter-card {
