@@ -1002,7 +1002,7 @@
       return {
         isRev, isFinal, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild, isExpired,
         reinspDays, waMsg, smsHref, telHref, isLandline, canEdit, canRev, canFinal, canDel, canReprog, statusLabel, badgeCls,
-        toneCls: isFinal ? 'itp-tone-final' : (isRev ? 'itp-tone-rev' : ''),
+        toneCls: isFinal ? 'itp-tone-final' : (isRev ? 'itp-tone-rev' : (isChainChild ? '' : 'itp-tone-prog')),
       };
     };
 

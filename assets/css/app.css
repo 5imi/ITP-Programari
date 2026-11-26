@@ -6,6 +6,8 @@
   --itp-bg: #e7dfd5;
   --itp-cream: #f5f0e8;
   --itp-cream-card: #faf7f2;
+  --itp-tone-prog-bg: #e6f0fb;
+  --itp-tone-prog-border: #b9d2ef;
   --itp-tone-final-bg: #e3f7df;
   --itp-tone-final-border: #b7dfb1;
   --itp-tone-rev-bg: #f9f1fb;
@@ -32,6 +34,15 @@ body {
   background-color: var(--itp-cream-card);
   border-color: var(--itp-border);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.card.itp-tone-prog:not(.itp-future-mob-card),
+.itp-tone-prog:not(.itp-future-row) td {
+  background-color: var(--itp-tone-prog-bg) !important;
+}
+
+.card.itp-tone-prog:not(.itp-future-mob-card) {
+  border-color: var(--itp-tone-prog-border);
 }
 
 .card.itp-tone-final,
