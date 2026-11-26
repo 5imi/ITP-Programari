@@ -454,6 +454,12 @@ body {
     display: none !important;
   }
 
+  .itp-search-wrap {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+
   .aw-logo-nav {
     width: 28px;
     height: 28px;
@@ -503,12 +509,6 @@ body {
     flex: 0 0 auto;
   }
 
-  @media (max-width: 359.98px) {
-    .itp-mob-acts-line {
-      flex-wrap: wrap;
-    }
-  }
-
   .itp-filter-card {
     padding: 5px 7px !important;
     margin-bottom: 6px !important;
@@ -524,6 +524,14 @@ body {
     padding: 0 6px;
   }
 
+  .filter-strip {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 4px;
+    width: 100%;
+    padding-bottom: 0;
+  }
+
   .filter-pill {
     padding: 2px 8px;
     font-size: 0.74rem;
@@ -537,6 +545,7 @@ body {
 
   .itp-filter-group {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .mobile-bottom-nav {
@@ -578,5 +587,30 @@ body {
     left: 12px;
     right: 12px;
     top: 56px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  #sidebarMenu > .container-fluid {
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+  }
+
+  #sidebarMenu > .container-fluid > .d-flex {
+    gap: 4px !important;
+  }
+
+  #navStationShort {
+    font-size: 0.8rem !important;
+  }
+
+  #btnNewApptMob {
+    padding-left: 0.38rem !important;
+    padding-right: 0.38rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .itp-mob-acts-line {
+    flex-wrap: wrap;
   }
 }

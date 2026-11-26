@@ -239,7 +239,7 @@
 
     <div class="page-wrapper">
       <header class="navbar navbar-expand-md itp-topbar sticky-top" id="itpTopbar">
-        <div class="container-xl d-flex align-items-center justify-content-between gap-2">
+        <div class="container-xl d-flex align-items-center justify-content-between gap-2 flex-nowrap">
           <div class="itp-search-wrap flex-grow-1">
             <div class="input-icon">
               <span class="input-icon-addon" aria-hidden="true">
@@ -304,7 +304,7 @@
         <div class="modal-body py-2">
           <div class="alert alert-purple mb-2 py-2 px-2 small d-none" id="reinspectionBanner"></div>
           <div class="row g-1 g-sm-2">
-            <div class="col-5">
+            <div class="col-12 col-sm-5">
               <label class="form-label small mb-1 required">Data (zz/ll/aaaa)</label>
               <div class="itp-ro-date-wrap">
                 <input type="text" class="form-control form-control-sm itp-ro-date-text" id="inpDateText"
@@ -323,11 +323,11 @@
                   onchange="onRoDatePickerChange('inpDate', 'inpDateText', onModalDateChange)" required>
               </div>
             </div>
-            <div class="col-3">
+            <div class="col-5 col-sm-3">
               <label class="form-label small mb-1 required">Ora</label>
               <select class="form-select form-select-sm" id="inpHour" onchange="onHourSelectChange()"></select>
             </div>
-            <div class="col-4">
+            <div class="col-7 col-sm-4">
               <label class="form-label small mb-1 required">Linie (libere)</label>
               <select class="form-select form-select-sm" id="inpLine" onchange="refreshHourOptions()"></select>
             </div>

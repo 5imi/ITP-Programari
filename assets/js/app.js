@@ -1055,7 +1055,7 @@
           ${reprogNoteMob}
           ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
           ${m.rejectSummary ? (m.canRev
-            ? `<button type="button" class="btn bg-purple-lt text-purple rounded px-2 py-1 mb-1 w-100 text-start border-0 text-wrap fw-normal" style="font-size: 0.74rem; line-height: 1.3;" onclick="openRejectModal(${a.id})" aria-label="Editează sau revocă motivul revenirii"><strong>Motiv:</strong> ${esc(m.rejectSummary)} <span class="ms-1 text-decoration-underline fw-semibold">(editează)</span></button>`
+            ? `<button type="button" class="btn d-block bg-purple-lt text-purple rounded px-2 py-1 mb-1 w-100 text-start border-0 text-wrap fw-normal" style="font-size: 0.74rem; line-height: 1.3;" onclick="openRejectModal(${a.id})" aria-label="Editează sau revocă motivul revenirii"><strong>Motiv:</strong> ${esc(m.rejectSummary)} <span class="ms-1 text-decoration-underline fw-semibold">(editează)</span></button>`
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
           ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote && !m.isExpired ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
           <div class="itp-mob-acts-line">
