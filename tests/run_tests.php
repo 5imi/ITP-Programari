@@ -207,7 +207,8 @@ $revoke = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revo
 assertTrue(
     $revoke['status'] === 200
     && ($revoke['body']['appointment']['status'] ?? '') === 'Programat'
-    && ($revoke['body']['appointment']['reinspection_deadline'] ?? 'x') === null,
+    && array_key_exists('reinspection_deadline', $revoke['body']['appointment'] ?? [])
+    && $revoke['body']['appointment']['reinspection_deadline'] === null,
     'Revocare Revenire eșuată'
 );
 
@@ -340,6 +341,56 @@ foreach (['CREAT', 'MODIFICAT', 'REVENIRE', 'REVOCAT', 'REPROGRAMAT'] as $reqTyp
     assertTrue(in_array($reqType, $types, true), "Lipsește tipul de eveniment $reqType din istoric");
 }
 echo "[PASS] Istoric Imutabil conține toate evenimentele cu Dată + Oră + Actor.\n";
+
+// 5b. Teste Pasul 4: P01 (now_time), P03 (cautare telefon fara spatii/cratime), P06 (lookup same_day_conflict)
+$p01Slots = httpReq('GET', "$baseUrl/api/m/programari/slots?date=$testDate&line=Linia%201", null, '', $cookieFile);
+assertTrue(
+    $p01Slots['status'] === 200
+    && preg_match('/^\d{2}:\d{2}$/', (string) ($p01Slots['body']['now_time'] ?? '')) === 1
+    && preg_match('/^\d{2}:\d{2}$/', (string) ($agendaCheck['body']['now_time'] ?? '')) === 1,
+    'Endpointurile slots/appointments trebuie să întoarcă now_time (HH:MM)'
+);
+
+$phoneApptRes = httpReq('POST', "$baseUrl/api/m/programari/appointments", [
+    'date' => $testDate,
+    'time' => '10:30',
+    'line' => 'Linia 2',
+    'plate' => 'SV 77 TEL',
+    'phone' => '0740 555-666',
+    'client' => 'Client Telefon',
+], $csrf, $cookieFile);
+assertTrue($phoneApptRes['status'] === 201, 'Creare programare test P03/P06 eșuată');
+$phoneApptId = (int) ($phoneApptRes['body']['appointment']['id'] ?? 0);
+$phoneApptVer = (int) ($phoneApptRes['body']['appointment']['version'] ?? 1);
+
+foreach (['0740555666', '0740-555.666', '+40740555666'] as $phoneQuery) {
+    $qRes = httpReq('GET', "$baseUrl/api/m/programari/appointments?date=$testDate&q=" . urlencode($phoneQuery), null, '', $cookieFile);
+    $found = array_filter($qRes['body']['appointments'] ?? [], static fn(array $r): bool => (int) ($r['id'] ?? 0) === $phoneApptId);
+    assertTrue(count($found) === 1, "Căutarea după telefon '$phoneQuery' trebuia să găsească programarea '0740 555-666'");
+}
+$histPhone = httpReq('GET', "$baseUrl/api/m/programari/history?q=0740555666", null, '', $cookieFile);
+$foundHist = array_filter($histPhone['body']['entries'] ?? [], static fn(array $r): bool => (int) ($r['appointment_id'] ?? 0) === $phoneApptId);
+assertTrue(count($foundHist) === 1, 'Căutarea după telefon compact în Istoric Imutabil a eșuat');
+
+$lookupConflict = httpReq('GET', "$baseUrl/api/m/programari/lookup?plate=SV77TEL&date=$testDate", null, '', $cookieFile);
+assertTrue(
+    (int) ($lookupConflict['body']['match']['same_day_conflict']['id'] ?? 0) === $phoneApptId,
+    'lookupByPlate trebuia să detecteze same_day_conflict pentru același număr în aceeași zi'
+);
+$lookupExcluded = httpReq('GET', "$baseUrl/api/m/programari/lookup?plate=SV77TEL&date=$testDate&exclude_id=$phoneApptId", null, '', $cookieFile);
+assertTrue(
+    is_array($lookupExcluded['body']['match'] ?? null)
+    && array_key_exists('same_day_conflict', $lookupExcluded['body']['match'])
+    && $lookupExcluded['body']['match']['same_day_conflict'] === null,
+    'lookupByPlate cu exclude_id nu trebuia să întoarcă conflict pe propriul ID'
+);
+
+$delPhoneAppt = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$phoneApptId", [
+    'version' => $phoneApptVer,
+    'reason' => 'Test P03/P06',
+], $csrf, $cookieFile);
+assertTrue($delPhoneAppt['status'] === 200, 'Curățare programare test P03/P06 eșuată');
+echo "[PASS] Pasul 4 verificat (P01 now_time, P03 căutare telefon compactă în Agendă + Istoric, P06 lookup same_day_conflict).\n";
 
 // Curatare programare test
 $delParent = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$winnerId", [

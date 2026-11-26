@@ -47,6 +47,7 @@ final class AppointmentService
 
         return [
             'today_date' => $today,
+            'now_time' => $this->config->now()->format('H:i'),
             'selected_date' => $selectedDate,
             'appointments' => $lists['appointments'],
             'future_appointments' => $lists['future_appointments'],
@@ -105,6 +106,7 @@ final class AppointmentService
 
         return [
             'date' => $date,
+            'now_time' => $this->config->now()->format('H:i'),
             'line' => $line,
             'is_closed_day' => Validators::isClosedDay($date, $cfg),
             'all_slots' => $allSlots,
@@ -115,8 +117,12 @@ final class AppointmentService
         ];
     }
 
-    public function lookupByPlate(string $plateRaw): ?array
-    {
+    public function lookupByPlate(
+        string $plateRaw,
+        string $dateRaw = '',
+        ?int $excludeId = null,
+        ?int $excludeParentId = null
+    ): ?array {
         $compact = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $plateRaw));
         if (strlen($compact) < 4) {
             return null;
@@ -132,6 +138,13 @@ final class AppointmentService
         $row = $stmt->fetch();
         if (!$row) {
             return null;
+        }
+
+        // P06: Verifica duplicat activ in aceeasi zi pentru alerta live din modal
+        $sameDayConflict = null;
+        if ($dateRaw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateRaw) === 1) {
+            $validDate = Validators::assertValidDate($dateRaw);
+            $sameDayConflict = $this->repo->findSameDayPlateConflict($pdo, $compact, $validDate, $excludeId, $excludeParentId);
         }
 
         // R09: Detecteaza daca masina are o Revenire deschisa (nereprogramata)
@@ -152,6 +165,7 @@ final class AppointmentService
             }
         }
         $row['open_revenire'] = $openRev;
+        $row['same_day_conflict'] = $sameDayConflict;
         return $row;
     }
 

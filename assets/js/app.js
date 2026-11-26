@@ -6,6 +6,7 @@
 
   const state = {
     todayDate: '',
+    nowTime: '',
     selectedDate: '',
     user: null,
     permissions: [],
@@ -60,6 +61,7 @@
   let searchReloadTimer = null;
   let modalSlotsCache = null;
   let lookupOpenRevenire = null;
+  let modalLastDate = '';
   let viewRequestSeq = 0;
   let agendaAbortCtrl = null;
   let lastAgendaSignature = '';
@@ -202,20 +204,36 @@
     return digits;
   }
 
-  function buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline, isExpired) {
+  function cleanPhoneTel(phone) {
+    return String(phone || '').replace(/[^0-9+]/g, '');
+  }
+
+  function isLandlinePhoneRo(phone) {
+    let digits = String(phone || '').replace(/\D/g, '');
+    if (digits.startsWith('0040')) digits = '0' + digits.slice(4);
+    else if (digits.startsWith('40') && digits.length >= 11) digits = '0' + digits.slice(2);
+    return /^0[23]\d{7,8}$/.test(digits);
+  }
+
+  function stripRoDiacritics(str) {
+    return String(str || '')
+      .replace(/[ăâ]/g, 'a').replace(/[ĂÂ]/g, 'A')
+      .replace(/î/g, 'i').replace(/Î/g, 'I')
+      .replace(/[șş]/g, 's').replace(/[ȘŞ]/g, 'S')
+      .replace(/[țţ]/g, 't').replace(/[ȚŢ]/g, 'T')
+      .replace(/[–—]/g, '-');
+  }
+
+  function buildAppointmentMsgText(a, rejectSummary, deadline, effectiveDeadline, isExpired) {
     const sig = state.stationConfig.station_signature || state.stationConfig.station_name;
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
     if (a.status === 'Revenire') {
       // R10: Mesaje distincte pentru parinte deja reprogramat, expirat, sau in termen
       if (a.reinspection_date) {
-        return encodeURIComponent(
-          `Bună ziua! Revenirea ITP pentru ${a.plate} este programată în data de ${formatDateRo(a.reinspection_date)} la ora ${a.reinspection_time || ''} (${a.reinspection_line || ''}).${rejectSummary ? ` De verificat: ${rejectSummary}.` : ''} ${sig}`
-        );
+        return `Bună ziua! Revenirea ITP pentru ${a.plate} este programată în data de ${formatDateRo(a.reinspection_date)} la ora ${a.reinspection_time || ''} (${a.reinspection_line || ''}).${rejectSummary ? ` De verificat: ${rejectSummary}.` : ''} ${sig}`;
       }
       if (isExpired) {
-        return encodeURIComponent(
-          `Bună ziua! Termenul de revenire ITP pentru ${a.plate} (limită ${formatDateRo(deadline)}) a expirat; pentru verificare este necesară o programare pentru ITP complet. ${sig}`
-        );
+        return `Bună ziua! Termenul de revenire ITP pentru ${a.plate} (limită ${formatDateRo(deadline)}) a expirat; pentru verificare este necesară o programare pentru ITP complet. ${sig}`;
       }
       const isChainChild = a.visit_type === 'REVENIRE';
       const termDays = (deadline ? diffDaysIso(a.date, deadline) : null) ?? reinspDays;
@@ -225,23 +243,17 @@
       const termPhrase = isChainChild
         ? `până la termenul inițial ${formatDateRo(deadline)}${closedNote}`
         : `în ${termDays} zile, până la ${formatDateRo(deadline)}${closedNote}`;
-      return encodeURIComponent(
-        `Bună ziua! Vehiculul ${a.plate} are status ITP Revenire (${formatDateRo(a.date)}).${rejectSummary ? ` Motive: ${rejectSummary}.` : ''} Revenire posibilă ${termPhrase}. ${sig}`
-      );
+      return `Bună ziua! Vehiculul ${a.plate} are status ITP Revenire (${formatDateRo(a.date)}).${rejectSummary ? ` Motive: ${rejectSummary}.` : ''} Revenire posibilă ${termPhrase}. ${sig}`;
     }
     if (a.visit_type === 'REVENIRE') {
-      return encodeURIComponent(
-        `Bună ziua! Vă confirmăm programarea de REVENIRE ITP pentru ${a.plate} în data de ${formatDateRo(a.date)} la ora ${a.time} (${a.line}) - ${sig}.`
-      );
+      return `Bună ziua! Vă confirmăm programarea de REVENIRE ITP pentru ${a.plate} în data de ${formatDateRo(a.date)} la ora ${a.time} (${a.line}) - ${sig}.`;
     }
-    return encodeURIComponent(
-      `Bună ziua! Vă confirmăm programarea ITP pentru ${a.plate} în data de ${formatDateRo(a.date)} la ora ${a.time} (${a.line}) - ${sig}.`
-    );
+    return `Bună ziua! Vă confirmăm programarea ITP pentru ${a.plate} în data de ${formatDateRo(a.date)} la ora ${a.time} (${a.line}) - ${sig}.`;
   }
 
   function buildSmsHref(phone, encodedMsg) {
     const waDigits = cleanPhoneWa(phone);
-    const telNum = waDigits.startsWith('40') ? '+' + waDigits : String(phone || '').trim();
+    const telNum = waDigits.startsWith('40') ? '+' + waDigits : cleanPhoneTel(phone);
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
     const sep = isIos ? '&' : '?';
     return `sms:${telNum}${encodedMsg ? `${sep}body=${encodedMsg}` : ''}`;
@@ -574,6 +586,7 @@
     state.user = me.user;
     state.permissions = me.permissions || [];
     state.todayDate = me.today_date;
+    state.nowTime = me.now_time || state.nowTime;
     if (!state.selectedDate) state.selectedDate = state.todayDate;
     state.stationConfig = me.station_config || state.stationConfig;
     state.dailySlots = me.daily_slots || [];
@@ -778,6 +791,7 @@
         lastAgendaSignature = sig;
 
         state.todayDate = data.today_date;
+        state.nowTime = data.now_time || state.nowTime;
         state.selectedDate = data.selected_date;
         state.appointments = data.appointments || [];
         state.futureAppointments = data.future_appointments || [];
@@ -917,8 +931,11 @@
       const termDays = deadline ? (diffDaysIso(a.date, deadline) ?? reinspDays) : reinspDays;
       const isChainChild = a.visit_type === 'REVENIRE';
       const isExpired = Boolean(isRev && !a.resolved_by_reinspection_id && deadline && state.todayDate && state.todayDate > deadline);
-      const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline, isExpired);
-      const smsHref = buildSmsHref(a.phone, waMsg);
+      const rawMsg = buildAppointmentMsgText(a, rejectSummary, deadline, effectiveDeadline, isExpired);
+      const waMsg = encodeURIComponent(rawMsg);
+      const smsHref = buildSmsHref(a.phone, encodeURIComponent(stripRoDiacritics(rawMsg)));
+      const telHref = cleanPhoneTel(a.phone);
+      const isLandline = isLandlinePhoneRo(a.phone);
       const hasRevPerm = userCan('programari.revenire') || isAdmin();
       const canEdit = (a.date >= state.todayDate && userCan('programari.edit')) || isAdmin();
       const canRev = (a.date >= state.todayDate && userCan('programari.revenire')) || isAdmin();
@@ -936,7 +953,7 @@
       }
       return {
         isRev, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild, isExpired,
-        reinspDays, waMsg, smsHref, canEdit, canRev, canDel, canReprog, statusLabel, badgeCls,
+        reinspDays, waMsg, smsHref, telHref, isLandline, canEdit, canRev, canDel, canReprog, statusLabel, badgeCls,
       };
     };
 
@@ -971,7 +988,7 @@
               ${m.canEdit ? `<button class="btn btn-sm btn-outline-primary itp-desk-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
               ${m.canRev && !m.isRev ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
               ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
-              <a class="btn btn-sm btn-outline-secondary itp-desk-act" href="tel:${esc(a.phone)}">Sună</a>
+              <a class="btn btn-sm btn-outline-secondary itp-desk-act" href="tel:${esc(m.telHref)}">Sună</a>
               <a class="btn btn-sm btn-outline-success itp-desk-act" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}">WA</a>
               ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
             </div>
@@ -1014,9 +1031,9 @@
             ${m.canReprog ? `<button class="btn btn-purple itp-mob-act flex-fill" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
             ${m.canRev && !m.isRev ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
             ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
-            <a class="btn btn-outline-secondary itp-mob-act itp-mob-icon-btn" href="tel:${esc(a.phone)}" aria-label="Sună clientul">Tel</a>
+            <a class="btn btn-outline-secondary itp-mob-act itp-mob-icon-btn" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Tel</a>
             <a class="btn btn-outline-success itp-mob-act itp-mob-icon-btn" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WA</a>
-            <a class="btn btn-outline-azure itp-mob-act itp-mob-icon-btn" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>
+            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act itp-mob-icon-btn" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>` : ''}
             ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">×</button>` : ''}
           </div>
         </div>
@@ -1162,22 +1179,32 @@
     updateLineOptionsLabels();
   };
 
-  async function refreshHourOptions(forceTime = null, excludeId = null) {
+  async function refreshHourOptions(forceTime = null, excludeId = null, opts = {}) {
     const dateEl = document.getElementById('inpDate');
     const lineEl = document.getElementById('inpLine');
     const hourEl = document.getElementById('inpHour');
+    const availEl = document.getElementById('slotAvailabilityAlert');
+    const submitBtn = document.getElementById('modalProgramareSubmitBtn');
     if (!dateEl || !lineEl || !hourEl) return;
 
     const date = dateEl.value || state.todayDate;
     const line = lineEl.value || (state.stationConfig.lines[0] || 'Linia 1');
+    const autoSwitchLine = Boolean(opts && opts.autoSwitchLine);
+    const switchedFrom = (opts && opts.switchedFrom) || '';
+    const triedLines = Array.isArray(opts && opts.triedLines) ? opts.triedLines : [line];
 
     try {
       const qs = new URLSearchParams({ date, line, exclude_id: String(excludeId || 0) });
       const data = await api.get(`api/m/programari/slots?${qs.toString()}`);
       modalSlotsCache = data;
+      if (data.now_time) state.nowTime = data.now_time;
+      const nowTime = data.now_time || state.nowTime || '';
+      const isToday = Boolean(state.todayDate && date === state.todayDate);
+
       const free = new Set(data.free_slots || []);
       const all = data.all_slots || state.dailySlots;
       const takenBySlot = data.taken_by_slot || {};
+      const freeCountByLine = data.free_count_by_line || {};
       const curVal = forceTime || hourEl.value;
 
       // R07: In aceeasi zi cu vizita parinte, blocam orele <= ora parintelui
@@ -1188,58 +1215,133 @@
       const minTimeSameDay = (parentRef && parentRef.date === date) ? (parentRef.time || '') : '';
 
       const selectableSlots = [];
-      hourEl.innerHTML = all.map(s => {
+      const upcomingSlots = [];
+      const optionHtml = all.map(s => {
         const isFree = free.has(s);
         const beforeParent = Boolean(minTimeSameDay && s <= minTimeSameDay);
+        const isPastToday = Boolean(isToday && nowTime && s < nowTime);
         const canSelect = isFree && !beforeParent;
-        if (canSelect) selectableSlots.push(s);
+        if (canSelect) {
+          selectableSlots.push(s);
+          if (!isPastToday) upcomingSlots.push(s);
+        }
 
         const busyLines = Array.isArray(takenBySlot[s]) ? takenBySlot[s] : [];
-        let label = s;
+        const tags = [];
         if (beforeParent) {
-          label = `${s} (înainte de ${minTimeSameDay})`;
+          tags.push(`înainte de ${minTimeSameDay}`);
         } else if (!isFree) {
-          label = `${s} (ocupat)`;
-        } else if (busyLines.length > 0) {
-          const busyShort = busyLines.map(l => String(l).replace(/^Linia\s+/i, 'L')).join(',');
-          label = `${s} (${busyShort} ocup.)`;
+          tags.push('ocupat');
+        } else {
+          if (isPastToday) tags.push('trecut');
+          if (busyLines.length > 0) {
+            const busyShort = busyLines.map(l => String(l).replace(/^Linia\s+/i, 'L')).join(',');
+            tags.push(`${busyShort} ocup.`);
+          }
         }
+        const label = tags.length ? `${s} (${tags.join(' • ')})` : s;
         return `<option value="${esc(s)}" ${canSelect ? '' : 'disabled'}>${esc(label)}</option>`;
       }).join('');
 
-      if (curVal && selectableSlots.includes(curVal)) hourEl.value = curVal;
-      else if (selectableSlots.length) hourEl.value = selectableSlots[0];
-      else if (all.length) hourEl.value = all[0];
+      // P02: Daca linia selectata nu are locuri libere la deschidere/schimbare data, comuta automat pe prima linie libera
+      if (selectableSlots.length === 0 && autoSwitchLine && !forceTime && !state.editingAppt) {
+        const lines = Array.isArray(state.stationConfig.lines) ? state.stationConfig.lines : [];
+        const altLine = lines.find(ln => !triedLines.includes(ln) && Number(freeCountByLine[ln] || 0) > 0);
+        if (altLine) {
+          lineEl.value = altLine;
+          return await refreshHourOptions(null, excludeId, {
+            autoSwitchLine: true,
+            switchedFrom: switchedFrom || line,
+            triedLines: [...triedLines, altLine],
+          });
+        }
+      }
+
+      if (selectableSlots.length === 0) {
+        hourEl.innerHTML = `<option value="" disabled selected>Fără locuri</option>${optionHtml}`;
+        hourEl.value = '';
+      } else {
+        hourEl.innerHTML = optionHtml;
+        const sameDateAsLast = modalLastDate === date;
+        if (forceTime && selectableSlots.includes(forceTime)) {
+          hourEl.value = forceTime;
+        } else if (curVal && selectableSlots.includes(curVal) && (!isToday || !nowTime || curVal >= nowTime || sameDateAsLast)) {
+          hourEl.value = curVal;
+        } else if (upcomingSlots.length) {
+          hourEl.value = upcomingSlots[0];
+        } else {
+          hourEl.value = selectableSlots[0];
+        }
+      }
+      modalLastDate = date;
+
+      if (submitBtn) submitBtn.disabled = selectableSlots.length === 0;
+
+      if (availEl) {
+        const lines = Array.isArray(state.stationConfig.lines) ? state.stationConfig.lines : [];
+        const anyLineHasFree = lines.some(ln => Number(freeCountByLine[ln] || 0) > 0);
+        availEl.classList.remove('alert-info', 'alert-warning', 'alert-danger', 'd-none');
+        if (selectableSlots.length === 0) {
+          availEl.classList.add('alert-danger');
+          if (!anyLineHasFree) {
+            availEl.innerHTML = `<strong>Zi complet ocupată</strong> pe toate liniile pentru ${formatDateRo(date)} — alege altă dată.`;
+          } else if (minTimeSameDay) {
+            availEl.innerHTML = `<strong>Fără locuri disponibile</strong> după ora ${esc(minTimeSameDay)} pe ${esc(line)} — încearcă altă linie sau altă dată.`;
+          } else {
+            availEl.innerHTML = `<strong>${esc(line)} este complet ocupată</strong> pe ${formatDateRo(date)} — selectează o altă linie sau altă dată.`;
+          }
+        } else if (switchedFrom) {
+          availEl.classList.add('alert-info');
+          availEl.innerHTML = `<strong>${esc(switchedFrom)} este complet ocupată</strong> — am selectat automat <strong>${esc(line)}</strong> (${selectableSlots.length} locuri libere).`;
+        } else if (isToday && nowTime && upcomingSlots.length === 0) {
+          availEl.classList.add('alert-warning');
+          availEl.innerHTML = `Toate orele de astăzi după <strong>${esc(nowTime)}</strong> sunt ocupate pe ${esc(line)}; ora preselectată (${esc(hourEl.value)}) este anterioară orei curente.`;
+        } else {
+          availEl.classList.add('d-none');
+          availEl.textContent = '';
+        }
+      }
 
       updateLineOptionsLabels();
     } catch (_) {
     }
   }
-  window.refreshHourOptions = () => refreshHourOptions(null, state.editingAppt ? state.editingAppt.id : null);
+  window.refreshHourOptions = () => refreshHourOptions(null, state.editingAppt ? state.editingAppt.id : null, { autoSwitchLine: false });
 
-  window.onPlateInput = () => {
-    clearTimeout(plateLookupTimer);
+  async function runPlateLookupAndAlerts({ autofill = true } = {}) {
     const val = document.getElementById('inpPlate').value.trim();
+    const date = (document.getElementById('inpDate') && document.getElementById('inpDate').value) || state.todayDate;
     const hint = document.getElementById('plateAutofillHint');
     const revAlert = document.getElementById('plateOpenRevAlert');
-    if (val.replace(/[^A-Za-z0-9]/g, '').length < 4 || state.editingAppt || state.reprogramParent) {
-      hint.classList.add('d-none');
+    const dupAlert = document.getElementById('plateDupAlert');
+    if (val.replace(/[^A-Za-z0-9]/g, '').length < 4) {
+      if (hint) hint.classList.add('d-none');
       if (revAlert) revAlert.classList.add('d-none');
+      if (dupAlert) dupAlert.classList.add('d-none');
       lookupOpenRevenire = null;
       return;
     }
-    plateLookupTimer = setTimeout(async () => {
-      try {
-        const res = await api.get(`api/m/programari/lookup?plate=${encodeURIComponent(val)}`);
-        if (res.match) {
+
+    try {
+      const qs = new URLSearchParams({ plate: val });
+      if (date) qs.set('date', date);
+      if (state.editingAppt && state.editingAppt.id) qs.set('exclude_id', String(state.editingAppt.id));
+      if (state.reprogramParent && state.reprogramParent.id) qs.set('exclude_parent_id', String(state.reprogramParent.id));
+      const res = await api.get(`api/m/programari/lookup?${qs.toString()}`);
+      if (document.getElementById('inpPlate').value.trim() !== val) return;
+
+      if (res.match) {
+        if (autofill && !state.editingAppt && !state.reprogramParent) {
           const phoneEl = document.getElementById('inpPhone');
           const clientEl = document.getElementById('inpClient');
           const vehicleEl = document.getElementById('inpVehicle');
           if (!phoneEl.value.trim()) phoneEl.value = res.match.phone || '';
           if (!clientEl.value.trim()) clientEl.value = res.match.client || '';
           if (vehicleEl && !vehicleEl.value.trim()) vehicleEl.value = res.match.vehicle || '';
-          hint.textContent = `Găsit în baza de date (${res.match.plate} • ultima vizită ${formatDateRo(res.match.appt_date)}).`;
-          hint.classList.remove('d-none');
+          if (hint) {
+            hint.textContent = `Găsit în baza de date (${res.match.plate} • ultima vizită ${formatDateRo(res.match.appt_date)}).`;
+            hint.classList.remove('d-none');
+          }
 
           // R09: Semnalizare Revenire deschisa + buton 1-click spre reprogramare
           const openRev = res.match.open_revenire || null;
@@ -1260,13 +1362,46 @@
           } else if (revAlert) {
             revAlert.classList.add('d-none');
           }
-        } else {
-          hint.classList.add('d-none');
-          if (revAlert) revAlert.classList.add('d-none');
-          lookupOpenRevenire = null;
         }
-      } catch (_) {
+
+        // P06: Alerta live pentru duplicat in aceeasi zi
+        const conflict = res.match.same_day_conflict || null;
+        if (dupAlert && conflict) {
+          dupAlert.innerHTML = `<strong>Atenție — duplicat în aceeași zi:</strong> ${esc(conflict.plate)} are deja programare pe ${formatDateRo(conflict.appt_date)} la <strong>${esc(conflict.appt_time)}</strong> (${esc(conflict.line)}).`;
+          dupAlert.classList.remove('d-none');
+        } else if (dupAlert) {
+          dupAlert.classList.add('d-none');
+        }
+      } else {
+        if (hint) hint.classList.add('d-none');
+        if (revAlert) revAlert.classList.add('d-none');
+        if (dupAlert) dupAlert.classList.add('d-none');
+        lookupOpenRevenire = null;
       }
+    } catch (_) {
+    }
+  }
+
+  window.onModalDateChange = () => {
+    refreshHourOptions(null, state.editingAppt ? state.editingAppt.id : null, { autoSwitchLine: true });
+    runPlateLookupAndAlerts({ autofill: !state.editingAppt && !state.reprogramParent });
+  };
+
+  window.onPlateInput = () => {
+    clearTimeout(plateLookupTimer);
+    const val = document.getElementById('inpPlate').value.trim();
+    const hint = document.getElementById('plateAutofillHint');
+    const revAlert = document.getElementById('plateOpenRevAlert');
+    const dupAlert = document.getElementById('plateDupAlert');
+    if (val.replace(/[^A-Za-z0-9]/g, '').length < 4 || state.editingAppt || state.reprogramParent) {
+      if (hint) hint.classList.add('d-none');
+      if (revAlert) revAlert.classList.add('d-none');
+      if (dupAlert) dupAlert.classList.add('d-none');
+      lookupOpenRevenire = null;
+      return;
+    }
+    plateLookupTimer = setTimeout(() => {
+      runPlateLookupAndAlerts({ autofill: true });
     }, 220);
   };
 
@@ -1279,17 +1414,24 @@
     await openReprogramModalWithParent(p, { date: keepDate, time: keepTime, line: keepLine });
   };
 
+  function resetProgramareModalAlerts() {
+    ['modalErr', 'plateAutofillHint', 'plateOpenRevAlert', 'plateDupAlert', 'slotAvailabilityAlert', 'reinspectionBanner']
+      .forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('d-none');
+      });
+    const submitBtn = document.getElementById('modalProgramareSubmitBtn');
+    if (submitBtn) submitBtn.disabled = false;
+  }
+
   window.openNewAppointmentModal = async () => {
     closeMobileSidebar();
     state.editingAppt = null;
     state.reprogramParent = null;
     lookupOpenRevenire = null;
+    modalLastDate = '';
     document.getElementById('formProgramare').reset();
-    document.getElementById('modalErr').classList.add('d-none');
-    document.getElementById('plateAutofillHint').classList.add('d-none');
-    const revAlert = document.getElementById('plateOpenRevAlert');
-    if (revAlert) revAlert.classList.add('d-none');
-    document.getElementById('reinspectionBanner').classList.add('d-none');
+    resetProgramareModalAlerts();
     document.getElementById('modalProgramareTitle').textContent = 'Programare nouă ITP';
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Salvează programarea';
 
@@ -1301,7 +1443,7 @@
       document.getElementById('inpLine').value = state.lineFilter;
     }
     document.getElementById('inpPlate').disabled = false;
-    await refreshHourOptions(null, null);
+    await refreshHourOptions(null, null, { autoSwitchLine: true });
     setModalVisible('modalProgramare', true);
   };
 
@@ -1311,11 +1453,8 @@
     state.editingAppt = a;
     state.reprogramParent = null;
     lookupOpenRevenire = null;
-    document.getElementById('modalErr').classList.add('d-none');
-    document.getElementById('plateAutofillHint').classList.add('d-none');
-    const revAlert = document.getElementById('plateOpenRevAlert');
-    if (revAlert) revAlert.classList.add('d-none');
-    document.getElementById('reinspectionBanner').classList.add('d-none');
+    modalLastDate = a.date || '';
+    resetProgramareModalAlerts();
     document.getElementById('modalProgramareTitle').textContent = `Editează • ${a.plate}`;
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Salvează modificările';
 
@@ -1337,7 +1476,7 @@
     document.getElementById('inpPhone').value = a.phone;
     document.getElementById('inpClient').value = a.client || '';
     document.getElementById('inpVehicle').value = a.vehicle || '';
-    await refreshHourOptions(a.time, a.id);
+    await refreshHourOptions(a.time, a.id, { autoSwitchLine: false });
     setModalVisible('modalProgramare', true);
   };
 
@@ -1345,11 +1484,9 @@
     state.editingAppt = null;
     state.reprogramParent = p;
     lookupOpenRevenire = null;
+    modalLastDate = '';
     document.getElementById('formProgramare').reset();
-    document.getElementById('modalErr').classList.add('d-none');
-    document.getElementById('plateAutofillHint').classList.add('d-none');
-    const revAlert = document.getElementById('plateOpenRevAlert');
-    if (revAlert) revAlert.classList.add('d-none');
+    resetProgramareModalAlerts();
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
     const deadline = p.reinspection_deadline || addDaysIso(p.date, reinspDays);
     const effectiveDeadline = deadline && isClosedDayIso(deadline) ? getLastOpenDayOnOrBefore(deadline) : deadline;
@@ -1382,7 +1519,8 @@
     document.getElementById('inpPhone').value = p.phone;
     document.getElementById('inpClient').value = p.client || '';
     document.getElementById('inpVehicle').value = p.vehicle || '';
-    await refreshHourOptions(keepSlot && keepSlot.time ? keepSlot.time : null, null);
+    await refreshHourOptions(keepSlot && keepSlot.time ? keepSlot.time : null, null, { autoSwitchLine: !(keepSlot && keepSlot.line) });
+    await runPlateLookupAndAlerts({ autofill: false });
     setModalVisible('modalProgramare', true);
   }
 
@@ -1405,6 +1543,14 @@
       const phone = document.getElementById('inpPhone').value.trim();
       const client = document.getElementById('inpClient').value.trim();
       const vehicle = document.getElementById('inpVehicle').value.trim();
+      const hourEl = document.getElementById('inpHour');
+      const selectedOpt = hourEl && hourEl.selectedOptions ? hourEl.selectedOptions[0] : null;
+      if (!time || (selectedOpt && selectedOpt.disabled)) {
+        const errEl = document.getElementById('modalErr');
+        errEl.textContent = 'Nu există niciun slot orar liber selectat.';
+        errEl.classList.remove('d-none');
+        return;
+      }
 
       try {
         if (state.reprogramParent) {
@@ -1453,7 +1599,9 @@
           showToast(err.message || 'Eroare la salvare.');
         }
         if (err.code === 'STALE_VERSION' || err.code === 'SLOT_TAKEN') {
-          refreshHourOptions(null, state.editingAppt ? state.editingAppt.id : null);
+          setTimeout(() => {
+            refreshHourOptions(null, state.editingAppt ? state.editingAppt.id : null, { autoSwitchLine: err.code === 'SLOT_TAKEN' });
+          }, 0);
           if (err.code === 'STALE_VERSION') loadAndRenderCurrentView();
         }
       }

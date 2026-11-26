@@ -55,7 +55,15 @@ final class Controller
         $router->add('GET', '/api/m/programari/lookup', function (Request $req): array {
             $this->assertEnabled();
             $this->auth->requireUser($req, false);
-            $match = $this->service->lookupByPlate((string) $req->query('plate', ''));
+            $date = trim((string) $req->query('date', ''));
+            $excludeId = (int) $req->query('exclude_id', 0);
+            $excludeParentId = (int) $req->query('exclude_parent_id', 0);
+            $match = $this->service->lookupByPlate(
+                (string) $req->query('plate', ''),
+                $date,
+                $excludeId > 0 ? $excludeId : null,
+                $excludeParentId > 0 ? $excludeParentId : null
+            );
             return Response::json(['ok' => true, 'match' => $match]);
         });
 

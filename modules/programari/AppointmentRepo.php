@@ -54,10 +54,16 @@ final class AppointmentRepo
         $args = [];
 
         if ($q !== '') {
-            $baseWhere[] = '(a.plate LIKE ? OR a.plate_key LIKE ? OR a.vehicle LIKE ? OR a.client LIKE ? OR a.phone LIKE ? OR a.line LIKE ? OR DATE_FORMAT(a.appt_date, \'%d.%m.%Y\') LIKE ?)';
             $like = '%' . $q . '%';
             $plateLike = '%' . strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $q)) . '%';
-            array_push($args, $like, $plateLike, $like, $like, $like, $like, $like);
+            $phoneClause = $this->buildPhoneSearchClause('a.phone', $q);
+            $phoneSql = $phoneClause !== null ? '(a.phone LIKE ? OR ' . $phoneClause['sql'] . ')' : 'a.phone LIKE ?';
+            $baseWhere[] = "(a.plate LIKE ? OR a.plate_key LIKE ? OR a.vehicle LIKE ? OR a.client LIKE ? OR $phoneSql OR a.line LIKE ? OR DATE_FORMAT(a.appt_date, '%d.%m.%Y') LIKE ?)";
+            array_push($args, $like, $plateLike, $like, $like, $like);
+            if ($phoneClause !== null) {
+                array_push($args, ...$phoneClause['params']);
+            }
+            array_push($args, $like, $like);
         }
         if ($line !== '' && $line !== 'Toate') {
             $baseWhere[] = 'a.line = ?';
@@ -115,6 +121,45 @@ final class AppointmentRepo
         }
 
         return ['appointments' => $dayRows, 'future_appointments' => $futureRows];
+    }
+
+    /**
+     * Construieste filtrul SQL pentru cautare dupa telefon indiferent de spatii, cratime sau prefix +40/0040.
+     *
+     * @return array{sql: string, params: array<int, string>}|null
+     */
+    private function buildPhoneSearchClause(string $colExpr, string $q): ?array
+    {
+        $compact = preg_replace('/[\s.\-()]+/', '', trim($q)) ?? '';
+        if ($compact === '' || preg_match('/^[+0-9]+$/', $compact) !== 1) {
+            return null;
+        }
+        $digitsOnly = preg_replace('/\D/', '', $compact) ?? '';
+        if (strlen($digitsOnly) < 3) {
+            return null;
+        }
+
+        $normCol = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE($colExpr, ' ', ''), '-', ''), '.', ''), '(', ''), ')', '')";
+        $variants = [$compact];
+        if (str_starts_with($compact, '+40') && strlen($compact) >= 5) {
+            $variants[] = '0' . substr($compact, 3);
+        } elseif (str_starts_with($compact, '0040') && strlen($compact) >= 6) {
+            $variants[] = '0' . substr($compact, 4);
+        } elseif (preg_match('/^0[237]\d+$/', $compact) === 1) {
+            $variants[] = '+4' . $compact;
+            $variants[] = '4' . $compact;
+        }
+
+        $parts = [];
+        $params = [];
+        foreach (array_values(array_unique($variants)) as $variant) {
+            $parts[] = $normCol . ' LIKE ?';
+            $params[] = '%' . $variant . '%';
+        }
+        return [
+            'sql' => '(' . implode(' OR ', $parts) . ')',
+            'params' => $params,
+        ];
     }
 
     public function countOpenReinspections(\PDO $pdo, string $todayDate, int $windowDays = 60): int
@@ -229,8 +274,14 @@ final class AppointmentRepo
         if ($q !== '') {
             $like = '%' . $q . '%';
             $plateLike = '%' . strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $q)) . '%';
-            $sql .= ' AND (a.plate LIKE ? OR a.plate_key LIKE ? OR a.vehicle LIKE ? OR a.client LIKE ? OR a.phone LIKE ? OR h.summary LIKE ? OR h.actor_name LIKE ?)';
-            array_push($args, $like, $plateLike, $like, $like, $like, $like, $like);
+            $phoneClause = $this->buildPhoneSearchClause('a.phone', $q);
+            $phoneSql = $phoneClause !== null ? '(a.phone LIKE ? OR ' . $phoneClause['sql'] . ')' : 'a.phone LIKE ?';
+            $sql .= " AND (a.plate LIKE ? OR a.plate_key LIKE ? OR a.vehicle LIKE ? OR a.client LIKE ? OR $phoneSql OR h.summary LIKE ? OR h.actor_name LIKE ?)";
+            array_push($args, $like, $plateLike, $like, $like, $like);
+            if ($phoneClause !== null) {
+                array_push($args, ...$phoneClause['params']);
+            }
+            array_push($args, $like, $like);
         } else {
             // Fara cautare explicita, afiseaza fereastra implicita (ex. 60 zile) pentru incarcare rapida
             $sql .= ' AND h.action_at >= ?';
