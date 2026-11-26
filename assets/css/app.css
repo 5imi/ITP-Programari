@@ -881,25 +881,27 @@ body {
   font-weight: 500;
 }
 
-/* Buton + Programare (bara de sus): Verde Smarald #047857 cu text alb #ffffff (contrast WCAG AA 5.48:1 normal / >7:1 hover). [LEGACY] #d678c3 / #0f172a; Varianta B: #dc2626 / #b91c1c; Varianta A: #1e40af / #1e3a8a. */
+/* Buton + Programare (bara de sus): Albastru Tabler --tblr-primary (#2563eb) cu text alb #ffffff, contur --tblr-purple (3px) si colturi rotunjite 8px. */
 :root {
-  --itp-newappt-bg: #047857;
-  --itp-newappt-border: #065f46;
+  --itp-newappt-bg: var(--tblr-primary);
+  --itp-newappt-hover-bg: #1d4ed8;
+  --itp-newappt-border: var(--tblr-purple);
   --itp-newappt-fg: #ffffff;
-  --itp-newappt-shadow: rgba(4, 120, 87, 0.35);
+  --itp-newappt-shadow: rgba(37, 99, 235, 0.3);
 }
 
 #btnNewAppt,
 #btnNewApptMob {
   --tblr-btn-bg: var(--itp-newappt-bg);
   --tblr-btn-border-color: var(--itp-newappt-border);
-  --tblr-btn-hover-bg: var(--itp-newappt-border);
+  --tblr-btn-hover-bg: var(--itp-newappt-hover-bg);
   --tblr-btn-hover-border-color: var(--itp-newappt-border);
-  --tblr-btn-active-bg: var(--itp-newappt-border);
+  --tblr-btn-active-bg: var(--itp-newappt-hover-bg);
   --tblr-btn-active-border-color: var(--itp-newappt-border);
   --tblr-btn-color: var(--itp-newappt-fg);
   background-color: var(--itp-newappt-bg);
-  border-color: var(--itp-newappt-border);
+  border: 2px solid var(--itp-newappt-border);
+  border-radius: 8px;
   color: var(--itp-newappt-fg);
   font-weight: 700;
   box-shadow: 0 2px 4px var(--itp-newappt-shadow);
@@ -911,7 +913,7 @@ body {
 #btnNewApptMob:hover,
 #btnNewApptMob:focus-visible,
 #btnNewApptMob:active {
-  background-color: var(--itp-newappt-border);
+  background-color: var(--itp-newappt-hover-bg);
   border-color: var(--itp-newappt-border);
   color: var(--itp-newappt-fg);
 }
