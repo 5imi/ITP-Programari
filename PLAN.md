@@ -61,20 +61,21 @@ Baza nu conține logică de programări sau clienți; este platforma peste care 
    - `modules_state` — starea activ/inactiv a modulelor descoperite.
    - `settings` — configurări generale ale stației ITP (nume stație, adresă, telefon, program **Luni–Sâmbătă `08:00–17:30`**, linii ITP configurabile — implicit `Linia 1`, `Linia 2`, `Linia 3`, durată slot — implicit `30 min`).
    - `core_audit_log` — jurnal intern de securitate și administrare **imutabil (append-only cu `TRIGGER`-e SQLite `BEFORE UPDATE`/`DELETE`)**: `timestamp`, `user_id`/`username`, `module_id`, `action` (`LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `USER_CREATE`, `USER_UPDATE`, `PERMISSION_CHANGE`, `USER_BLOCK`, `REASON_CHANGE`, `MODULE_TOGGLE`, `SETTINGS_UPDATE`, `EXPORT`, `BACKUP`), `entity_type`, `entity_id`, `before_json`, `after_json`, `ip_address`, `user_agent`.
-5. **Jurnal Securitate & Administrare (`core_audit_log`)**
+4. **Jurnal Securitate & Administrare (`core_audit_log`)**
    - Politică strictă **append-only**: intrările din `core_audit_log` sunt blocate la editare/ștergere direct în SQLite prin `TRIGGER`.
    - Orice modul poate emite evenimente de audit printr-un helper central (`core.audit.log_event(...)`) în aceeași tranzacție cu operația.
    - În UI nu ocupă un tab separat în meniul zilnic; este accesibil exclusiv **Administratorului** printr-un buton discret **`Jurnal securitate / Admin`** (în `Utilizatori` / `Istoric`), cu filtre și **Export CSV**.
-6. **Roluri și Permisiuni**
+5. **Roluri și Permisiuni**
    - **Administrator:** acces complet automat pe toate modulele + Panou Admin (`Utilizatori`, `Permisiuni per modul`, `Activare/Dezactivare Module`, `Setări stație`, `Jurnal activitate / Audit Log`, `Backup DB`).
    - **Utilizator:** acces configurabil per modul (`view`, `create`, `edit`, `delete`), plus un profil implicit „Utilizator standard” pentru creare rapidă de conturi.
-8. **App Shell Responsive (UI Modern Luminos)**
+6. **App Shell Responsive (UI Modern Luminos)**
    - Layout adaptiv PC (sidebar) și telefon (meniu inferior / sertar mobil + carduri).
    - Meniu generat dinamic din modulele active la care utilizatorul curent are drepturi.
    - Dashboard modular: colectează automat widget-uri (carduri rezumat) expuse de modulele active.
    - Kit UI reutilizabil inclus în Bază (formulare, tabele/carduri responsive, modale, notificări toast, dialoguri de confirmare) astfel încât toate modulele să păstreze același design luminos unitar.
-10. **Backup Bază de Date**
-   - Descărcare directă a fișierului `itp.db` din panoul Admin și salvare de copii consistente la cald (`sqlite3.Connection.backup()` + `PRAGMA integrity_check` + rotație automată) în folderul `backups/`.
+7. **Backup Bază de Date**
+
+- Descărcare directă a fișierului `itp.db` din panoul Admin și salvare de copii consistente la cald (`sqlite3.Connection.backup()` + `PRAGMA integrity_check` + rotație automată) în folderul `backups/`.
 
 ---
 
