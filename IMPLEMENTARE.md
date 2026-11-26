@@ -14,6 +14,7 @@
 | **Ziua 2** | Etapele **6 – 8** (`Faza 1 – programari` + Teste + Livrare) | **~6 – 7 ore** | Modul `programari` complet, `Istoric Imutabil`, `Motive`, teste `pytest`, testare LAN/Cloudflare, `start.bat` |
 
 ### Flux Git & Versionare
+
 - **Un commit per etapă**, cu mesaje convenționale (`feat(core): ...`, `feat(programari): ...`, `test: ...`, `docs: ...`), urmat de `git push origin main`.
 - **Tag-uri de referință:** `v0.1.0` la finalizarea **Fazei 0 (Etapa 5)** și `v1.0.0` la finalizarea **Fazei 1 (Etapa 8)**.
 
@@ -22,6 +23,7 @@
 ## Etapa 0 — Pregătire Mediu și Structură (~0.5h)
 
 ### Structura de directoare țintă
+
 ```text
 d:\ITP programari\
 ├── core/
@@ -68,22 +70,27 @@ d:\ITP programari\
 ```
 
 ### Dependențe Python
+
 **`requirements.txt`:**
+
 ```text
 fastapi
 uvicorn[standard]
 bcrypt
 tzdata
 ```
+
 > **Important (Windows):** pachetul `tzdata` este **obligatoriu pe Windows** pentru ca `zoneinfo.ZoneInfo("Europe/Bucharest")` să funcționeze corect la schimbările de oră (EET/EEST).
 
 **`requirements-dev.txt`:**
+
 ```text
 pytest
 httpx
 ```
 
 ### Configurare `.env.example`
+
 ```env
 ITP_HOST=0.0.0.0
 ITP_PORT=8000
@@ -97,6 +104,7 @@ ITP_TZ=Europe/Bucharest
 ```
 
 ### Comenzi de instalare
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
@@ -110,13 +118,16 @@ python -m venv .venv
 ## Etapa 1 — Bază de Date Core și Migrări (~1h)
 
 ### `core/db.py`
+
 - Funcția `connect()` deschide SQLite cu `row_factory = sqlite3.Row` și aplică la fiecare conexiune:
+
   ```sql
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
   PRAGMA busy_timeout = 5000;
   PRAGMA synchronous = NORMAL;
   ```
+
 - Context manager `transaction(conn)` care pornește explicit **`BEGIN IMMEDIATE`** (evită blocajele la concurență între 2 telefoane), execută `COMMIT` la ieșire și `ROLLBACK` la orice excepție.
 - **Runner de migrări:**
   1. Creează tabelul `_migrations(module_id TEXT NOT NULL, filename TEXT NOT NULL, checksum TEXT NOT NULL, applied_at TEXT NOT NULL, PRIMARY KEY(module_id, filename))`.
@@ -125,6 +136,7 @@ python -m venv .venv
   4. Dacă un fișier deja aplicat are alt checksum decât cel din `_migrations`, aplicația **oprește pornirea cu eroare explicită** (protejează integritatea schemei).
 
 ### Schema SQL completă — `core/migrations/001_core.sql`
+
 ```sql
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -224,6 +236,7 @@ END;
 ```
 
 ### Setări implicite (Seed în `settings`)
+
 - `station_name`: `"ACW - Fălticeni"`
 - `working_days`: `[1, 2, 3, 4, 5, 6]` *(Luni–Sâmbătă, coduri ISO)*
 - `day_start`: `"08:00"`
@@ -240,6 +253,7 @@ END;
 ## Etapa 2 — Securitate și Autentificare cu PIN (~1.5h)
 
 ### `core/security.py`
+
 - `hash_pin(pin: str) -> str` și `verify_pin(pin: str, hashed: str) -> bool` (folosind `bcrypt`, cu fallback `hashlib.scrypt`).
 - `new_token() -> str` (`secrets.token_urlsafe(32)`).
 - `sha256(token: str) -> str` — token-ul de sesiune nu se salvează niciodată în clar în DB, ci doar ca hash SHA-256.
@@ -258,6 +272,7 @@ END;
 | `GET/POST` | `/api/setup/first-start` | `{admin_name, pin, master_pin, create_defaults}` | Activ doar când tabela `users` e goală și cererea e strict locală |
 
 ### Sesiuni, Cookie, CSRF și IP real
+
 - **Cookie `itp_session`:** `HttpOnly=True`, `SameSite="strict"`. Flag-ul `Secure` se activează automat (`ITP_COOKIE_SECURE=auto`) atunci când cererea vine pe HTTPS sau conține `X-Forwarded-Proto: https` de la un proxy de încredere.
 - **Expirare sesiune:** maxim **12 ore** absolut (`expires_at`) sau **4 ore** de inactivitate (`last_seen_at`).
 - **Invalidare instantanee:** la fiecare cerere, middleware-ul verifică `session.session_version == user.session_version` și `user.is_active == 1`. Dacă diferă, sesiunea este respinsă imediat cu `401`.
@@ -265,11 +280,13 @@ END;
 - **IP real:** headerele `CF-Connecting-IP` și `X-Forwarded-For` se citesc **doar** dacă adresa peer-ului TCP se află în `ITP_TRUSTED_PROXIES` (implicit `127.0.0.1` pentru `cloudflared.exe`), prevenind falsificarea IP-ului.
 
 ### Rate-limit persistent (în tabela `login_attempts`)
+
 - **PIN uzual (`kind='pin'`):** **5 greșeli** per `user_id` în ultimele 5 minute → blocare **5 minute**; **20 greșeli** per `ip_address` în ultimele 5 minute → blocare **5 minute**.
 - **PIN Secret (`kind='master'`):** **3 greșeli** în ultimele 15 minute → blocare **30 minute**.
 - Răspuns HTTP **`429 Too Many Requests`** cu mesaj clar în română (ex. *„Prea multe încercări greșite. Reîncearcă peste X minute.”*). Rezistă la repornirea serverului deoarece stă în SQLite.
 
 ### Flux Dual-PIN Admin (`master-recovery`) și Urgență
+
 1. La `POST /api/auth/master-recovery` cu `master_pin` valid (8–12 cifre) și `new_pin` valid (4–6 cifre), într-o **singură tranzacție SQLite**:
    - `users.session_version += 1` *(deloghează instant toate celelalte telefoane/PC-uri ale Adminului)*
    - `users.pin_hash = hash_pin(new_pin)`
@@ -282,6 +299,7 @@ END;
 4. **Script CLI de rezervă (`python -m core.reset_admin_pin`):** rulează exclusiv din consola Windows de pe PC-ul serverului; resetează PIN-ul uzual și PIN-ul Secret ale adminului principal, incrementează `session_version`, șterge sesiunile și înregistrează în `core_audit_log`.
 
 ### Dependințe FastAPI (`core/deps.py`)
+
 - `require_user`: validează cookie-ul, `session_version`, expirarea și `is_active`.
 - `require_admin`: cere `user.role == 'admin'`.
 - `require_perm(perm: str)`: trece automat pentru `admin`, altfel verifică prezența în `user_permissions` (altfel `403`).
@@ -293,7 +311,9 @@ END;
 ## Etapa 3 — Audit, Panou Admin și Backup (~1h)
 
 ### `core/audit.py`
+
 - Funcția centrală:
+
   ```python
   def log_event(
       conn,
@@ -307,16 +327,19 @@ END;
       request=None,
   ) -> None: ...
   ```
+
 - Se apelează întotdeauna **în aceeași tranzacție** cu operația propriu-zisă.
 - **Catalog acțiuni Core:** `LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `ADMIN_MASTER_RECOVERY`, `PIN_CHANGE`, `USER_CREATE`, `USER_UPDATE`, `PERMISSION_CHANGE`, `USER_BLOCK`, `USER_UNBLOCK`, `REASON_CHANGE`, `MODULE_TOGGLE`, `SETTINGS_UPDATE`, `EXPORT`, `BACKUP`.
 
 ### Rute Admin (`core/routes/admin.py` — protejate prin `require_admin`)
+
 - **Utilizatori & Permisiuni:** CRUD utilizatori (PIN numeric `4–6` cifre; adminul principal `is_primary_admin=1` nu poate fi blocat și nu i se poate schimba rolul) + setare permisiuni granulare per modul.
 - **Module:** `GET /api/admin/modules` și `POST /api/admin/modules/{module_id}/toggle` (modulul `programari` este blocat activ ca modul principal).
 - **Setări stație:** `GET/PUT /api/admin/settings` (program orar, zile lucrătoare, linii, durată slot, retenție).
 - **Jurnal securitate / Admin:** `GET /api/admin/audit` (filtre după utilizator, acțiune, interval de date + paginare) și `GET /api/admin/audit.csv` (cu **BOM UTF-8 `\ufeff`** pentru diacritice corecte în Excel).
 
 ### `core/backup.py`
+
 - Execută `sqlite3.Connection.backup()` la cald către `backups/itp_YYYYMMDD_HHMMSS.db`.
 - Rulează imediat `PRAGMA integrity_check` pe fișierul copiat (dacă nu întoarce `"ok"`, șterge copia coruptă și raportează eroare).
 - **Rotație automată:** păstrează ultimele `backup_keep` (implicit `30`) copii.
@@ -330,6 +353,7 @@ END;
 ## Etapa 4 — Motorul de Module (`core/module_loader.py`) (~0.75h)
 
 ### Format `module.json`
+
 ```json
 {
   "id": "programari",
@@ -352,6 +376,7 @@ END;
 ```
 
 ### Flux la pornire și la cerere
+
 1. Scanează `modules/*/module.json`, sortează după `order` și verifică dependențele `dependsOn`.
 2. Sincronizează în `modules_state` (implicit `enabled = 1` la prima descoperire).
 3. Rulează migrările din `modules/<id>/migrations/*.sql` prin runner-ul din Etapa 1.
@@ -366,6 +391,7 @@ END;
 ## Etapa 5 — App Shell Frontend (`core/static/`) (~1.5h)
 
 ### Structură și Design
+
 - Pornește direct din [dashboard.html](dashboard.html): același **Tabler Light local**, același **fundal stil WhatsApp (`#efeae2` + pattern SVG)**, sigla ACW (`img/aw-logo.png`), ecranul de Login cu carduri utilizator + tastatură numerică PIN + butonul `PIN Secret Admin (Preia controlul)`, meniul PC și bara compactă de jos pe mobil.
 - CSS-ul se extrage în `core/static/css/app.css`.
 - **`core/static/js/api.js`:** wrapper unic peste `fetch(..., { credentials: "same-origin" })` care injectează automat `X-CSRF-Token`, parsează erorile `{ detail: { code, message } }` afișându-le ca toast clar și redirecționează automat la ecranul de Login la orice răspuns `401`.
@@ -393,6 +419,7 @@ END;
 ## Etapa 6 — Modulul `programari` (Faza 1 MVP) (~4h)
 
 ### Schema SQL completă — `modules/programari/migrations/001_init.sql`
+
 ```sql
 CREATE TABLE IF NOT EXISTS appointments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -486,6 +513,7 @@ INSERT OR IGNORE INTO reasons (kind, label, sort_order) VALUES
 > **Notă DB vs. UI:** în SQLite `event_type` folosește codul ASCII `'STERS'` pentru consistență în interogări, iar interfața îl afișează utilizatorului cu diacritice (`ȘTERS`).
 
 ### Permisiuni declarate în `module.json`
+
 - `programari.view` *(orice utilizator activ)*
 - `programari.edit` *(corespunde `canEdit` — permite creare/editare pentru **orice programare** din agendă)*
 - `programari.revenire` *(permite marcare Revenire, revocare și reprogramare 30 zile)*
@@ -511,7 +539,9 @@ INSERT OR IGNORE INTO reasons (kind, label, sort_order) VALUES
 | **Ștergere (soft-delete)** | Motiv obligatoriu; setează `deleted_at`/`deleted_by`/`delete_reason` și eliberează instant slotul | `422 EMPTY_REASON` |
 
 ### Scriere Atomică în `Istoric Imutabil`
+
 Fiecare operație de scriere din `service.py` rulează în `with transaction(conn):` (`BEGIN IMMEDIATE`):
+
 1. Validează regulile și permisiunile.
 2. Execută modificarea pe `appointments`.
 3. Calculează diferențele lizibile pe server (ex. `Oră: 08:00 → 09:00; Linie: Linia 1 → Linia 3`) și inserează rândul corespunzător în `appointment_history` cu `before_json`, `after_json`, `actor_user_id`, `actor_name` (snapshot text) și `ip_address`.
@@ -537,6 +567,7 @@ Fiecare operație de scriere din `service.py` rulează în `with transaction(con
 | `GET/POST/PUT/DELETE` | `/reasons` | Gestiune motive (`revenire` / `stergere`, doar Admin, emite `REASON_CHANGE` în audit) |
 
 ### Conectare Frontend
+
 - Se leagă modalele și vederile deja testate din `dashboard.html` (`formProgramare`, `formRespingere`, `modalConfirm` cu **butoane-bifă rapide 1-tap** pentru motivele de ștergere/anulare/neprezentare, `Istoric Imutabil`, `Motive`) direct la endpoint-urile de mai sus, fără a schimba designul aprobat.
 
 - **Gata când:** întregul flux din agendă (creare, editare colaborativă, anti-suprapunere, duplicat, revenire, revocare, reprogramare peste/sub 30 zile, ștergere cu motiv, export CSV) rulează end-to-end pe SQLite real.
@@ -546,6 +577,7 @@ Fiecare operație de scriere din `service.py` rulează în `with transaction(con
 ## Etapa 7 — Testare Automată și Manuală (~1.5h)
 
 ### Suită automată (`pytest` + `fastapi.testclient.TestClient`, DB temporar per test)
+
 1. **Auth & Securitate:**
    - login PIN corect / greșit;
    - rate-limit `429` la 5 încercări PIN uzual și blocare `30 min` la 3 încercări greșite PIN Secret;
@@ -565,11 +597,13 @@ Fiecare operație de scriere din `service.py` rulează în `with transaction(con
    - crearea unui backup trece `PRAGMA integrity_check == 'ok'`.
 
 **Comandă rulare teste:**
+
 ```powershell
 .venv\Scripts\python -m pytest -q
 ```
 
 ### Checklist testare manuală (PC + Telefon + Cloudflare)
+
 - [ ] Acces de pe PC (`http://localhost:8000`) — creare, editare, filtre, export CSV.
 - [ ] Acces de pe telefon pe Wi-Fi (`http://<IP-LOCAL-PC>:8000`) — login cu tastatura numerică, carduri 1-tap, apel `tel:`, WhatsApp.
 - [ ] Acces extern prin `cloudflared` — verificat că `First-Start` nu este expus și cookie-ul primește `Secure`.
@@ -587,9 +621,11 @@ Fiecare operație de scriere din `service.py` rulează în `with transaction(con
    - Pornește serverul cu `.venv\Scripts\python -m uvicorn core.app:app --host 0.0.0.0 --port 8000`.
 2. **Windows Firewall:** adăugare regulă de intrare pentru portul TCP `8000` (profil *Private network*) ca telefoanele din Wi-Fi să se poată conecta fără blocaj.
 3. **Expunere demo prin `cloudflared.exe`:**
+
    ```powershell
    tools\cloudflared.exe tunnel --url http://127.0.0.1:8000 --protocol http2 --no-autoupdate
    ```
+
    *(URL-ul de Quick Tunnel `*.trycloudflare.com` se schimbă la fiecare repornire; configurarea unui tunel cu nume fix pe domeniu propriu intră în etapa de găzduire ulterioară.)*
 4. **Backup extern:** recomandată copierea periodică a folderului `backups/` pe stick USB sau în cloud.
 5. **Actualizare [README.md](README.md):** adăugarea instrucțiunilor finale de instalare, `First-Start`, `start.bat` și `reset_admin_pin`.
@@ -601,6 +637,7 @@ Fiecare operație de scriere din `service.py` rulează în `with transaction(con
 Decizia finală de găzduire este **VPS Linux KVM (Ubuntu 24.04) cu disc local NVMe/SSD** (ex. România: Romarg, cyber_Folks, MxHost, Hostico, ~5–10 €/lună), rulând aplicația în **Docker** în spatele **Caddy** (HTTPS/SSL automat).
 
 ### Fișiere de containerizare adăugate în rădăcină
+
 1. **`Dockerfile`:**
    - Bazat pe `python:3.14-slim`, instalează `requirements.txt` (inclusiv `tzdata`), rulează ca utilizator non-root și pornește `uvicorn core.app:app --host 0.0.0.0 --port 8000 --workers 1` *(strict 1 worker pentru SQLite WAL)*.
 2. **`.dockerignore`:**
@@ -615,6 +652,7 @@ Decizia finală de găzduire este **VPS Linux KVM (Ubuntu 24.04) cu disc local N
      - `Caddyfile`: SSL/HTTPS automat (Let's Encrypt) pentru domeniul stației (ex. `programari.domeniultau.ro`) + `reverse_proxy app:8000` + servire `robots.txt` (`Disallow: /`) + header `X-Robots-Tag: noindex, nofollow`.
 
 ### Securizare VPS & Lansare
+
 1. **Firewall UFW pe VPS:** deschise doar porturile `22` (SSH cu cheie), `80` și `443` (`ufw allow 22,80,443/tcp`). Portul `8000` **nu** se expune direct în internet (este accesibil doar intern de către `caddy`).
 2. **Inițializare Admin pe VPS (`First-Start` securizat):** pe VPS, contul Admin (`Laur` + PIN uzual + PIN Secret) se creează prin consolă SSH (`docker compose exec app python -m core.reset_admin_pin`) sau tunel SSH local `ssh -L 8000:127.0.0.1:8000`, fără a expune `/api/setup/first-start` pe internet public.
 3. **DNS:** domeniu `.ro` (sau subdomeniu existent) cu nameservere în **Cloudflare (plan Free)** sau DNS direct către IP-ul VPS-ului.
@@ -623,6 +661,7 @@ Decizia finală de găzduire este **VPS Linux KVM (Ubuntu 24.04) cu disc local N
 ---
 
 ## Definition of Done (Faza 0 + Faza 1)
+
 - [ ] Toate migrările rulează curat de la zero pe o bază goală și pe reporniri succesive.
 - [ ] Autentificare cu selecție utilizator + PIN + Dual-PIN Admin (`master-recovery`) funcționale și acoperite de teste.
 - [ ] `core_audit_log` și `appointment_history` blocate la `UPDATE`/`DELETE` prin trigger SQLite.
@@ -646,6 +685,7 @@ Decizia finală de găzduire este **VPS Linux KVM (Ubuntu 24.04) cu disc local N
 ---
 
 ## Ce NU intră în Faza 1 (rămâne pentru Etapa 2+)
+
 - Modulul dedicat `clienti-vehicule` (registru separat și istoric complet per VIN).
 - Modulul `inspectii` (fișe tehnice detaliate și calcul expirare 6/12/24 luni).
 - Modulul `expirari-itp` (alerte 7/15/30 zile și urmărire contactări).
