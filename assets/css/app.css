@@ -221,6 +221,23 @@ body {
   padding-bottom: 0.5rem;
 }
 
+.itp-actions-cell {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.itp-desk-act {
+  padding: 0.22rem 0.48rem !important;
+  font-size: 0.76rem !important;
+  line-height: 1.25 !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.itp-status-cell {
+  max-width: 260px;
+}
+
 .itp-future-divider td {
   background: #f1f5f9 !important;
   color: #0f172a;

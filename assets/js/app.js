@@ -730,9 +730,10 @@
     const totalCap = Math.max(1, state.dailySlots.length * lines.length);
     const freeDay = Math.max(0, totalCap - totalDay);
 
+    const isTodaySelected = !isHistory && !isFuture;
     const dayBadge = isHistory
       ? `<span class="badge bg-secondary-lt flex-shrink-0">Istoric</span>`
-      : (isFuture ? `<span class="badge bg-green-lt text-green flex-shrink-0">Zi viitoare</span>` : `<span class="badge bg-blue-lt text-blue flex-shrink-0">Azi</span>`);
+      : (isFuture ? `<span class="badge bg-green-lt text-green flex-shrink-0">Zi viitoare</span>` : '');
 
     const lineOccPills = lines.map(ln => {
       const short = ln.replace(/^Linia\s+/i, 'L');
@@ -773,22 +774,21 @@
             <div class="fw-medium">${esc(a.client)}</div>
             <div class="text-muted small">${esc(a.phone)}</div>
           </td>
-          <td>
+          <td class="itp-status-cell">
             <span class="badge ${m.badgeCls}">${esc(a.status)}</span>
             ${isFutureRow ? `<div class="itp-future-date-note">${esc(formatDateRo(a.date))}</div>` : ''}
-            ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="text-purple small mt-1" style="max-width:240px;"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
-            ${m.rejectSummary ? `<div><button type="button" class="btn btn-link p-0 text-start text-purple small mt-1 text-decoration-none" onclick="${m.canRev ? `openRejectModal(${a.id})` : ''}">${esc(m.rejectSummary)}</button></div>` : ''}
+            ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="text-purple small mt-1"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
+            ${m.rejectSummary ? `<div><button type="button" class="btn btn-link p-0 text-start text-purple small mt-1 text-decoration-none text-wrap" onclick="${m.canRev ? `openRejectModal(${a.id})` : ''}">${esc(m.rejectSummary)}</button></div>` : ''}
             ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted small mt-1">Termen 30 zile: ${formatDateRo(m.deadline)}</div>` : ''}
           </td>
-          <td class="text-end">
-            <div class="d-flex flex-wrap justify-content-end align-items-center gap-1">
-              ${m.canEdit ? `<button class="btn btn-sm btn-outline-primary" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
-              ${m.canRev && !m.isRev ? `<button class="btn btn-sm btn-outline-purple" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-              ${m.canReprog ? `<button class="btn btn-sm btn-purple" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
-              <a class="btn btn-sm btn-outline-secondary" href="tel:${esc(a.phone)}">Sună</a>
-              <a class="btn btn-sm btn-outline-success" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}">WA</a>
-              <a class="btn btn-sm btn-outline-azure" href="${esc(m.smsHref)}" title="Trimite SMS">SMS</a>
-              ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
+          <td class="text-end itp-actions-cell">
+            <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
+              ${m.canEdit ? `<button class="btn btn-sm btn-outline-primary itp-desk-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
+              ${m.canRev && !m.isRev ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+              ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
+              <a class="btn btn-sm btn-outline-secondary itp-desk-act" href="tel:${esc(a.phone)}">Sună</a>
+              <a class="btn btn-sm btn-outline-success itp-desk-act" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}">WA</a>
+              ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
             </div>
           </td>
         </tr>
@@ -872,7 +872,7 @@
                   onchange="onRoDatePickerChange('agendaDateNative', 'agendaDateText', selectDate)">
               </div>
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(1)">&rsaquo;</button>
-              <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
+              <button type="button" class="btn btn-sm ${isTodaySelected ? 'btn-primary' : 'btn-outline-primary'}" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
             </div>
             ${dayBadge}
             ${isClosed ? `<span class="badge bg-amber-lt text-amber">Închis</span>` : `<span class="badge bg-blue-lt text-blue d-lg-none">${freeDay} lib.</span>`}
