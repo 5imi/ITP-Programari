@@ -590,8 +590,9 @@
                   PIN pentru <span class="text-danger fw-bold" id="selectedPinUserName">Laur</span>
                 </label>
                 <div class="input-group input-group-flat">
-                  <input type="password" class="form-control pin-input" id="loginPin" inputmode="numeric" pattern="[0-9]*"
-                    maxlength="6" placeholder="••••" autocomplete="one-time-code" oninput="onPinInputChanged()">
+                  <input type="password" class="form-control pin-input" id="loginPin" inputmode="numeric"
+                    pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="one-time-code"
+                    oninput="onPinInputChanged()">
                   <button type="button" class="btn btn-outline-secondary btn-sm px-2" id="btnTogglePwd"
                     onclick="toggleLoginPassword()">Arată</button>
                 </div>
@@ -631,19 +632,23 @@
 
             <div id="masterRecoveryBox" class="d-none">
               <div class="alert alert-warning py-2 px-2 small mb-2">
-                <strong>Recuperare / Preluare comandă Admin:</strong> deloghează toate celelalte sesiuni active și înlocuiește vechiul PIN uzual.
+                <strong>Recuperare / Preluare comandă Admin:</strong> deloghează toate celelalte sesiuni active și
+                înlocuiește vechiul PIN uzual.
               </div>
               <div class="mb-2">
-                <label class="form-label small fw-semibold mb-1 required" for="loginMasterPin">PIN Secret Admin (8–12 cifre)</label>
+                <label class="form-label small fw-semibold mb-1 required" for="loginMasterPin">PIN Secret Admin (8–12
+                  cifre)</label>
                 <input type="password" class="form-control" id="loginMasterPin" inputmode="numeric" pattern="[0-9]*"
                   maxlength="12" placeholder="••••••••" autocomplete="off">
               </div>
               <div class="mb-2">
-                <label class="form-label small fw-semibold mb-1 required" for="loginNewDailyPin">PIN uzual nou (4–6 cifre)</label>
+                <label class="form-label small fw-semibold mb-1 required" for="loginNewDailyPin">PIN uzual nou (4–6
+                  cifre)</label>
                 <input type="password" class="form-control" id="loginNewDailyPin" inputmode="numeric" pattern="[0-9]*"
                   maxlength="6" placeholder="ex. 5555" autocomplete="off">
               </div>
-              <button type="button" class="btn btn-danger w-100 touch-btn fw-semibold" onclick="submitMasterRecovery()">Preia comanda Admin</button>
+              <button type="button" class="btn btn-danger w-100 touch-btn fw-semibold"
+                onclick="submitMasterRecovery()">Preia comanda Admin</button>
               <button type="button" class="btn btn-link btn-sm text-secondary w-100 mt-1"
                 onclick="toggleMasterRecoveryMode(false)">Înapoi la PIN uzual</button>
             </div>
@@ -651,7 +656,8 @@
             <div class="alert alert-danger py-2 px-2 small d-none mt-2 mb-0" id="loginErr"></div>
           </form>
           <div class="text-center text-muted small mt-2">
-            PIN-uri demo: <code>Laur 1111</code> (Secret: <code>12345678</code>) • <code>Vlad 2222</code> • <code>Gabi 3333</code>
+            PIN-uri demo: <code>Laur 1111</code> (Secret: <code>12345678</code>) • <code>Vlad 2222</code> •
+            <code>Gabi 3333</code>
           </div>
         </div>
       </div>
