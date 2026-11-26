@@ -1002,6 +1002,7 @@
       return {
         isRev, isFinal, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild, isExpired,
         reinspDays, waMsg, smsHref, telHref, isLandline, canEdit, canRev, canFinal, canDel, canReprog, statusLabel, badgeCls,
+        toneCls: isFinal ? 'itp-tone-final' : (isRev ? 'itp-tone-rev' : ''),
       };
     };
 
@@ -1024,7 +1025,7 @@
         : '';
       const expiredBadge = m.isExpired ? `<span class="badge bg-red-lt text-red ms-1">Termen expirat</span>` : '';
       return `
-        <tr class="${isFutureRow ? 'itp-future-row' : ''}">
+        <tr class="${isFutureRow ? 'itp-future-row' : ''} ${m.toneCls}">
           <td class="fw-bold text-dark text-nowrap">
             ${esc(a.time)}
             <div class="text-muted small fw-normal">${showDateCol ? `${formatDateRo(a.date)} • ` : ''}${esc(a.line)}</div>
@@ -1066,7 +1067,7 @@
         ? `<button type="button" class="btn bg-indigo-lt text-indigo rounded px-2 py-1 mb-1 w-100 text-start border-0 fw-semibold" style="font-size: 0.73rem;" onclick="selectDate('${esc(a.reinspection_date)}')">Reprogramată: ${formatDateRo(a.reinspection_date)} ${esc(a.reinspection_time || '')} (${esc(a.reinspection_line || '')})</button>`
         : '';
       return `
-        <div class="card itp-mob-card${isFutureCard ? ' itp-future-mob-card' : ''}">
+        <div class="card itp-mob-card${isFutureCard ? ' itp-future-mob-card' : ''} ${m.toneCls}">
           <div class="d-flex justify-content-between align-items-center gap-1 mb-1">
             <div class="d-flex align-items-center gap-1 flex-nowrap min-w-0">
               <span class="plate-badge itp-mob-plate">${esc(a.plate)}</span>
