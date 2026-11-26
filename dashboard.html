@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="references/ui-libs/tabler/tabler.min.css">
   <style>
     :root {
-      --itp-bg: #f6f8fb;
+      --itp-bg: #efeae2;
       --itp-surface: #ffffff;
-      --itp-border: #e2e8f0;
+      --itp-border: #e0d9ce;
       --itp-primary: #2563eb;
       --itp-text: #0f172a;
       --itp-muted: #64748b;
@@ -22,8 +22,16 @@
 
     body {
       background-color: var(--itp-bg);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%2354493c' stroke-opacity='0.065' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 44h26l6 10h8v10H16V54h6l0-10z'/%3E%3Ccircle cx='27' cy='66' r='4'/%3E%3Ccircle cx='51' cy='66' r='4'/%3E%3Ccircle cx='145' cy='38' r='14'/%3E%3Cpath d='M145 31v7l5 3'/%3E%3Cpath d='M92 92l14-14a6 6 0 0 1 8 8l-14 14-8-8z'/%3E%3Cpath d='M165 112l12 5v10c0 9-5 15-12 18-7-3-12-9-12-18v-10l12-5z'/%3E%3Cpath d='M160 127l4 4 7-7'/%3E%3Ccircle cx='48' cy='158' r='14'/%3E%3Ccircle cx='48' cy='158' r='5'/%3E%3Cpath d='M48 144v9M48 163v9M34 158h9M53 158h9'/%3E%3Crect x='110' y='154' width='28' height='22' rx='4'/%3E%3Cpath d='M110 162h28M118 150v6M130 150v6'/%3E%3Cpath d='M188 184h14M195 177v14'/%3E%3Ccircle cx='96' cy='30' r='3'/%3E%3Ccircle cx='192' cy='68' r='4'/%3E%3C/g%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 220px 220px;
       color: var(--itp-text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .page,
+    .page-wrapper {
+      background: transparent;
     }
 
     /* Modern light sidebar on desktop */
@@ -100,8 +108,9 @@
 
     /* Cards */
     .card {
+      background-color: var(--itp-surface);
       border: 1px solid var(--itp-border);
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      box-shadow: 0 1px 3px rgba(42, 36, 33, 0.08);
       border-radius: 12px;
     }
 
