@@ -35,6 +35,7 @@
     appointments: [],
     futureAppointments: [],
     occupancyByLine: {},
+    openReveniriCount: 0,
     reasonsRevenire: [],
     reasonsStergere: [],
 
@@ -58,6 +59,7 @@
   let plateLookupTimer = null;
   let searchReloadTimer = null;
   let modalSlotsCache = null;
+  let lookupOpenRevenire = null;
   let viewRequestSeq = 0;
   let agendaAbortCtrl = null;
   let lastAgendaSignature = '';
@@ -200,10 +202,21 @@
     return digits;
   }
 
-  function buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline) {
+  function buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline, isExpired) {
     const sig = state.stationConfig.station_signature || state.stationConfig.station_name;
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
     if (a.status === 'Revenire') {
+      // R10: Mesaje distincte pentru parinte deja reprogramat, expirat, sau in termen
+      if (a.reinspection_date) {
+        return encodeURIComponent(
+          `Bună ziua! Revenirea ITP pentru ${a.plate} este programată în data de ${formatDateRo(a.reinspection_date)} la ora ${a.reinspection_time || ''} (${a.reinspection_line || ''}).${rejectSummary ? ` De verificat: ${rejectSummary}.` : ''} ${sig}`
+        );
+      }
+      if (isExpired) {
+        return encodeURIComponent(
+          `Bună ziua! Termenul de revenire ITP pentru ${a.plate} (limită ${formatDateRo(deadline)}) a expirat; pentru verificare este necesară o programare pentru ITP complet. ${sig}`
+        );
+      }
       const isChainChild = a.visit_type === 'REVENIRE';
       const termDays = (deadline ? diffDaysIso(a.date, deadline) : null) ?? reinspDays;
       const closedNote = effectiveDeadline && effectiveDeadline !== deadline
@@ -214,6 +227,11 @@
         : `în ${termDays} zile, până la ${formatDateRo(deadline)}${closedNote}`;
       return encodeURIComponent(
         `Bună ziua! Vehiculul ${a.plate} are status ITP Revenire (${formatDateRo(a.date)}).${rejectSummary ? ` Motive: ${rejectSummary}.` : ''} Revenire posibilă ${termPhrase}. ${sig}`
+      );
+    }
+    if (a.visit_type === 'REVENIRE') {
+      return encodeURIComponent(
+        `Bună ziua! Vă confirmăm programarea de REVENIRE ITP pentru ${a.plate} în data de ${formatDateRo(a.date)} la ora ${a.time} (${a.line}) - ${sig}.`
       );
     }
     return encodeURIComponent(
@@ -701,11 +719,13 @@
 
   window.selectDate = (iso) => {
     if (!iso) return;
+    if (state.statusFilter === 'Reveniri deschise') state.statusFilter = 'Toate';
     state.selectedDate = iso;
     loadAndRenderCurrentView();
   };
 
   window.shiftSelectedDate = (delta) => {
+    if (state.statusFilter === 'Reveniri deschise') state.statusFilter = 'Toate';
     state.selectedDate = addDaysIso(state.selectedDate || state.todayDate, delta);
     loadAndRenderCurrentView();
   };
@@ -746,6 +766,7 @@
           a: data.appointments || [],
           f: data.future_appointments || [],
           o: data.occupancy_by_line || {},
+          or: Number(data.open_reveniri_count || 0),
           q: state.search,
           sa: state.searchAllDays,
           l: state.lineFilter,
@@ -761,12 +782,17 @@
         state.appointments = data.appointments || [];
         state.futureAppointments = data.future_appointments || [];
         state.occupancyByLine = data.occupancy_by_line || {};
+        state.openReveniriCount = Number(data.open_reveniri_count || 0);
         state.dailySlots = data.daily_slots || state.dailySlots;
         state.stationConfig = data.station_config || state.stationConfig;
 
-        titleEl.textContent = (state.searchAllDays && state.search.trim())
-          ? 'Căutare în toate zilele'
-          : (state.selectedDate === state.todayDate ? 'Programări Azi' : `Programări • ${formatDateRo(state.selectedDate)}`);
+        if (state.statusFilter === 'Reveniri deschise') {
+          titleEl.textContent = `Reveniri deschise (${state.appointments.length})`;
+        } else if (state.searchAllDays && state.search.trim()) {
+          titleEl.textContent = 'Căutare în toate zilele';
+        } else {
+          titleEl.textContent = state.selectedDate === state.todayDate ? 'Programări Azi' : `Programări • ${formatDateRo(state.selectedDate)}`;
+        }
         subEl.textContent = `${formatDateHeading(state.selectedDate)} • ${state.user.actor_label}`;
         root.innerHTML = renderAziView();
         return;
@@ -874,7 +900,8 @@
         data-itp-action="toggle-line" data-itp-val="${esc(ln)}">${esc(short)}: ${used}/${state.dailySlots.length}</button>`;
     }).join('');
 
-    const statusFilters = ['Toate', 'Programat', 'Revenire'];
+    const isOpenRevFilter = state.statusFilter === 'Reveniri deschise';
+    const statusFilters = ['Toate', 'Programat', 'Revenire', 'Reveniri deschise'];
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
 
     const buildRowMeta = (a) => {
@@ -889,7 +916,8 @@
         : '';
       const termDays = deadline ? (diffDaysIso(a.date, deadline) ?? reinspDays) : reinspDays;
       const isChainChild = a.visit_type === 'REVENIRE';
-      const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline);
+      const isExpired = Boolean(isRev && !a.resolved_by_reinspection_id && deadline && state.todayDate && state.todayDate > deadline);
+      const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline, effectiveDeadline, isExpired);
       const smsHref = buildSmsHref(a.phone, waMsg);
       const hasRevPerm = userCan('programari.revenire') || isAdmin();
       const canEdit = (a.date >= state.todayDate && userCan('programari.edit')) || isAdmin();
@@ -897,15 +925,27 @@
       const canDel = (a.date >= state.todayDate && userCan('programari.delete')) || isAdmin();
       // R01: User cu programari.revenire poate reprograma inclusiv respingerile din zilele trecute
       const canReprog = isRev && !a.resolved_by_reinspection_id && hasRevPerm;
-      const badgeCls = isRev ? 'bg-purple-lt text-purple' : 'bg-blue-lt text-blue';
+      // R10: Badge distinct pentru cele 4 stari
+      let statusLabel = a.status;
+      let badgeCls = 'bg-blue-lt text-blue';
+      if (isRev) {
+        badgeCls = 'bg-purple-lt text-purple';
+      } else if (isChainChild) {
+        statusLabel = 'Revenire prog.';
+        badgeCls = 'bg-indigo-lt text-indigo';
+      }
       return {
-        isRev, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild,
-        reinspDays, waMsg, smsHref, canEdit, canRev, canDel, canReprog, badgeCls,
+        isRev, rejectSummary, deadline, effectiveDeadline, deadlineClosedNote, termDays, isChainChild, isExpired,
+        reinspDays, waMsg, smsHref, canEdit, canRev, canDel, canReprog, statusLabel, badgeCls,
       };
     };
 
     const buildDesktopRow = (a, showDateCol, isFutureRow) => {
       const m = buildRowMeta(a);
+      const reprogBadge = m.isRev && a.reinspection_date
+        ? `<div><button type="button" class="btn btn-link p-0 text-start text-indigo small mt-1 text-decoration-none fw-semibold" onclick="selectDate('${esc(a.reinspection_date)}')">Reprogramată: ${formatDateRo(a.reinspection_date)} ${esc(a.reinspection_time || '')} (${esc(a.reinspection_line || '')})</button></div>`
+        : '';
+      const expiredBadge = m.isExpired ? `<span class="badge bg-red-lt text-red ms-1">Termen expirat</span>` : '';
       return `
         <tr class="${isFutureRow ? 'itp-future-row' : ''}">
           <td class="fw-bold text-dark text-nowrap">
@@ -919,11 +959,12 @@
             <div class="text-muted small">${esc(a.phone)}</div>
           </td>
           <td class="itp-status-cell">
-            <span class="badge ${m.badgeCls}">${esc(a.status)}</span>
+            <span class="badge ${m.badgeCls}">${esc(m.statusLabel)}</span>${expiredBadge}
             ${isFutureRow ? `<div class="itp-future-date-note">${esc(formatDateRo(a.date))}</div>` : ''}
+            ${reprogBadge}
             ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="text-purple small mt-1"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
             ${m.rejectSummary ? `<div>${m.canRev ? `<button type="button" class="btn btn-link p-0 text-start text-purple small mt-1 text-decoration-none text-wrap" onclick="openRejectModal(${a.id})">${esc(m.rejectSummary)}</button>` : `<div class="text-purple small mt-1">${esc(m.rejectSummary)}</div>`}</div>` : ''}
-            ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted small mt-1">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} ${formatDateRo(m.deadline)}${m.deadlineClosedNote ? `<div class="text-orange small fw-medium">${esc(m.deadlineClosedNote)}</div>` : ''}</div>` : ''}
+            ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} small mt-1">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} ${formatDateRo(m.deadline)}${m.deadlineClosedNote && !m.isExpired ? `<div class="text-orange small fw-medium">${esc(m.deadlineClosedNote)}</div>` : ''}</div>` : ''}
           </td>
           <td class="text-end itp-actions-cell">
             <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
@@ -942,6 +983,9 @@
     const buildMobileCard = (a, showDateInline, isFutureCard) => {
       const m = buildRowMeta(a);
       const shortLine = String(a.line || '').replace(/^Linia\s+/i, 'L');
+      const reprogNoteMob = m.isRev && a.reinspection_date
+        ? `<button type="button" class="btn bg-indigo-lt text-indigo rounded px-2 py-1 mb-1 w-100 text-start border-0 fw-semibold" style="font-size: 0.73rem;" onclick="selectDate('${esc(a.reinspection_date)}')">Reprogramată: ${formatDateRo(a.reinspection_date)} ${esc(a.reinspection_time || '')} (${esc(a.reinspection_line || '')})</button>`
+        : '';
       return `
         <div class="card itp-mob-card${isFutureCard ? ' itp-future-mob-card' : ''}">
           <div class="d-flex justify-content-between align-items-center gap-1 mb-1">
@@ -950,17 +994,21 @@
               <span class="fw-bold text-nowrap" style="font-size: 0.8rem;">${showDateInline ? `${formatDateRo(a.date).slice(0, 5)} ` : ''}${esc(a.time)}</span>
               <span class="text-muted text-nowrap" style="font-size: 0.75rem;">• ${esc(shortLine)}</span>
             </div>
-            <div class="text-end flex-shrink-0 d-flex flex-column align-items-end">
-              <span class="badge ${m.badgeCls}" style="font-size: 0.7rem;">${esc(a.status)}</span>
+            <div class="text-end flex-shrink-0 d-flex flex-column align-items-end gap-1">
+              <div class="d-flex align-items-center gap-1">
+                <span class="badge ${m.badgeCls}" style="font-size: 0.7rem;">${esc(m.statusLabel)}</span>
+                ${m.isExpired ? `<span class="badge bg-red-lt text-red" style="font-size: 0.66rem;">Expirat</span>` : ''}
+              </div>
               ${isFutureCard ? `<span class="itp-future-date-note">${esc(formatDateRo(a.date))}</span>` : ''}
             </div>
           </div>
           <div class="text-muted text-truncate mb-1" style="font-size: 0.77rem;">${esc([a.vehicle, a.client, a.phone].filter(Boolean).join(' • '))}</div>
+          ${reprogNoteMob}
           ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
           ${m.rejectSummary ? (m.canRev
             ? `<button type="button" class="btn bg-purple-lt text-purple rounded px-2 py-1 mb-1 w-100 text-start border-0 text-wrap fw-normal" style="font-size: 0.74rem; line-height: 1.3;" onclick="openRejectModal(${a.id})" aria-label="Editează sau revocă motivul revenirii"><strong>Motiv:</strong> ${esc(m.rejectSummary)} <span class="ms-1 text-decoration-underline fw-semibold">(editează)</span></button>`
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
-          ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="text-muted mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
+          ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote && !m.isExpired ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
           <div class="d-flex align-items-center gap-1">
             ${m.canEdit ? `<button class="btn btn-outline-primary itp-mob-act flex-fill" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
             ${m.canReprog ? `<button class="btn btn-purple itp-mob-act flex-fill" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
@@ -975,7 +1023,7 @@
       `;
     };
 
-    const showAllDatesCol = state.searchAllDays && state.search.trim() !== '';
+    const showAllDatesCol = isOpenRevFilter || (state.searchAllDays && state.search.trim() !== '');
     const desktopRows = state.appointments.map(a => buildDesktopRow(a, showAllDatesCol, false)).join('');
     const futureDesktopRows = state.futureAppointments.map(a => buildDesktopRow(a, false, true)).join('');
     const mobCards = state.appointments.map(a => buildMobileCard(a, showAllDatesCol, false)).join('');
@@ -1036,7 +1084,12 @@
               ${lines.map(ln => `<option value="${esc(ln)}" ${state.lineFilter === ln ? 'selected' : ''}>${esc(ln)}</option>`).join('')}
             </select>
             <div class="filter-strip mb-0">
-              ${statusFilters.map(st => `<button type="button" class="filter-pill ${state.statusFilter === st ? 'active' : ''}" onclick="setStatusFilter('${st}')">${esc(st)}</button>`).join('')}
+              ${statusFilters.map(st => {
+                const lbl = (st === 'Reveniri deschise' && state.openReveniriCount > 0)
+                  ? `Reveniri deschise (${state.openReveniriCount})`
+                  : st;
+                return `<button type="button" class="filter-pill ${state.statusFilter === st ? 'active' : ''}" onclick="setStatusFilter('${st}')">${esc(lbl)}</button>`;
+              }).join('')}
             </div>
           </div>
         </div>
@@ -1053,14 +1106,14 @@
               <tr><th>Ora / Linie</th><th>Nr. Înmatriculare</th><th>Mașină</th><th>Client & Telefon</th><th>Status</th><th class="text-end">Acțiuni rapide</th></tr>
             </thead>
             <tbody>
-              ${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">Nicio programare pentru ziua selectată.</td></tr>`}
+              ${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">${isOpenRevFilter ? 'Nicio revenire deschisă (nereprogramată) în ultimele 60 de zile.' : 'Nicio programare pentru ziua selectată.'}</td></tr>`}
               ${futureDeskSection}
             </tbody>
           </table>
         </div>
       </div>
       <div class="mobile-cards">
-        ${mobCards || `<div class="card p-3 text-center text-muted">Nicio programare pentru ziua selectată.</div>`}
+        ${mobCards || `<div class="card p-3 text-center text-muted">${isOpenRevFilter ? 'Nicio revenire deschisă (nereprogramată) în ultimele 60 de zile.' : 'Nicio programare pentru ziua selectată.'}</div>`}
         ${futureMobSection}
       </div>
     `;
@@ -1168,8 +1221,11 @@
     clearTimeout(plateLookupTimer);
     const val = document.getElementById('inpPlate').value.trim();
     const hint = document.getElementById('plateAutofillHint');
-    if (val.replace(/[^A-Za-z0-9]/g, '').length < 4 || state.editingAppt) {
+    const revAlert = document.getElementById('plateOpenRevAlert');
+    if (val.replace(/[^A-Za-z0-9]/g, '').length < 4 || state.editingAppt || state.reprogramParent) {
       hint.classList.add('d-none');
+      if (revAlert) revAlert.classList.add('d-none');
+      lookupOpenRevenire = null;
       return;
     }
     plateLookupTimer = setTimeout(async () => {
@@ -1184,21 +1240,55 @@
           if (vehicleEl && !vehicleEl.value.trim()) vehicleEl.value = res.match.vehicle || '';
           hint.textContent = `Găsit în baza de date (${res.match.plate} • ultima vizită ${formatDateRo(res.match.appt_date)}).`;
           hint.classList.remove('d-none');
+
+          // R09: Semnalizare Revenire deschisa + buton 1-click spre reprogramare
+          const openRev = res.match.open_revenire || null;
+          lookupOpenRevenire = openRev;
+          if (revAlert && openRev && (userCan('programari.revenire') || isAdmin())) {
+            const reasonsTxt = [...(openRev.reject_reasons || []), openRev.reject_note || ''].filter(Boolean).join(' — ');
+            const dl = openRev.reinspection_deadline || '';
+            const expired = Boolean(dl && state.todayDate && state.todayDate > dl);
+            revAlert.innerHTML = `
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                  <strong>Atenție — Revenire deschisă:</strong> ${esc(openRev.plate)} din ${formatDateRo(openRev.date)}${reasonsTxt ? ` (${esc(reasonsTxt)})` : ''}${dl ? ` • Limită: ${formatDateRo(dl)}` : ''}${expired ? ' <span class="badge bg-red-lt text-red">Expirat</span>' : ''}
+                </div>
+                <button type="button" class="btn btn-sm btn-purple" onclick="switchNewModalToLookupReprogram()">Leagă ca Revenire</button>
+              </div>
+            `;
+            revAlert.classList.remove('d-none');
+          } else if (revAlert) {
+            revAlert.classList.add('d-none');
+          }
         } else {
           hint.classList.add('d-none');
+          if (revAlert) revAlert.classList.add('d-none');
+          lookupOpenRevenire = null;
         }
       } catch (_) {
       }
     }, 220);
   };
 
+  window.switchNewModalToLookupReprogram = async () => {
+    const p = lookupOpenRevenire;
+    if (!p) return;
+    const keepDate = document.getElementById('inpDate').value;
+    const keepTime = document.getElementById('inpHour').value;
+    const keepLine = document.getElementById('inpLine').value;
+    await openReprogramModalWithParent(p, { date: keepDate, time: keepTime, line: keepLine });
+  };
+
   window.openNewAppointmentModal = async () => {
     closeMobileSidebar();
     state.editingAppt = null;
     state.reprogramParent = null;
+    lookupOpenRevenire = null;
     document.getElementById('formProgramare').reset();
     document.getElementById('modalErr').classList.add('d-none');
     document.getElementById('plateAutofillHint').classList.add('d-none');
+    const revAlert = document.getElementById('plateOpenRevAlert');
+    if (revAlert) revAlert.classList.add('d-none');
     document.getElementById('reinspectionBanner').classList.add('d-none');
     document.getElementById('modalProgramareTitle').textContent = 'Programare nouă ITP';
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Salvează programarea';
@@ -1220,8 +1310,11 @@
     if (!a) return;
     state.editingAppt = a;
     state.reprogramParent = null;
+    lookupOpenRevenire = null;
     document.getElementById('modalErr').classList.add('d-none');
     document.getElementById('plateAutofillHint').classList.add('d-none');
+    const revAlert = document.getElementById('plateOpenRevAlert');
+    if (revAlert) revAlert.classList.add('d-none');
     document.getElementById('reinspectionBanner').classList.add('d-none');
     document.getElementById('modalProgramareTitle').textContent = `Editează • ${a.plate}`;
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Salvează modificările';
@@ -1248,14 +1341,15 @@
     setModalVisible('modalProgramare', true);
   };
 
-  window.openReprogramModal = async (parentId) => {
-    const p = findAppointmentById(parentId);
-    if (!p) return;
+  async function openReprogramModalWithParent(p, keepSlot = null) {
     state.editingAppt = null;
     state.reprogramParent = p;
+    lookupOpenRevenire = null;
     document.getElementById('formProgramare').reset();
     document.getElementById('modalErr').classList.add('d-none');
     document.getElementById('plateAutofillHint').classList.add('d-none');
+    const revAlert = document.getElementById('plateOpenRevAlert');
+    if (revAlert) revAlert.classList.add('d-none');
     const reinspDays = Number(state.stationConfig.reinspection_days || 30);
     const deadline = p.reinspection_deadline || addDaysIso(p.date, reinspDays);
     const effectiveDeadline = deadline && isClosedDayIso(deadline) ? getLastOpenDayOnOrBefore(deadline) : deadline;
@@ -1273,20 +1367,29 @@
 
     const minReprogDate = isAdmin() ? p.date : (p.date > state.todayDate ? p.date : state.todayDate);
     document.getElementById('inpDate').min = minReprogDate;
-    const defaultDate = p.date >= state.todayDate
-      ? addOpenDaysIso(p.date, 1)
-      : (isClosedDayIso(state.todayDate) ? addOpenDaysIso(state.todayDate, 1) : state.todayDate);
+    const defaultDate = (keepSlot && keepSlot.date && keepSlot.date >= minReprogDate)
+      ? keepSlot.date
+      : (p.date >= state.todayDate
+        ? addOpenDaysIso(p.date, 1)
+        : (isClosedDayIso(state.todayDate) ? addOpenDaysIso(state.todayDate, 1) : state.todayDate));
     setRoDatePair('inpDateText', 'inpDate', defaultDate);
-    if ((state.stationConfig.lines || []).includes(p.line)) {
-      document.getElementById('inpLine').value = p.line;
+    const targetLine = (keepSlot && keepSlot.line) ? keepSlot.line : p.line;
+    if ((state.stationConfig.lines || []).includes(targetLine)) {
+      document.getElementById('inpLine').value = targetLine;
     }
     document.getElementById('inpPlate').value = p.plate;
     document.getElementById('inpPlate').disabled = true;
     document.getElementById('inpPhone').value = p.phone;
     document.getElementById('inpClient').value = p.client || '';
     document.getElementById('inpVehicle').value = p.vehicle || '';
-    await refreshHourOptions(null, null);
+    await refreshHourOptions(keepSlot && keepSlot.time ? keepSlot.time : null, null);
     setModalVisible('modalProgramare', true);
+  }
+
+  window.openReprogramModal = async (parentId) => {
+    const p = findAppointmentById(parentId);
+    if (!p) return;
+    await openReprogramModalWithParent(p, null);
   };
 
   async function submitProgramareWithFlags(extraFlags = {}) {
@@ -1306,7 +1409,7 @@
       try {
         if (state.reprogramParent) {
           await api.post(`api/m/programari/appointments/${state.reprogramParent.id}/reprogram`, {
-            date, time, line, phone, client, vehicle, ...extraFlags,
+            date, time, line, phone, client, vehicle, parent_version: state.reprogramParent.version, ...extraFlags,
           });
           setModalVisible('modalProgramare', false);
           showToast(`Revenire programată: ${state.reprogramParent.plate} (${formatDateRo(date)} ${time})`, buildJumpToDateAction(date));
@@ -1351,6 +1454,7 @@
         }
         if (err.code === 'STALE_VERSION' || err.code === 'SLOT_TAKEN') {
           refreshHourOptions(null, state.editingAppt ? state.editingAppt.id : null);
+          if (err.code === 'STALE_VERSION') loadAndRenderCurrentView();
         }
       }
     });

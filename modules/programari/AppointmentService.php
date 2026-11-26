@@ -39,8 +39,11 @@ final class AppointmentService
         $status = trim((string) ($query['status'] ?? 'Toate'));
 
         $pdo = $this->db->pdo();
-        $lists = $this->repo->listAgenda($pdo, $selectedDate, $today, $searchAll, $q, $line, $status, $includeFuture);
+        $reinspDays = max(1, (int) ($cfg['reinspection_days'] ?? 30));
+        $windowDays = max(60, $reinspDays + 30);
+        $lists = $this->repo->listAgenda($pdo, $selectedDate, $today, $searchAll, $q, $line, $status, $includeFuture, $windowDays);
         $occ = $this->repo->countOccupancyByLine($pdo, $selectedDate);
+        $openRevCount = $this->repo->countOpenReinspections($pdo, $today, $windowDays);
 
         return [
             'today_date' => $today,
@@ -48,6 +51,7 @@ final class AppointmentService
             'appointments' => $lists['appointments'],
             'future_appointments' => $lists['future_appointments'],
             'occupancy_by_line' => $occ,
+            'open_reveniri_count' => $openRevCount,
             'daily_slots' => $this->settings->buildDailySlots($cfg),
             'station_config' => $cfg,
         ];
@@ -117,7 +121,8 @@ final class AppointmentService
         if (strlen($compact) < 4) {
             return null;
         }
-        $stmt = $this->db->pdo()->prepare(
+        $pdo = $this->db->pdo();
+        $stmt = $pdo->prepare(
             'SELECT plate, vehicle, phone, client, appt_date, status
              FROM appointments
              WHERE plate_key = ? AND deleted_at IS NULL
@@ -125,7 +130,29 @@ final class AppointmentService
         );
         $stmt->execute([$compact]);
         $row = $stmt->fetch();
-        return $row ?: null;
+        if (!$row) {
+            return null;
+        }
+
+        // R09: Detecteaza daca masina are o Revenire deschisa (nereprogramata)
+        $revStmt = $pdo->prepare(
+            "SELECT * FROM appointments
+             WHERE plate_key = ? AND deleted_at IS NULL AND status = 'Revenire' AND resolved_by_reinspection_id IS NULL
+             ORDER BY appt_date DESC, id DESC LIMIT 1"
+        );
+        $revStmt->execute([$compact]);
+        $openRevRaw = $revStmt->fetch();
+        $openRev = null;
+        if ($openRevRaw) {
+            $openRev = AppointmentRepo::hydrate($openRevRaw);
+            $cfg = $this->settings->getStationConfig();
+            $reinspDays = max(1, (int) ($cfg['reinspection_days'] ?? 30));
+            if (empty($openRev['reinspection_deadline'])) {
+                $openRev['reinspection_deadline'] = $this->resolveReinspectionDeadline($pdo, $openRev, $reinspDays);
+            }
+        }
+        $row['open_revenire'] = $openRev;
+        return $row;
     }
 
     public function create(array $body, array $user, Request $req): array
@@ -626,6 +653,14 @@ final class AppointmentService
             }
             if ($parent['status'] !== 'Revenire') {
                 throw new HttpException(409, 'NOT_REVENIRE', 'Doar o programare marcată Revenire poate fi reprogramată pentru revenire.');
+            }
+            $parentVersion = isset($body['parent_version']) ? (int) $body['parent_version'] : 0;
+            if ($parentVersion > 0 && (int) $parent['version'] !== $parentVersion) {
+                throw new HttpException(
+                    409,
+                    'STALE_VERSION',
+                    'Programarea inițială (motive/date) a fost modificată între timp de alt coleg. Reîncarcă agenda înainte de reprogramare.'
+                );
             }
             if ($parent['resolved_by_reinspection_id'] !== null) {
                 throw new HttpException(409, 'ALREADY_REPROGRAMMED', 'Există deja o vizită de revenire programată pentru această mașină.');

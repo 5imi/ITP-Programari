@@ -47,52 +47,85 @@ final class AppointmentRepo
         string $q,
         string $line,
         string $status,
-        bool $includeFuture
+        bool $includeFuture,
+        int $openWindowDays = 60
     ): array {
-        $baseWhere = ['deleted_at IS NULL'];
+        $baseWhere = ['a.deleted_at IS NULL'];
         $args = [];
 
         if ($q !== '') {
-            $baseWhere[] = '(plate LIKE ? OR plate_key LIKE ? OR vehicle LIKE ? OR client LIKE ? OR phone LIKE ? OR line LIKE ? OR DATE_FORMAT(appt_date, \'%d.%m.%Y\') LIKE ?)';
+            $baseWhere[] = '(a.plate LIKE ? OR a.plate_key LIKE ? OR a.vehicle LIKE ? OR a.client LIKE ? OR a.phone LIKE ? OR a.line LIKE ? OR DATE_FORMAT(a.appt_date, \'%d.%m.%Y\') LIKE ?)';
             $like = '%' . $q . '%';
             $plateLike = '%' . strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $q)) . '%';
             array_push($args, $like, $plateLike, $like, $like, $like, $like, $like);
         }
         if ($line !== '' && $line !== 'Toate') {
-            $baseWhere[] = 'line = ?';
+            $baseWhere[] = 'a.line = ?';
             $args[] = $line;
         }
+
+        $selectSql = 'SELECT a.*, child.appt_date AS reinspection_date, child.appt_time AS reinspection_time, child.line AS reinspection_line
+                      FROM appointments a
+                      LEFT JOIN appointments child ON child.id = a.resolved_by_reinspection_id AND child.deleted_at IS NULL';
+
+        // R08: Lista dedicata "Reveniri deschise" (nereprogramate, ultimele N zile) fara text obligatoriu
+        if ($status === 'Reveniri deschise') {
+            $sinceDate = Validators::addDaysIso($todayDate, -max(30, $openWindowDays));
+            $openWhere = array_merge($baseWhere, [
+                "a.status = 'Revenire'",
+                'a.resolved_by_reinspection_id IS NULL',
+                'a.appt_date >= ?',
+            ]);
+            $sql = $selectSql . ' WHERE ' . implode(' AND ', $openWhere)
+                . ' ORDER BY COALESCE(a.reinspection_deadline, a.appt_date) ASC, a.appt_date DESC, a.appt_time ASC LIMIT 200';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(array_merge($args, [$sinceDate]));
+            $rows = array_map([self::class, 'hydrate'], $stmt->fetchAll());
+            return ['appointments' => $rows, 'future_appointments' => []];
+        }
+
         if ($status !== '' && $status !== 'Toate') {
-            $baseWhere[] = 'status = ?';
+            $baseWhere[] = 'a.status = ?';
             $args[] = $status;
         }
 
         if ($searchAll && $q !== '') {
-            $sql = 'SELECT * FROM appointments WHERE ' . implode(' AND ', $baseWhere) . ' ORDER BY appt_date DESC, appt_time ASC';
+            $sql = $selectSql . ' WHERE ' . implode(' AND ', $baseWhere) . ' ORDER BY a.appt_date DESC, a.appt_time ASC LIMIT 200';
             $stmt = $pdo->prepare($sql);
             $stmt->execute($args);
             $rows = array_map([self::class, 'hydrate'], $stmt->fetchAll());
             return ['appointments' => $rows, 'future_appointments' => []];
         }
 
-        $dayWhere = array_merge($baseWhere, ['appt_date = ?']);
+        $dayWhere = array_merge($baseWhere, ['a.appt_date = ?']);
         $dayStmt = $pdo->prepare(
-            'SELECT * FROM appointments WHERE ' . implode(' AND ', $dayWhere) . ' ORDER BY appt_time ASC, line ASC'
+            $selectSql . ' WHERE ' . implode(' AND ', $dayWhere) . ' ORDER BY a.appt_time ASC, a.line ASC'
         );
         $dayStmt->execute(array_merge($args, [$selectedDate]));
         $dayRows = array_map([self::class, 'hydrate'], $dayStmt->fetchAll());
 
         $futureRows = [];
         if ($includeFuture && $selectedDate === $todayDate) {
-            $futWhere = array_merge($baseWhere, ['appt_date > ?']);
+            $futWhere = array_merge($baseWhere, ['a.appt_date > ?']);
             $futStmt = $pdo->prepare(
-                'SELECT * FROM appointments WHERE ' . implode(' AND ', $futWhere) . ' ORDER BY appt_date ASC, appt_time ASC, line ASC LIMIT 100'
+                $selectSql . ' WHERE ' . implode(' AND ', $futWhere) . ' ORDER BY a.appt_date ASC, a.appt_time ASC, a.line ASC LIMIT 100'
             );
             $futStmt->execute(array_merge($args, [$todayDate]));
             $futureRows = array_map([self::class, 'hydrate'], $futStmt->fetchAll());
         }
 
         return ['appointments' => $dayRows, 'future_appointments' => $futureRows];
+    }
+
+    public function countOpenReinspections(\PDO $pdo, string $todayDate, int $windowDays = 60): int
+    {
+        $sinceDate = Validators::addDaysIso($todayDate, -max(30, $windowDays));
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM appointments
+             WHERE deleted_at IS NULL AND status = 'Revenire' AND resolved_by_reinspection_id IS NULL AND appt_date >= ?"
+        );
+        $stmt->execute([$sinceDate]);
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -341,6 +374,9 @@ final class AppointmentRepo
             'parent_id' => $row['parent_id'] !== null ? (int) $row['parent_id'] : null,
             'resolved_by_reinspection_id' => $row['resolved_by_reinspection_id'] !== null ? (int) $row['resolved_by_reinspection_id'] : null,
             'reinspection_deadline' => $row['reinspection_deadline'],
+            'reinspection_date' => $row['reinspection_date'] ?? null,
+            'reinspection_time' => $row['reinspection_time'] ?? null,
+            'reinspection_line' => $row['reinspection_line'] ?? null,
             'verify_notes' => $row['verify_notes'] ?? '',
             'version' => (int) $row['version'],
             'created_at' => $row['created_at'],

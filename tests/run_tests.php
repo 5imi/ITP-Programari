@@ -247,6 +247,24 @@ assertTrue(
     'Ștergerea părintelui cu reprogramare activă trebuia blocată cu 409 HAS_ACTIVE_REINSPECTION'
 );
 
+// 4b-1.5. Test R08 (Reveniri deschise) & R09 (lookup open_revenire) & R10 (reinspection_date)
+$openAgenda = httpReq('GET', "$baseUrl/api/m/programari/appointments?status=Reveniri%20deschise", null, '', $cookieFile);
+assertTrue(
+    $openAgenda['status'] === 200 && isset($openAgenda['body']['open_reveniri_count']),
+    'Agenda trebuie să întoarcă open_reveniri_count'
+);
+$parentAgendaCheck = httpReq('GET', "$baseUrl/api/m/programari/appointments?date=$testDate", null, '', $cookieFile);
+$parentRowCheck = null;
+foreach ($parentAgendaCheck['body']['appointments'] ?? [] as $pa) {
+    if ((int) $pa['id'] === $winnerId) {
+        $parentRowCheck = $pa;
+    }
+}
+assertTrue(
+    $parentRowCheck !== null && ($parentRowCheck['reinspection_date'] ?? '') === $reprogDate->format('Y-m-d'),
+    'Părintele reprogramat trebuie să includă reinspection_date'
+);
+
 // 4b-2. Test R05: editare motive pe parinte sincronizeaza verify_notes pe copil
 $syncParent = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revenire", [
     'version' => 6,
