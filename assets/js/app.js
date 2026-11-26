@@ -1072,7 +1072,7 @@
             <div class="d-flex align-items-center gap-1 flex-nowrap min-w-0">
               <span class="plate-badge itp-mob-plate">${esc(a.plate)}</span>
               <span class="fw-bold text-nowrap" style="font-size: 0.8rem;">${showDateInline ? `${formatDateRo(a.date).slice(0, 5)} ` : ''}${esc(a.time)}</span>
-              <span class="text-muted text-nowrap" style="font-size: 0.75rem;">• ${esc(shortLine)}</span>
+              <span class="itp-mob-line text-nowrap">• ${esc(shortLine)}</span>
             </div>
             <div class="text-end flex-shrink-0 d-flex flex-column align-items-end gap-1">
               <div class="d-flex align-items-center gap-1">
@@ -1082,7 +1082,7 @@
               ${isFutureCard ? `<span class="itp-future-date-note">${esc(formatDateRo(a.date))}</span>` : ''}
             </div>
           </div>
-          <div class="text-muted text-truncate mb-1" style="font-size: 0.77rem;">${esc([a.vehicle, a.client, a.phone].filter(Boolean).join(' • '))}</div>
+          <div class="itp-mob-meta text-truncate mb-1">${esc([a.vehicle, a.client, a.phone].filter(Boolean).join(' • '))}</div>
           ${reprogNoteMob}
           ${a.visit_type === 'REVENIRE' && a.verify_notes ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>De verificat:</strong> ${esc(a.verify_notes)}</div>` : ''}
           ${m.rejectSummary ? (m.canRev
