@@ -136,3 +136,6 @@ FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămân�
   - Redenumire utilizator demo `Vali` → **`Vlad`** (PIN `2222`).
   - Demo live expus securizat prin `tools/cloudflared.exe` + `tools/serve_demo.py` (`tools/` ignorat din Git prin `.gitignore`).
 - **Ghid detaliat de implementare creat (`IMPLEMENTARE.md`):** conține pașii exacți pentru **Faza 0 (`Core`) + Faza 1 (`programari`)** — Etapele `0–8`, schemele SQL complete cu trigger-e append-only, regulile și codurile de eroare, endpoint-urile API, planul de testare `pytest` + manual și livrarea (`start.bat` + Firewall).
+- **Decizie finală găzduire (26 noiembrie 2026 — seară):**
+  - Adăugat `robots.txt` (`Disallow: /`) pentru neindexare în motoarele de căutare.
+  - Confirmată găzduirea 24/7 a aplicației și bazei de date pe **VPS Linux KVM (România, NVMe local)** folosind **Docker (`--workers 1` + volume persistente `./data` și `./backups`) + Caddy HTTPS**, adăugată ca **Etapa 9** în `IMPLEMENTARE.md` și în `PLAN.md`.

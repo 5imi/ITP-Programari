@@ -596,13 +596,39 @@ Fiecare operație de scriere din `service.py` rulează în `with transaction(con
 
 ---
 
+## Etapa 9 — Deploy în Producție pe VPS Linux (România) cu Docker & Caddy HTTPS (~0.5h)
+
+Decizia finală de găzduire este **VPS Linux KVM (Ubuntu 24.04) cu disc local NVMe/SSD** (ex. România: Romarg, cyber_Folks, MxHost, Hostico, ~5–10 €/lună), rulând aplicația în **Docker** în spatele **Caddy** (HTTPS/SSL automat).
+
+### Fișiere de containerizare adăugate în rădăcină
+1. **`Dockerfile`:**
+   - Bazat pe `python:3.14-slim`, instalează `requirements.txt` (inclusiv `tzdata`), rulează ca utilizator non-root și pornește `uvicorn core.app:app --host 0.0.0.0 --port 8000 --workers 1` *(strict 1 worker pentru SQLite WAL)*.
+2. **`.dockerignore`:**
+   - Exclude `.git/`, `.venv/`, `references/`, `tools/`, `data/`, `backups/`, `tests/`, `__pycache__/` astfel încât imaginea să fie mică și curată.
+3. **`docker-compose.yml`:**
+   - Serviciul **`app`**:
+     - `restart: unless-stopped`
+     - `environment`: `TZ=Europe/Bucharest`, `ITP_TRUSTED_PROXIES=127.0.0.1,172.16.0.0/12`, `ITP_COOKIE_SECURE=auto`
+     - `volumes`: `./data:/app/data` și `./backups:/app/backups` *(obligatoriu pe NVMe/SSD local al VPS-ului, niciodată pe storage de rețea/NFS)*
+   - Serviciul **`caddy`** (`caddy:alpine`):
+     - Porturi `80:80` și `443:443`
+     - `Caddyfile`: SSL/HTTPS automat (Let's Encrypt) pentru domeniul stației (ex. `programari.domeniultau.ro`) + `reverse_proxy app:8000` + servire `robots.txt` (`Disallow: /`) + header `X-Robots-Tag: noindex, nofollow`.
+
+### Securizare VPS & Lansare
+1. **Firewall UFW pe VPS:** deschise doar porturile `22` (SSH cu cheie), `80` și `443` (`ufw allow 22,80,443/tcp`). Portul `8000` **nu** se expune direct în internet (este accesibil doar intern de către `caddy`).
+2. **Inițializare Admin pe VPS (`First-Start` securizat):** pe VPS, contul Admin (`Laur` + PIN uzual + PIN Secret) se creează prin consolă SSH (`docker compose exec app python -m core.reset_admin_pin`) sau tunel SSH local `ssh -L 8000:127.0.0.1:8000`, fără a expune `/api/setup/first-start` pe internet public.
+3. **DNS:** domeniu `.ro` (sau subdomeniu existent) cu nameservere în **Cloudflare (plan Free)** sau DNS direct către IP-ul VPS-ului.
+4. **Backup extern:** job zilnic `cron` / `rclone` pe VPS care copiază arhiva din `./backups/` în afara serverului (Google Drive / PC stație).
+
+---
+
 ## Definition of Done (Faza 0 + Faza 1)
 - [ ] Toate migrările rulează curat de la zero pe o bază goală și pe reporniri succesive.
 - [ ] Autentificare cu selecție utilizator + PIN + Dual-PIN Admin (`master-recovery`) funcționale și acoperite de teste.
 - [ ] `core_audit_log` și `appointment_history` blocate la `UPDATE`/`DELETE` prin trigger SQLite.
 - [ ] Modulul `programari` respectă programul Luni–Sâmbătă (`08:00–17:30`, 3 linii × 30 min), editarea colaborativă, bifele rapide de motive și anti-suprapunerea.
 - [ ] Suită `pytest` 100% verde + checklist manual PC/Telefon/Cloudflare bifat.
-- [ ] `start.bat` pornește aplicația din dublu-click fără pași manuali.
+- [ ] `start.bat` (local) și `docker compose up -d` (VPS Linux + Caddy HTTPS) pornesc aplicația curat fără pași manuali.
 
 ---
 

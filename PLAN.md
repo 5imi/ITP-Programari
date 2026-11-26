@@ -145,6 +145,7 @@ d:\ITP programari\
 4. **Modelul de Istoric & Audit:** tab curat **`Istoric Imutabil`** dedicat programărilor (30–60 zile implicit + căutare globală după nr. auto, cu `TRIGGER` SQLite anti-modificare) + **`core_audit_log`** silențios accesibil exclusiv Adminului printr-un buton discret **`Jurnal securitate / Admin`**.
 5. **Operare rapidă motive:** motivele de **`Revenire`** și **`Ștergere / Anulare / Neprezentare`** sunt implementate ca **butoane-bifă rapide (1 click/tap)** pentru viteză pe telefon și PC.
 6. **Autentificare rapidă cu PIN & Dual-PIN Admin:** utilizatorul își alege profilul din ecranul de Login (`Laur`, `Vlad`, `Gabi` etc.) și introduce PIN-ul numeric uzual (4–6 cifre, inclusiv prin tastatură numerică pe ecran); Administratorul principal (`Laur`) are în plus un **PIN Secret (8–12 cifre)** strict pentru recuperare și preluare control (deloghează toate sesiunile vechi + resetează PIN-ul uzual), iar ca ultimă rezervă există script fizic pe server (`python -m core.reset_admin_pin`).
+7. **Găzduire 24/7 pe VPS Linux (România) cu Docker & Caddy HTTPS:** aplicația + baza SQLite WAL (`./data` și `./backups` montate persistent pe NVMe local) vor rula 24/7 într-un container Docker (`--workers 1`) în spatele lui Caddy cu SSL automat pe domeniul stației și `robots.txt` (`Disallow: /`), păstrând `start.bat` pentru testare/pornire locală.
 
 ---
 
