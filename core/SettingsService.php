@@ -10,6 +10,8 @@ final class SettingsService
 {
     public const KEY_STATION = 'station_config';
 
+    private ?array $cachedStationConfig = null;
+
     public function __construct(
         private readonly Database $db,
         private readonly Config $config
@@ -18,10 +20,18 @@ final class SettingsService
 
     public function ensureDefaults(\PDO $pdo): void
     {
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE setting_key = ?');
-        $stmt->execute([self::KEY_STATION]);
-        if ((int) $stmt->fetchColumn() > 0) {
+        if ($this->cachedStationConfig !== null) {
             return;
+        }
+        $stmt = $pdo->prepare('SELECT value_json FROM settings WHERE setting_key = ?');
+        $stmt->execute([self::KEY_STATION]);
+        $raw = $stmt->fetchColumn();
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $this->cachedStationConfig = $decoded;
+                return;
+            }
         }
         $defaults = [
             'station_name' => (string) $this->config->get('APP_NAME', 'ACW - Fălticeni • Stație ITP'),
@@ -42,42 +52,79 @@ final class SettingsService
             $this->config->nowString(),
             'system',
         ]);
+        $this->cachedStationConfig = $defaults;
     }
 
     public function getStationConfig(): array
     {
+        if ($this->cachedStationConfig !== null) {
+            return $this->cachedStationConfig;
+        }
         $pdo = $this->db->pdo();
         $stmt = $pdo->prepare('SELECT value_json FROM settings WHERE setting_key = ?');
         $stmt->execute([self::KEY_STATION]);
         $raw = $stmt->fetchColumn();
         if (!is_string($raw)) {
             $this->ensureDefaults($pdo);
-            $stmt->execute([self::KEY_STATION]);
-            $raw = $stmt->fetchColumn();
+            return $this->cachedStationConfig ?? [];
         }
-        $decoded = is_string($raw) ? json_decode($raw, true) : null;
-        return is_array($decoded) ? $decoded : [];
+        $decoded = json_decode($raw, true);
+        $this->cachedStationConfig = is_array($decoded) ? $decoded : [];
+        return $this->cachedStationConfig;
     }
 
     public function updateStationConfig(\PDO $pdo, array $input, string $actorName): array
     {
         $current = $this->getStationConfig();
+        $openRaw = trim((string) ($input['open_time'] ?? $current['open_time'] ?? '08:00'));
+        $closeRaw = trim((string) ($input['close_time'] ?? $current['close_time'] ?? '17:30'));
+
+        // Accepta si format "8:00" normalizand la "08:00"
+        if (preg_match('/^(\d{1,2}):(\d{2})$/', $openRaw, $mo) !== 1 || (int) $mo[1] > 23 || (int) $mo[2] > 59) {
+            throw new HttpException(422, 'INVALID_OPEN_TIME', 'Ora de deschidere trebuie să fie în format HH:MM (ex. 08:00).');
+        }
+        if (preg_match('/^(\d{1,2}):(\d{2})$/', $closeRaw, $mc) !== 1 || (int) $mc[1] > 23 || (int) $mc[2] > 59) {
+            throw new HttpException(422, 'INVALID_CLOSE_TIME', 'Ora de închidere trebuie să fie în format HH:MM (ex. 17:30).');
+        }
+        $openMin = ((int) $mo[1]) * 60 + (int) $mo[2];
+        $closeMin = ((int) $mc[1]) * 60 + (int) $mc[2];
+        if ($openMin >= $closeMin) {
+            throw new HttpException(422, 'INVALID_HOURS', 'Ora de deschidere trebuie să fie strict anterioară orei de închidere.');
+        }
+
+        $openNorm = sprintf('%02d:%02d', (int) $mo[1], (int) $mo[2]);
+        $closeNorm = sprintf('%02d:%02d', (int) $mc[1], (int) $mc[2]);
+
+        $workDays = array_values(array_unique(array_filter(
+            array_map('intval', (array) ($input['work_days'] ?? $current['work_days'] ?? [1, 2, 3, 4, 5, 6])),
+            static fn(int $d): bool => $d >= 1 && $d <= 7
+        )));
+        sort($workDays);
+        if (empty($workDays)) {
+            throw new HttpException(422, 'INVALID_WORK_DAYS', 'Selectează cel puțin o zi lucrătoare (1–7).');
+        }
+
+        $lines = array_values(array_unique(array_filter(array_map(
+            static fn($v): string => trim((string) $v),
+            (array) ($input['lines'] ?? $current['lines'] ?? ['Linia 1', 'Linia 2', 'Linia 3'])
+        ), static fn(string $v): bool => $v !== '')));
+        if (empty($lines)) {
+            throw new HttpException(422, 'INVALID_LINES', 'Trebuie să existe cel puțin o linie ITP configurată.');
+        }
+
         $next = [
-            'station_name' => trim((string) ($input['station_name'] ?? $current['station_name'] ?? 'Stație ITP')),
-            'station_signature' => trim((string) ($input['station_signature'] ?? $current['station_signature'] ?? '')),
-            'lines' => array_values(array_filter(array_map(
-                static fn($v): string => trim((string) $v),
-                (array) ($input['lines'] ?? $current['lines'] ?? ['Linia 1', 'Linia 2', 'Linia 3'])
-            ), static fn(string $v): bool => $v !== '')),
+            'station_name' => mb_substr(trim((string) ($input['station_name'] ?? $current['station_name'] ?? 'Stație ITP')), 0, 120, 'UTF-8'),
+            'station_signature' => mb_substr(trim((string) ($input['station_signature'] ?? $current['station_signature'] ?? '')), 0, 220, 'UTF-8'),
+            'lines' => $lines,
             'slot_minutes' => max(15, min(60, (int) ($input['slot_minutes'] ?? $current['slot_minutes'] ?? 30))),
-            'open_time' => (string) ($input['open_time'] ?? $current['open_time'] ?? '08:00'),
-            'close_time' => (string) ($input['close_time'] ?? $current['close_time'] ?? '17:30'),
-            'work_days' => array_values(array_map('intval', (array) ($input['work_days'] ?? $current['work_days'] ?? [1, 2, 3, 4, 5, 6]))),
+            'open_time' => $openNorm,
+            'close_time' => $closeNorm,
+            'work_days' => $workDays,
             'reinspection_days' => max(1, min(90, (int) ($input['reinspection_days'] ?? $current['reinspection_days'] ?? 30))),
         ];
 
-        if (empty($next['lines'])) {
-            throw new HttpException(422, 'INVALID_LINES', 'Trebuie să existe cel puțin o linie ITP configurată.');
+        if (empty($this->buildDailySlots($next))) {
+            throw new HttpException(422, 'INVALID_SLOTS', 'Intervalul orar și durata slotului nu produc niciun interval valid.');
         }
 
         $upd = $pdo->prepare(
@@ -89,8 +136,9 @@ final class SettingsService
             self::KEY_STATION,
             json_encode($next, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             $this->config->nowString(),
-            substr($actorName, 0, 100),
+            mb_substr($actorName, 0, 100, 'UTF-8'),
         ]);
+        $this->cachedStationConfig = $next;
 
         return $next;
     }

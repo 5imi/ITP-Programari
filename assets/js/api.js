@@ -8,7 +8,9 @@ window.ItpApi = (() => {
     csrfToken = token || '';
   }
 
-  async function request(method, url, body = null) {
+  const SESSION_INVALID_CODES = new Set(['UNAUTHENTICATED', 'SESSION_INVALID', 'SESSION_EXPIRED']);
+
+  async function request(method, url, body = null, opts = {}) {
     const headers = { Accept: 'application/json' };
     if (body !== null) {
       headers['Content-Type'] = 'application/json';
@@ -17,12 +19,17 @@ window.ItpApi = (() => {
       headers['X-CSRF-Token'] = csrfToken;
     }
 
-    const res = await fetch(url, {
+    const fetchOpts = {
       method: method.toUpperCase(),
       credentials: 'same-origin',
       headers,
       body: body !== null ? JSON.stringify(body) : undefined,
-    });
+    };
+    if (opts && opts.signal) {
+      fetchOpts.signal = opts.signal;
+    }
+
+    const res = await fetch(url, fetchOpts);
 
     let data = {};
     const contentType = res.headers.get('content-type') || '';
@@ -35,7 +42,8 @@ window.ItpApi = (() => {
       err.status = res.status;
       err.code = data.error || 'HTTP_ERROR';
       err.data = data;
-      if (res.status === 401 && typeof window.onItpUnauthorized === 'function') {
+      // Doar codurile de sesiune invalida/expirata delogheaza (nu LOGIN_FAILED / MASTER_PIN_INVALID / INVALID_CURRENT_PIN)
+      if (res.status === 401 && SESSION_INVALID_CODES.has(err.code) && typeof window.onItpUnauthorized === 'function') {
         window.onItpUnauthorized();
       }
       throw err;
@@ -49,9 +57,9 @@ window.ItpApi = (() => {
 
   return {
     setCsrfToken,
-    get: (url) => request('GET', url),
-    post: (url, body) => request('POST', url, body || {}),
-    put: (url, body) => request('PUT', url, body || {}),
-    del: (url, body) => request('DELETE', url, body || {}),
+    get: (url, opts) => request('GET', url, null, opts),
+    post: (url, body, opts) => request('POST', url, body || {}, opts),
+    put: (url, body, opts) => request('PUT', url, body || {}, opts),
+    del: (url, body, opts) => request('DELETE', url, body || {}, opts),
   };
 })();

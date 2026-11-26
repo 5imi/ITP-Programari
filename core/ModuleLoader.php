@@ -49,24 +49,30 @@ final class ModuleLoader
 
     public function syncModulesState(): void
     {
+        if (empty($this->manifests)) {
+            return;
+        }
         $pdo = $this->db->pdo();
         $now = $this->config->nowString();
 
+        $existing = [];
+        foreach ($pdo->query('SELECT module_id, enabled, version FROM modules_state')->fetchAll() as $r) {
+            $existing[(string) $r['module_id']] = $r;
+        }
+
         foreach ($this->manifests as $id => $meta) {
-            $stmt = $pdo->prepare('SELECT enabled FROM modules_state WHERE module_id = ?');
-            $stmt->execute([$id]);
-            $row = $stmt->fetch();
+            $row = $existing[$id] ?? null;
             $defaultEnabled = !empty($meta['enabled_by_default']) ? 1 : 0;
             $version = (string) ($meta['version'] ?? '1.0.0');
 
             if (!$row) {
                 $ins = $pdo->prepare(
-                    'INSERT INTO modules_state (module_id, enabled, version, updated_at) VALUES (?, ?, ?, ?)'
+                    'INSERT IGNORE INTO modules_state (module_id, enabled, version, updated_at) VALUES (?, ?, ?, ?)'
                 );
                 $ins->execute([$id, $defaultEnabled, $version, $now]);
-            } elseif (!empty($meta['locked'])) {
-                $upd = $pdo->prepare('UPDATE modules_state SET enabled = 1, version = ? WHERE module_id = ?');
-                $upd->execute([$version, $id]);
+            } elseif (!empty($meta['locked']) && ((int) $row['enabled'] !== 1 || (string) $row['version'] !== $version)) {
+                $upd = $pdo->prepare('UPDATE modules_state SET enabled = 1, version = ?, updated_at = ? WHERE module_id = ?');
+                $upd->execute([$version, $now, $id]);
             }
         }
     }

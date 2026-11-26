@@ -161,10 +161,14 @@ final class AdminController
             Security::assertValidPinFormat($newPin, false);
         }
         if ($newMasterPin !== null) {
-            Security::assertValidPinFormat($newMasterPin, true);
+            throw new HttpException(
+                403,
+                'MASTER_PIN_PROTECTED',
+                'PIN-ul Secret Master nu poate fi modificat din panoul standard cu PIN uzual.'
+            );
         }
 
-        $this->db->transaction(function (\PDO $pdo) use ($ctx, $req, $targetId, $displayName, $role, $newPin, $newMasterPin, $perms): void {
+        $this->db->transaction(function (\PDO $pdo) use ($ctx, $req, $targetId, $displayName, $role, $newPin, $perms): void {
             $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ? FOR UPDATE');
             $stmt->execute([$targetId]);
             $row = $stmt->fetch();
@@ -173,25 +177,24 @@ final class AdminController
             }
 
             $isPrimary = (int) $row['is_primary_admin'] === 1;
+            if ($isPrimary && (int) $ctx['user']['id'] !== $targetId) {
+                throw new HttpException(403, 'PRIMARY_ADMIN_PROTECTED', 'Doar Administratorul principal își poate edita propriul cont.');
+            }
             $nextRole = $role ?? (string) $row['role'];
             if ($isPrimary && $nextRole !== 'admin') {
                 throw new HttpException(409, 'PRIMARY_ADMIN_PROTECTED', 'Administratorul principal nu poate fi retrogradat.');
             }
-            if ($newMasterPin !== null && !$isPrimary) {
-                throw new HttpException(422, 'MASTER_PIN_PRIMARY_ONLY', 'Doar Administratorul principal deține PIN Secret Master.');
-            }
 
             $nextName = $displayName ?? (string) $row['display_name'];
             $nextPinHash = $newPin !== null ? Security::hashPin($newPin) : (string) $row['pin_hash'];
-            $nextMasterHash = $newMasterPin !== null ? Security::hashPin($newMasterPin) : $row['master_pin_hash'];
-            $nextSessVer = ($newPin !== null || $newMasterPin !== null || $nextRole !== $row['role'])
+            $nextSessVer = ($newPin !== null || $nextRole !== $row['role'])
                 ? ((int) $row['session_version']) + 1
                 : (int) $row['session_version'];
 
             $upd = $pdo->prepare(
-                'UPDATE users SET display_name = ?, role = ?, pin_hash = ?, master_pin_hash = ?, session_version = ?, updated_at = ? WHERE id = ?'
+                'UPDATE users SET display_name = ?, role = ?, pin_hash = ?, session_version = ?, updated_at = ? WHERE id = ?'
             );
-            $upd->execute([$nextName, $nextRole, $nextPinHash, $nextMasterHash, $nextSessVer, $this->config->nowString(), $targetId]);
+            $upd->execute([$nextName, $nextRole, $nextPinHash, $nextSessVer, $this->config->nowString(), $targetId]);
 
             if ($nextRole === 'admin') {
                 $perms = self::VALID_PERMS;
@@ -453,11 +456,31 @@ final class AdminController
 
     public function downloadBackup(Request $req, array $params): array
     {
-        $this->auth->requireAdmin($req, false);
+        $ctx = $this->auth->requireAdmin($req, false);
         $filename = (string) ($params['file'] ?? '');
         $path = $this->backups->resolveBackupFile($filename);
 
+        $this->db->transaction(function (\PDO $pdo) use ($ctx, $req, $path): void {
+            $this->audit->log(
+                $pdo,
+                (int) $ctx['user']['id'],
+                $ctx['user']['actor_label'],
+                'BACKUP_DOWNLOAD',
+                sprintf('Descărcat fișier backup: %s.', basename($path)),
+                'core',
+                'backup',
+                basename($path),
+                null,
+                null,
+                $req
+            );
+        });
+
         if (PHP_SAPI !== 'cli') {
+            header('X-Content-Type-Options: nosniff');
+            header('X-Frame-Options: SAMEORIGIN');
+            header('Referrer-Policy: same-origin');
+            header('Cache-Control: no-store');
             header('Content-Type: application/json; charset=utf-8');
             header('Content-Disposition: attachment; filename="' . basename($path) . '"');
             header('Content-Length: ' . (string) filesize($path));
@@ -480,7 +503,7 @@ final class AdminController
         $catActions = [
             'AUTH' => ['LOGIN_OK', 'LOGIN_FAIL', 'LOGOUT', 'PIN_CHANGE', 'ADMIN_MASTER_RECOVERY', 'FIRST_START_SETUP'],
             'USERS' => ['USER_CREATE', 'USER_UPDATE', 'USER_BLOCK', 'USER_UNBLOCK'],
-            'CONFIG' => ['REASON_ADD', 'REASON_UPDATE', 'REASON_DELETE', 'MODULE_TOGGLE', 'SETTINGS_UPDATE', 'BACKUP', 'EXPORT'],
+            'CONFIG' => ['REASON_ADD', 'REASON_UPDATE', 'REASON_DELETE', 'MODULE_TOGGLE', 'SETTINGS_UPDATE', 'BACKUP', 'BACKUP_DOWNLOAD', 'EXPORT'],
         ];
 
         $where = [];

@@ -115,6 +115,7 @@ final class AuthController
 
             // Utilizatori operationali initiali (optionali, creati de Admin la configurare - zero PIN hardcodat)
             $sort = 20;
+            $createdExtraCount = 0;
             $insUser = $pdo->prepare(
                 'INSERT INTO users (username, display_name, role, pin_hash, master_pin_hash, is_primary_admin, is_active, must_change_pin, session_version, sort_order, created_at, updated_at)
                  VALUES (?, ?, \'user\', ?, NULL, 0, 1, 0, 1, ?, ?, ?)'
@@ -126,11 +127,24 @@ final class AuthController
                 $uName = trim((string) ($eu['display_name'] ?? ''));
                 $uPin = (string) ($eu['pin'] ?? '');
                 $uUser = strtolower(trim((string) ($eu['username'] ?? preg_replace('/[^a-z0-9]/i', '', $uName))));
-                if ($uName === '' || $uUser === '' || $uPin === '') {
+                if ($uName === '' && $uUser === '' && $uPin === '') {
                     continue;
                 }
+                if (mb_strlen($uName) < 2) {
+                    throw new HttpException(422, 'INVALID_NAME', 'Numele fiecărui utilizator suplimentar trebuie să aibă minim 2 caractere.');
+                }
+                if (preg_match('/^[a-z0-9_.-]{2,32}$/', $uUser) !== 1) {
+                    throw new HttpException(422, 'INVALID_USERNAME', sprintf('Username invalid pentru utilizatorul "%s" (2–32 caractere alfanumerice).', $uName));
+                }
                 Security::assertValidPinFormat($uPin, false);
-                $insUser->execute([$uUser, $uName, Security::hashPin($uPin), $sort, $now, $now]);
+                try {
+                    $insUser->execute([$uUser, $uName, Security::hashPin($uPin), $sort, $now, $now]);
+                } catch (\PDOException $e) {
+                    if (Database::isDuplicateKeyException($e)) {
+                        throw new HttpException(409, 'USERNAME_EXISTS', sprintf('Username-ul "%s" este duplicat.', $uUser));
+                    }
+                    throw $e;
+                }
                 $uid = (int) $pdo->lastInsertId();
                 $perms = is_array($eu['permissions'] ?? null) ? $eu['permissions'] : ['programari.edit', 'programari.revenire'];
                 foreach ($perms as $p) {
@@ -138,6 +152,7 @@ final class AuthController
                         $insPerm->execute([$uid, $p]);
                     }
                 }
+                $createdExtraCount++;
                 $sort += 10;
             }
 
@@ -147,7 +162,7 @@ final class AuthController
                 $adminId,
                 $displayName . ' (Admin)',
                 'FIRST_START_SETUP',
-                sprintf('Inițializare aplicație: Admin principal %s creat și %d utilizatori operaționali.', $displayName, count($extraUsers)),
+                sprintf('Inițializare aplicație: Admin principal %s creat și %d utilizatori operaționali.', $displayName, $createdExtraCount),
                 'core',
                 'user',
                 (string) $adminId,
@@ -294,8 +309,11 @@ final class AuthController
             $admin = $stmt->fetch();
 
             if (!$admin || empty($admin['master_pin_hash']) || !Security::verifyPin($masterPin, (string) $admin['master_pin_hash'])) {
-                Security::recordLoginAttempt($txPdo, $admin ? (int) $admin['id'] : null, $ip, 'master', false, $this->config);
-                throw new HttpException(401, 'MASTER_PIN_INVALID', 'PIN-ul Secret Master este incorect.');
+                return [
+                    '__failed' => true,
+                    'admin_id' => $admin ? (int) $admin['id'] : null,
+                    'actor_label' => $admin ? sprintf('%s (Admin)', $admin['display_name']) : 'Sistem',
+                ];
             }
 
             $adminId = (int) $admin['id'];
@@ -336,6 +354,26 @@ final class AuthController
             ];
         });
 
+        // Inregistrare tentativa esuata in afara tranzactiei (nu este anulata de ROLLBACK)
+        if (!empty($payload['__failed'])) {
+            $failedAdminId = $payload['admin_id'] !== null ? (int) $payload['admin_id'] : null;
+            Security::recordLoginAttempt($pdo, $failedAdminId, $ip, 'master', false, $this->config);
+            $this->audit->log(
+                $pdo,
+                $failedAdminId,
+                (string) $payload['actor_label'],
+                'LOGIN_FAIL',
+                'Încercare eșuată de preluare comandă Admin cu PIN Secret Master.',
+                'core',
+                'user',
+                $failedAdminId !== null ? (string) $failedAdminId : null,
+                null,
+                null,
+                $req
+            );
+            throw new HttpException(401, 'MASTER_PIN_INVALID', 'PIN-ul Secret Master este incorect.');
+        }
+
         return Response::json($payload);
     }
 
@@ -355,14 +393,17 @@ final class AuthController
         }
 
         $userId = (int) $ctx['user']['id'];
+        $ip = $req->clientIp();
+        $pdo = $this->db->pdo();
+        Security::enforceRateLimit($pdo, 'pin', $userId, $ip, $this->config);
 
-        $payload = $this->db->transaction(function (\PDO $txPdo) use ($ctx, $userId, $currentPin, $newPin, $req): array {
+        $payload = $this->db->transaction(function (\PDO $txPdo) use ($ctx, $userId, $ip, $currentPin, $newPin, $req): array {
             $stmt = $txPdo->prepare('SELECT * FROM users WHERE id = ? FOR UPDATE');
             $stmt->execute([$userId]);
             $row = $stmt->fetch();
 
             if (!$row || !Security::verifyPin($currentPin, (string) $row['pin_hash'])) {
-                throw new HttpException(401, 'INVALID_CURRENT_PIN', 'PIN-ul actual nu este corect.');
+                return ['__failed' => true];
             }
 
             $nextVersion = ((int) $row['session_version']) + 1;
@@ -379,6 +420,8 @@ final class AuthController
 
             $updCurr = $txPdo->prepare('UPDATE sessions SET session_version = ? WHERE token_hash = ?');
             $updCurr->execute([$nextVersion, $ctx['session']['token_hash']]);
+
+            Security::recordLoginAttempt($txPdo, $userId, $ip, 'pin', true, $this->config);
 
             $this->audit->log(
                 $txPdo,
@@ -399,6 +442,25 @@ final class AuthController
                 'message' => 'PIN actualizat cu succes.',
             ];
         });
+
+        if (!empty($payload['__failed'])) {
+            Security::recordLoginAttempt($pdo, $userId, $ip, 'pin', false, $this->config);
+            $this->audit->log(
+                $pdo,
+                $userId,
+                $ctx['user']['actor_label'],
+                'LOGIN_FAIL',
+                'PIN actual introdus greșit la schimbarea PIN-ului.',
+                'core',
+                'user',
+                (string) $userId,
+                null,
+                null,
+                $req
+            );
+            // 422 (nu 401): sesiunea ramane autentificata, doar validarea PIN-ului actual a esuat
+            throw new HttpException(422, 'INVALID_CURRENT_PIN', 'PIN-ul actual nu este corect.');
+        }
 
         return Response::json($payload);
     }

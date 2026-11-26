@@ -251,9 +251,13 @@ final class AppointmentRepo
             $grouped[$aid]['event_types'][$r['event_type']] = true;
         }
 
+        $allActorsSet = [];
         $out = [];
         foreach ($grouped as $entry) {
             $entry['actors'] = array_keys($entry['actors']);
+            foreach ($entry['actors'] as $actName) {
+                $allActorsSet[$actName] = true;
+            }
             $lastEv = end($entry['events']);
             $entry['last_action_at'] = $lastEv ? $lastEv['action_at'] : $entry['created_at'];
             $entry['last_event_id'] = $lastEv ? (int) $lastEv['id'] : 0;
@@ -290,7 +294,9 @@ final class AppointmentRepo
         }
 
         usort($out, static fn(array $a, array $b): int => strcmp((string) $b['last_action_at'], (string) $a['last_action_at']) ?: ((int) $b['last_event_id'] <=> (int) $a['last_event_id']));
-        return $out;
+        $allActors = array_keys($allActorsSet);
+        sort($allActors, SORT_NATURAL | SORT_FLAG_CASE);
+        return ['entries' => $out, 'all_actors' => $allActors];
     }
 
     /**

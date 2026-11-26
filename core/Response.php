@@ -76,7 +76,7 @@ final class Response
                 foreach ((array) ($result['rows'] ?? []) as $row) {
                     $sanitized = array_map(static function ($cell): string {
                         $val = (string) $cell;
-                        if ($val !== '' && preg_match('/^[=@\t\r]/', $val) === 1) {
+                        if ($val !== '' && preg_match('/^[=+\-@\t\r]/', $val) === 1) {
                             return "'" . $val;
                         }
                         return $val;

@@ -31,14 +31,35 @@ final class BackupService
         $tablesStmt = $pdo->query('SHOW TABLES');
         $tables = array_map('strval', $tablesStmt->fetchAll(\PDO::FETCH_COLUMN));
 
+        // Citire snapshot consistent InnoDB (REPEATABLE READ) fara hash-uri de PIN sau sesiuni
         $snapshotTables = [];
-        foreach ($tables as $table) {
-            if ($table === 'sessions') {
-                // Token-urile de sesiune active nu au nevoie de export in backup
-                continue;
+        $inTx = $pdo->inTransaction();
+        if (!$inTx) {
+            $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+        }
+        try {
+            foreach ($tables as $table) {
+                if ($table === 'sessions') {
+                    continue;
+                }
+                $rows = $pdo->query('SELECT * FROM `' . str_replace('`', '', $table) . '`')->fetchAll();
+                if ($table === 'users') {
+                    foreach ($rows as &$r) {
+                        unset($r['pin_hash'], $r['master_pin_hash']);
+                    }
+                    unset($r);
+                }
+                $snapshotTables[$table] = $rows;
             }
-            $rows = $pdo->query('SELECT * FROM `' . str_replace('`', '', $table) . '`')->fetchAll();
-            $snapshotTables[$table] = $rows;
+            if (!$inTx) {
+                $pdo->exec('COMMIT');
+            }
+        } catch (\Throwable $e) {
+            if (!$inTx) {
+                $pdo->exec('ROLLBACK');
+            }
+            throw $e;
         }
 
         $now = $this->config->now();
@@ -49,6 +70,7 @@ final class BackupService
                 'created_at' => $now->format(\DateTimeInterface::ATOM),
                 'created_by' => $actorName,
                 'tables_count' => count($snapshotTables),
+                'pin_hashes_excluded' => true,
             ],
             'tables' => $snapshotTables,
         ];
@@ -59,7 +81,16 @@ final class BackupService
         }
 
         $target = $dir . DIRECTORY_SEPARATOR . $filename;
-        file_put_contents($target, $json, LOCK_EX);
+        if (file_put_contents($target, $json, LOCK_EX) === false) {
+            throw new HttpException(500, 'BACKUP_WRITE_ERROR', 'Nu s-a putut scrie fișierul de backup pe disc.');
+        }
+
+        // Retentie automata: pastreaza ultimele 30 de copii de siguranta
+        $allFiles = glob($dir . DIRECTORY_SEPARATOR . 'itp_backup_*.json') ?: [];
+        rsort($allFiles, SORT_STRING);
+        foreach (array_slice($allFiles, 30) as $oldPath) {
+            @unlink($oldPath);
+        }
 
         return [
             'filename' => $filename,
@@ -80,12 +111,15 @@ final class BackupService
         $files = glob($dir . DIRECTORY_SEPARATOR . 'itp_backup_*.json') ?: [];
         rsort($files, SORT_STRING);
 
+        $tz = $this->config->timezone();
         $out = [];
         foreach ($files as $path) {
+            $mtime = filemtime($path) ?: time();
+            $dt = (new \DateTimeImmutable('@' . $mtime))->setTimezone($tz);
             $out[] = [
                 'filename' => basename($path),
                 'size_bytes' => (int) (filesize($path) ?: 0),
-                'modified_at' => date('Y-m-d H:i:s', filemtime($path) ?: time()),
+                'modified_at' => $dt->format('Y-m-d H:i:s'),
             ];
         }
         return $out;

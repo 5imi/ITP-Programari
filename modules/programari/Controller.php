@@ -29,7 +29,8 @@ final class Controller
     {
         $router->add('GET', '/api/m/programari/appointments', function (Request $req): array {
             $this->assertEnabled();
-            $this->auth->requireUser($req, false);
+            $isPoll = (string) $req->query('poll', '0') === '1';
+            $this->auth->requireUser($req, false, !$isPoll);
             $data = $this->service->getAgenda([
                 'date' => $req->query('date', ''),
                 'search_all' => $req->query('search_all', '0'),

@@ -8,7 +8,6 @@ venv/
 data/*.db
 data/*.db-shm
 data/*.db-wal
-backups/
 *.log
 .DS_Store
 Thumbs.db
@@ -21,4 +20,3 @@ config/env.php
 backups/*
 !backups/.gitkeep
 *.tmp
-*.log

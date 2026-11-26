@@ -22,10 +22,10 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 - **Validări & Autocomplete:** normalizare automată număr înmatriculare și telefon România, autocomplete din istoricul stației, notificare live la dublură în aceeași zi.
 - **Flux `Revenire` (30 zile) & Acțiuni rapide:** motive bifabile administrabile (`Motive`), `Revocă → Programat`, `+ Reprogramează` cu calcul automat al termenului de 30 zile, `Sună`, `SMS` (cu semnătura stației configurabilă) și `Șterge` cu motiv obligatoriu.
 
-### 3. `Istoric Imutabil`, `Clienți & Vehicule`, `Expirări ITP` & Administrare
+### 3. `Istoric Imutabil` & Administrare (plus Roadmap Etapa 2)
 - **`Istoric Imutabil`:** jurnal append-only protejat la nivel de bază de date, filtrabil după stare/utilizator/text, cu Export CSV.
-- **`Clienți & Vehicule` & `Expirări ITP`:** evidență per vehicul (`Ultima vizită` & `Scadență ITP`) și coadă separată de rechemare (`De contactat` / `Deja programate`).
-- **Administrare:** `Motive`, `Setări Stație`, `Jurnal Securitate`, `Backup Bază Date` (export JSON descărcabil în `backups/`).
+- **Administrare:** `Motive`, `Setări Stație`, `Jurnal Securitate`, `Backup Bază Date` (export JSON consistent, fără hash-uri PIN, descărcabil în `backups/`).
+- **Roadmap modular (Etapa 2):** modulele independente `Clienți & Vehicule` și `Expirări ITP` (coadă de rechemare) se adaugă în `modules/`.
 
 ---
 

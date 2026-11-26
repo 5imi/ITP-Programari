@@ -221,7 +221,9 @@ final class AppointmentService
             throw new HttpException(422, 'VERSION_REQUIRED', 'Lipsește câmpul version pentru editare concurentă.');
         }
 
-        return $this->db->transaction(function (\PDO $pdo) use ($id, $body, $validated, $expectedVersion, $user, $req): array {
+        $reinspDays = max(1, (int) ($cfg['reinspection_days'] ?? 30));
+
+        return $this->db->transaction(function (\PDO $pdo) use ($id, $body, $validated, $expectedVersion, $reinspDays, $user, $req): array {
             $existing = $this->repo->lockActiveByIdForUpdate($pdo, $id);
             if (!$existing) {
                 throw new HttpException(404, 'APPOINTMENT_NOT_FOUND', 'Programarea nu există sau a fost ștearsă.');
@@ -264,8 +266,9 @@ final class AppointmentService
                     409,
                     'OVER_DEADLINE',
                     sprintf(
-                        'Data aleasă (%s) depășește termenul de 30 zile (%s). Dacă salvezi, trece pe ITP complet.',
+                        'Data aleasă (%s) depășește termenul de %d zile (%s). Dacă salvezi, trece pe ITP complet.',
                         Validators::formatDateRo($validated['date']),
+                        $reinspDays,
                         Validators::formatDateRo((string) $existing['reinspection_deadline'])
                     )
                 );
@@ -341,7 +344,7 @@ final class AppointmentService
 
             $after = $this->repo->findActiveById($pdo, $id);
             $diffSummary = implode(' | ', $changes)
-                . ($overDeadline ? ' | Trecut pe ITP complet (peste 30 zile)' : '')
+                . ($overDeadline ? sprintf(' | Trecut pe ITP complet (peste %d zile)', $reinspDays) : '')
                 . ($dup ? ' | Duplicat confirmat' : '')
                 . ($validated['is_closed_admin'] ? ' | Excepție Admin zi închisă' : '');
 
@@ -401,7 +404,7 @@ final class AppointmentService
             );
             $upd->execute([
                 json_encode($reasons, JSON_UNESCAPED_UNICODE),
-                substr($note, 0, 500),
+                mb_substr($note, 0, 500, 'UTF-8'),
                 (int) $user['id'],
                 $this->config->nowString(),
                 $id,
@@ -444,6 +447,16 @@ final class AppointmentService
             if ($existing['status'] !== 'Revenire') {
                 throw new HttpException(409, 'NOT_IN_REVENIRE', 'Programarea nu este marcată ca Revenire.');
             }
+            if ($existing['resolved_by_reinspection_id'] !== null) {
+                $activeChild = $this->repo->findActiveById($pdo, (int) $existing['resolved_by_reinspection_id']);
+                if ($activeChild !== null) {
+                    throw new HttpException(
+                        409,
+                        'HAS_ACTIVE_REINSPECTION',
+                        'Există deja o reprogramare activă pentru această revenire. Șterge mai întâi reprogramarea înainte de revocare.'
+                    );
+                }
+            }
             if ($existing['date'] < $this->config->todayIso() && $user['role'] !== 'admin') {
                 throw new HttpException(403, 'PAST_DAY_ADMIN_ONLY', 'Zilele din istoric pot fi modificate doar de Administrator.');
             }
@@ -453,7 +466,7 @@ final class AppointmentService
 
             $upd = $pdo->prepare(
                 "UPDATE appointments
-                 SET status = 'Programat', reject_reasons_json = '[]', reject_note = '', version = version + 1, updated_by = ?, updated_at = ?
+                 SET status = 'Programat', reject_reasons_json = '[]', reject_note = '', resolved_by_reinspection_id = NULL, version = version + 1, updated_by = ?, updated_at = ?
                  WHERE id = ? AND version = ?"
             );
             $upd->execute([(int) $user['id'], $this->config->nowString(), $id, $expectedVersion]);
@@ -509,6 +522,9 @@ final class AppointmentService
             if ($parent['resolved_by_reinspection_id'] !== null) {
                 throw new HttpException(409, 'ALREADY_REPROGRAMMED', 'Există deja o vizită de revenire programată pentru această mașină.');
             }
+            if ($date < $parent['date']) {
+                throw new HttpException(422, 'BEFORE_PARENT_DATE', 'Data revenirii nu poate fi anterioară vizitei inițiale.');
+            }
 
             $deadline = Validators::addDaysIso($parent['date'], $reinspDays);
             $overDeadline = $date > $deadline;
@@ -545,7 +561,7 @@ final class AppointmentService
                     'visit_type' => $overDeadline ? 'NORMAL' : 'REVENIRE',
                     'parent_id' => $parentId,
                     'reinspection_deadline' => $overDeadline ? null : $deadline,
-                    'verify_notes' => $overDeadline ? '' : substr($verifySummary, 0, 500),
+                    'verify_notes' => $overDeadline ? '' : mb_substr($verifySummary, 0, 500, 'UTF-8'),
                     'created_by' => (int) $user['id'],
                     'created_at' => $now,
                     'updated_by' => (int) $user['id'],
@@ -571,7 +587,7 @@ final class AppointmentService
                 (string) $user['actor_label'],
                 sprintf(
                     'Reprogramată %s pe %s la %s (%s)',
-                    $overDeadline ? 'ca ITP complet (peste 30 zile)' : 'revenirea',
+                    $overDeadline ? sprintf('ca ITP complet (peste %d zile)', $reinspDays) : 'revenirea',
                     Validators::formatDateRo($date),
                     $time,
                     $line
@@ -590,7 +606,7 @@ final class AppointmentService
                 (string) $user['actor_label'],
                 sprintf(
                     '%s programată din %s pentru %s la %s (%s)',
-                    $overDeadline ? 'ITP complet (termen 30 zile depășit)' : 'Revenire',
+                    $overDeadline ? sprintf('ITP complet (termen %d zile depășit)', $reinspDays) : 'Revenire',
                     Validators::formatDateRo($parent['date']),
                     Validators::formatDateRo($date),
                     $time,
@@ -622,6 +638,9 @@ final class AppointmentService
             if (!$existing) {
                 throw new HttpException(404, 'APPOINTMENT_NOT_FOUND', 'Programarea nu există sau a fost deja ștearsă.');
             }
+            if ($existing['date'] < $this->config->todayIso() && $user['role'] !== 'admin') {
+                throw new HttpException(403, 'PAST_DAY_ADMIN_ONLY', 'Programările din zile trecute pot fi șterse doar de Administrator.');
+            }
             if ((int) $existing['version'] !== $expectedVersion) {
                 throw new HttpException(409, 'STALE_VERSION', 'Programarea a fost modificată între timp de alt coleg.');
             }
@@ -632,7 +651,7 @@ final class AppointmentService
                  SET deleted_at = ?, deleted_by = ?, delete_reason = ?, version = version + 1, updated_by = ?, updated_at = ?
                  WHERE id = ? AND version = ?'
             );
-            $upd->execute([$now, (int) $user['id'], substr($reason, 0, 255), (int) $user['id'], $now, $id, $expectedVersion]);
+            $upd->execute([$now, (int) $user['id'], mb_substr($reason, 0, 255, 'UTF-8'), (int) $user['id'], $now, $id, $expectedVersion]);
 
             $this->history->record(
                 $pdo,
@@ -680,8 +699,10 @@ final class AppointmentService
         $intactFilter = trim((string) ($query['scope'] ?? ''));
         $since = $this->config->now()->modify('-60 days')->format('Y-m-d 00:00:00');
 
+        $res = $this->repo->listHistoryEntries($this->db->pdo(), $q, $eventType, $actor, $intactFilter, $since);
         return [
-            'entries' => $this->repo->listHistoryEntries($this->db->pdo(), $q, $eventType, $actor, $intactFilter, $since),
+            'entries' => $res['entries'],
+            'all_actors' => $res['all_actors'],
         ];
     }
 
@@ -797,9 +818,9 @@ final class AppointmentService
             'line' => $line,
             'plate' => $plateNorm['plate'],
             'plate_key' => $plateNorm['plate_key'],
-            'vehicle' => substr($vehicleRaw, 0, 120),
+            'vehicle' => mb_substr($vehicleRaw, 0, 120, 'UTF-8'),
             'phone' => $phone,
-            'client' => substr($clientRaw !== '' ? $clientRaw : $plateNorm['plate'], 0, 160),
+            'client' => mb_substr($clientRaw !== '' ? $clientRaw : $plateNorm['plate'], 0, 160, 'UTF-8'),
             'is_closed_admin' => $isClosed && $user['role'] === 'admin',
         ];
     }

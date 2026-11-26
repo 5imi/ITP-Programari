@@ -43,14 +43,14 @@ final class HistoryService
         );
         $stmt->execute([
             $appointmentId,
-            substr($eventType, 0, 32),
+            mb_substr($eventType, 0, 32, 'UTF-8'),
             $actorUserId,
-            substr($actorName, 0, 120),
+            mb_substr($actorName, 0, 120, 'UTF-8'),
             $this->config->nowString(),
-            substr($summary, 0, 700),
+            mb_substr($summary, 0, 700, 'UTF-8'),
             $before !== null ? json_encode($before, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
             $after !== null ? json_encode($after, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
-            $reason !== null ? substr($reason, 0, 255) : null,
+            $reason !== null ? mb_substr($reason, 0, 255, 'UTF-8') : null,
             substr($ipAddress, 0, 64),
         ]);
     }

@@ -23,36 +23,61 @@ final class Migrator
     public function runAll(array $moduleIds = []): array
     {
         $pdo = $this->db->pdo();
-        $pdo->exec(
-            'CREATE TABLE IF NOT EXISTS _migrations (
-                module_id VARCHAR(64) NOT NULL,
-                filename VARCHAR(128) NOT NULL,
-                checksum CHAR(64) NOT NULL,
-                applied_at DATETIME NOT NULL,
-                PRIMARY KEY (module_id, filename)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
+        $applied = $this->loadAppliedMap($pdo);
 
         $warnings = [];
         $base = $this->config->baseDir();
 
         $warnings = array_merge(
             $warnings,
-            $this->runDir('core', $base . DIRECTORY_SEPARATOR . 'core' . DIRECTORY_SEPARATOR . 'migrations')
+            $this->runDir('core', $base . DIRECTORY_SEPARATOR . 'core' . DIRECTORY_SEPARATOR . 'migrations', $applied)
         );
 
         foreach ($moduleIds as $moduleId) {
             $dir = $base . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . $moduleId . DIRECTORY_SEPARATOR . 'migrations';
-            $warnings = array_merge($warnings, $this->runDir($moduleId, $dir));
+            $warnings = array_merge($warnings, $this->runDir($moduleId, $dir, $applied));
         }
 
         return $warnings;
     }
 
     /**
+     * Incarca toate migrarile aplicate intr-un singur SELECT (evita DDL `CREATE TABLE` la fiecare request).
+     *
+     * @return array<string, string>
+     */
+    private function loadAppliedMap(\PDO $pdo): array
+    {
+        try {
+            $rows = $pdo->query('SELECT module_id, filename, checksum FROM _migrations')->fetchAll();
+            $map = [];
+            foreach ($rows as $r) {
+                $map[(string) $r['module_id'] . '/' . (string) $r['filename']] = (string) $r['checksum'];
+            }
+            return $map;
+        } catch (\PDOException $e) {
+            $driverCode = $e->errorInfo[1] ?? null;
+            if ($driverCode !== 1146 && $e->getCode() !== '42S02') {
+                throw $e;
+            }
+            $pdo->exec(
+                'CREATE TABLE IF NOT EXISTS _migrations (
+                    module_id VARCHAR(64) NOT NULL,
+                    filename VARCHAR(128) NOT NULL,
+                    checksum CHAR(64) NOT NULL,
+                    applied_at DATETIME NOT NULL,
+                    PRIMARY KEY (module_id, filename)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+            return [];
+        }
+    }
+
+    /**
+     * @param array<string, string> $applied
      * @return array<int, string>
      */
-    private function runDir(string $moduleId, string $dir): array
+    private function runDir(string $moduleId, string $dir, array &$applied): array
     {
         if (!is_dir($dir)) {
             return [];
@@ -68,13 +93,10 @@ final class Migrator
             $filename = basename($filePath);
             $sql = (string) file_get_contents($filePath);
             $checksum = hash('sha256', str_replace("\r\n", "\n", $sql));
+            $key = $moduleId . '/' . $filename;
 
-            $stmt = $pdo->prepare('SELECT checksum FROM _migrations WHERE module_id = ? AND filename = ?');
-            $stmt->execute([$moduleId, $filename]);
-            $existing = $stmt->fetchColumn();
-
-            if ($existing !== false) {
-                if ($existing !== $checksum) {
+            if (isset($applied[$key])) {
+                if ($applied[$key] !== $checksum) {
                     throw new \RuntimeException(
                         sprintf('Checksum modificat pe migrarea deja aplicată [%s/%s]. Creează un fișier nou de migrare.', $moduleId, $filename)
                     );
@@ -89,11 +111,16 @@ final class Migrator
                 foreach ($statements as $statement) {
                     $pdo->exec($statement);
                 }
-                $ins = $pdo->prepare('INSERT INTO _migrations (module_id, filename, checksum, applied_at) VALUES (?, ?, ?, ?)');
+                $ins = $pdo->prepare('INSERT IGNORE INTO _migrations (module_id, filename, checksum, applied_at) VALUES (?, ?, ?, ?)');
                 $ins->execute([$moduleId, $filename, $checksum, $this->config->nowString()]);
+                $applied[$key] = $checksum;
             } catch (\PDOException $e) {
                 $driverCode = $e->errorInfo[1] ?? null;
                 if ($isTriggerFile && in_array($driverCode, [1227, 1419], true)) {
+                    // Marcheaza migrarea ca procesata pentru a nu re-incerca CREATE TRIGGER la fiecare cerere HTTP
+                    $ins = $pdo->prepare('INSERT IGNORE INTO _migrations (module_id, filename, checksum, applied_at) VALUES (?, ?, ?, ?)');
+                    $ins->execute([$moduleId, $filename, $checksum, $this->config->nowString()]);
+                    $applied[$key] = $checksum;
                     $warnings[] = sprintf(
                         'Migrare trigger %s/%s omisă de privilegiile serverului (%s). Imutabilitatea este asigurată din aplicație.',
                         $moduleId,

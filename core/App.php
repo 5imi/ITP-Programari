@@ -80,11 +80,10 @@ final class App
             $progCtrl->registerRoutes($this->router);
         }
 
-        // Healthcheck simplu
+        // Healthcheck simplu (fara expunere detalii interne)
         $this->router->add('GET', '/api/health', fn(): array => Response::json([
             'ok' => true,
             'today_date' => $this->config->todayIso(),
-            'warnings' => $this->migrationWarnings,
         ]));
     }
 

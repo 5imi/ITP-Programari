@@ -32,7 +32,7 @@ final class Validators
         }
 
         return [
-            'plate' => substr($formatted, 0, 24),
+            'plate' => mb_substr($formatted, 0, 24, 'UTF-8'),
             'plate_key' => substr($compact, 0, 24),
         ];
     }
@@ -46,7 +46,7 @@ final class Validators
         if (strlen($onlyDigits) < 9 || strlen($onlyDigits) > 15) {
             throw new HttpException(422, 'INVALID_PHONE', 'Numărul de telefon este invalid (minim 9 cifre).');
         }
-        return substr($trimmed, 0, 24);
+        return mb_substr($trimmed, 0, 24, 'UTF-8');
     }
 
     public static function assertValidDate(string $iso): string

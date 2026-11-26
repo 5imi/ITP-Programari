@@ -219,6 +219,15 @@ $reprog = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/repr
 assertTrue($reprog['status'] === 201, 'Reprogramare revenire eșuată');
 $childId = (int) ($reprog['body']['appointment']['id'] ?? 0);
 
+// 4b. Test protectie revocare cat timp exista reprogramare activa (409 HAS_ACTIVE_REINSPECTION)
+$revokeBlocked = httpReq('POST', "$baseUrl/api/m/programari/appointments/$winnerId/revoke", [
+    'version' => 6,
+], $csrf, $cookieFile);
+assertTrue(
+    $revokeBlocked['status'] === 409 && ($revokeBlocked['body']['error'] ?? '') === 'HAS_ACTIVE_REINSPECTION',
+    'Revocarea cu reprogramare activă trebuia blocată cu 409 HAS_ACTIVE_REINSPECTION'
+);
+
 $delChild = httpReq('DELETE', "$baseUrl/api/m/programari/appointments/$childId", [
     'version' => 1,
     'reason' => 'Anulat de client',
@@ -233,10 +242,34 @@ foreach ($agendaCheck['body']['appointments'] ?? [] as $a) {
     }
 }
 assertTrue($parentAfter !== null && $parentAfter['resolved_by_reinspection_id'] === null, 'Părintele trebuia să aibă resolved_by_reinspection_id = NULL după ștergerea vizitei de revenire');
-echo "[PASS] Flux complet Revenire + REVOCAT + Reprogramare + eliberare părinte verificat.\n";
+echo "[PASS] Flux complet Revenire + REVOCAT + Reprogramare + protecție revocare activă + eliberare părinte verificat.\n";
+
+// 4c. Test securitate: change-pin greșit întoarce 422 (nu 401), iar master_pin nu poate fi modificat prin PUT /api/admin/users
+$badChangePin = httpReq('POST', "$baseUrl/api/auth/change-pin", [
+    'current_pin' => '000000',
+    'new_pin' => '9876',
+], $csrf, $cookieFile);
+assertTrue(
+    $badChangePin['status'] === 422 && ($badChangePin['body']['error'] ?? '') === 'INVALID_CURRENT_PIN',
+    'PIN curent greșit la change-pin trebuia să întoarcă 422 INVALID_CURRENT_PIN'
+);
+$meAfterBadPin = httpReq('GET', "$baseUrl/api/auth/me", null, '', $cookieFile);
+assertTrue($meAfterBadPin['status'] === 200, 'Sesiunea trebuia să rămână validă după PIN curent greșit');
+$adminId = (int) ($meAfterBadPin['body']['user']['id'] ?? 1);
+$masterBlock = httpReq('PUT', "$baseUrl/api/admin/users/$adminId", [
+    'display_name' => (string) ($meAfterBadPin['body']['user']['display_name'] ?? 'Admin'),
+    'role' => 'admin',
+    'master_pin' => '12345678',
+], $csrf, $cookieFile);
+assertTrue(
+    $masterBlock['status'] === 403 && ($masterBlock['body']['error'] ?? '') === 'MASTER_PIN_PROTECTED',
+    'Modificarea master_pin prin panoul standard trebuia respinsă cu 403 MASTER_PIN_PROTECTED'
+);
+echo "[PASS] Protecții securitate (422 change-pin, 403 MASTER_PIN_PROTECTED) verificate.\n";
 
 // 5. Test Istoric Imutabil
 $hist = httpReq('GET', "$baseUrl/api/m/programari/history?q=SV%2099%20VER", null, '', $cookieFile);
+assertTrue(is_array($hist['body']['all_actors'] ?? null), 'Istoric trebuie să întoarcă lista all_actors');
 $winnerEntry = null;
 foreach ($hist['body']['entries'] ?? [] as $entry) {
     if ((int) ($entry['appointment_id'] ?? 0) === $winnerId) {

@@ -8,7 +8,7 @@ declare(strict_types=1);
 $uriPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
 // Blocare acces direct la directoare si fisiere interne sensibile (echivalent .htaccess)
-if (preg_match('#^/(\.git|\.env|config/|core/|modules/|backups/|tests/)#', $uriPath) === 1
+if (preg_match('#^/(\.git|\.agents|\.env|\.gitignore|\.htaccess|config(?:/|$)|core(?:/|$)|modules(?:/|$)|backups(?:/|$)|tests(?:/|$)|router\.php)#i', $uriPath) === 1
     || preg_match('#\.(sql|md|log|db|sqlite|bak)$#i', $uriPath) === 1) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=utf-8');
@@ -16,9 +16,16 @@ if (preg_match('#^/(\.git|\.env|config/|core/|modules/|backups/|tests/)#', $uriP
     return true;
 }
 
-// Fisiere statice publice reale (assets, references/ui-libs, robots.txt, manifest.json)
-$fullPath = __DIR__ . str_replace('/', DIRECTORY_SEPARATOR, $uriPath);
-if ($uriPath !== '/' && is_file($fullPath) && !str_ends_with(strtolower($fullPath), '.php')) {
+// Fisiere statice publice reale (assets, robots.txt, manifest.json) cu protectie path traversal
+$baseReal = realpath(__DIR__);
+$fullPath = realpath(__DIR__ . str_replace('/', DIRECTORY_SEPARATOR, $uriPath));
+if ($uriPath !== '/'
+    && $fullPath !== false
+    && $baseReal !== false
+    && str_starts_with($fullPath, $baseReal . DIRECTORY_SEPARATOR)
+    && is_file($fullPath)
+    && !str_ends_with(strtolower($fullPath), '.php')
+) {
     return false;
 }
 

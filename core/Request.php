@@ -61,10 +61,19 @@ final class Request
 
         $addr = $remoteAddr ?? (string) ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
         $trusted = (array) $config->get('TRUSTED_PROXIES', ['127.0.0.1']);
-        if (in_array($addr, $trusted, true) && isset($this->headers['x-forwarded-for'])) {
-            $parts = array_map('trim', explode(',', $this->headers['x-forwarded-for']));
-            if (!empty($parts[0])) {
-                $addr = $parts[0];
+        if (in_array($addr, $trusted, true)) {
+            $cfIp = trim((string) ($this->headers['cf-connecting-ip'] ?? ''));
+            if ($cfIp !== '' && filter_var($cfIp, FILTER_VALIDATE_IP) !== false) {
+                $addr = $cfIp;
+            } elseif (isset($this->headers['x-forwarded-for'])) {
+                // Selecteaza cel mai din dreapta IP valid care nu este proxy de incredere (previne spoofing)
+                $parts = array_reverse(array_map('trim', explode(',', $this->headers['x-forwarded-for'])));
+                foreach ($parts as $cand) {
+                    if ($cand !== '' && filter_var($cand, FILTER_VALIDATE_IP) !== false && !in_array($cand, $trusted, true)) {
+                        $addr = $cand;
+                        break;
+                    }
+                }
             }
         }
         $this->clientIp = substr($addr, 0, 64);

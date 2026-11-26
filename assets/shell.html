@@ -185,7 +185,7 @@
               id="btnMobSearchToggle" onclick="toggleMobileSearch()" aria-label="Căutare"
               title="Caută nr. auto, telefon, client" style="min-height: 30px; min-width: 32px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
@@ -193,7 +193,7 @@
             <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2" id="btnNewApptMob"
               onclick="openNewAppointmentModal()" style="min-height: 30px; font-size: 0.75rem; font-weight: 600;">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
               </svg>
@@ -235,9 +235,9 @@
         <div class="container-xl d-flex align-items-center justify-content-between gap-2">
           <div class="itp-search-wrap flex-grow-1">
             <div class="input-icon">
-              <span class="input-icon-addon">
+              <span class="input-icon-addon" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <circle cx="11" cy="11" r="8" />
                   <path d="m21 21-4.3-4.3" />
                 </svg>
@@ -247,13 +247,13 @@
             </div>
           </div>
           <button type="button" class="btn btn-sm btn-outline-secondary d-lg-none flex-shrink-0 itp-all-days-btn"
-            id="btnMobAllDays" onclick="toggleSearchAllDays()" title="Caută în toate zilele">Toate zilele</button>
+            id="btnMobAllDays" onclick="toggleSearchAllDays()" aria-pressed="false" title="Caută în toate zilele">Toate zilele</button>
 
           <div class="d-none d-lg-flex align-items-center justify-content-end gap-2 ms-lg-auto">
             <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1" id="btnNewAppt"
               onclick="openNewAppointmentModal()">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
               </svg>
@@ -281,7 +281,7 @@
   </div>
 
   <!-- Toast Container -->
-  <div class="toast-container-itp" id="toastContainer"></div>
+  <div class="toast-container-itp" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
 
   <!-- Modal: Programare Noua / Editare / Reprogramare -->
   <div class="modal modal-blur fade" id="modalProgramare" tabindex="-1" aria-hidden="true">
@@ -449,11 +449,6 @@
               <input type="password" class="form-control form-control-sm pin-input" id="userPinInp" inputmode="numeric"
                 maxlength="6" placeholder="••••">
             </div>
-            <div class="col-12 d-none" id="userMasterPinWrap">
-              <label class="form-label small mb-1">PIN Secret Master Admin (8–12 cifre, opțional la editare)</label>
-              <input type="password" class="form-control form-control-sm pin-input" id="userMasterPinInp"
-                inputmode="numeric" maxlength="12" placeholder="••••••••">
-            </div>
             <div class="col-12" id="userPermsWrap">
               <label class="form-label small mb-1">Drepturi granulare</label>
               <div class="border rounded p-2 d-flex flex-column gap-2 bg-light">
@@ -536,7 +531,7 @@
               <option value="USERS">Utilizatori & Drepturi</option>
               <option value="CONFIG">Motive, Setări & Backup</option>
             </select>
-            <a class="btn btn-sm btn-outline-primary" href="api/admin/audit.csv" target="_blank" rel="noopener">Export
+            <a class="btn btn-sm btn-outline-primary" id="secLogExportBtn" href="api/admin/audit.csv" target="_blank" rel="noopener">Export
               CSV</a>
           </div>
           <div id="securityLogBody"></div>

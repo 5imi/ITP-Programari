@@ -19,7 +19,7 @@ final class Auth
      *
      * @return array{user: array, session: array, permissions: array<int, string>}
      */
-    public function requireUser(Request $req, bool $checkCsrf = false): array
+    public function requireUser(Request $req, bool $checkCsrf = false, bool $touchSession = true): array
     {
         $rawToken = $req->cookie(Security::SESSION_COOKIE_NAME);
         if ($rawToken === null || $rawToken === '') {
@@ -68,8 +68,11 @@ final class Auth
             Security::verifyCsrf($req, $session);
         }
 
-        $upd = $pdo->prepare('UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?');
-        $upd->execute([$nowStr, $tokenHash]);
+        // Cererile de fundal (poll=1) nu prelungesc inactivitatea si nu scriu inutil in DB
+        if ($touchSession) {
+            $upd = $pdo->prepare('UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?');
+            $upd->execute([$nowStr, $tokenHash]);
+        }
 
         $permStmt = $pdo->prepare('SELECT permission FROM user_permissions WHERE user_id = ?');
         $permStmt->execute([(int) $row['id']]);
@@ -123,8 +126,14 @@ final class Auth
 
         $now = $this->config->now();
         $hours = max(1, (int) $this->config->get('SESSION_HOURS', 12));
-        $expiresAt = $now->modify("+{$hours} hours")->format('Y-m-d H:i:s');
+        $expiresDt = $now->modify("+{$hours} hours");
+        $expiresAt = $expiresDt->format('Y-m-d H:i:s');
         $nowStr = $now->format('Y-m-d H:i:s');
+
+        // Curatare periodica sesiuni expirate si incercari login vechi (> 7 zile)
+        $pdo->prepare('DELETE FROM sessions WHERE expires_at <= ?')->execute([$nowStr]);
+        $oldAttemptsLimit = $now->modify('-7 days')->format('Y-m-d H:i:s');
+        $pdo->prepare('DELETE FROM login_attempts WHERE created_at < ?')->execute([$oldAttemptsLimit]);
 
         $stmt = $pdo->prepare(
             'INSERT INTO sessions (token_hash, user_id, session_version, csrf_token, ip_address, user_agent, created_at, last_seen_at, expires_at)
@@ -142,7 +151,7 @@ final class Auth
             $expiresAt,
         ]);
 
-        self::setCookieHeader($rawToken, strtotime($expiresAt) ?: 0, $req->isHttps());
+        self::setCookieHeader($rawToken, $expiresDt->getTimestamp(), $req->isHttps());
 
         return [
             'csrf_token' => $csrfToken,

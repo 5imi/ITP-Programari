@@ -23,9 +23,21 @@ final class Autoloader
 
         if (str_starts_with($class, 'Core\\')) {
             $rel = substr($class, 5);
-            $path = self::$baseDir . DIRECTORY_SEPARATOR . 'core' . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $rel) . '.php';
-            if (is_file($path)) {
-                require_once $path;
+            $parts = explode('\\', $rel);
+            $exactPath = self::$baseDir . DIRECTORY_SEPARATOR . 'core' . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
+            if (is_file($exactPath)) {
+                require_once $exactPath;
+                return;
+            }
+            // Compatibilitate Linux (case-sensitive): directoare namespace cu litere mici (ex: core/controllers/AdminController.php)
+            if (count($parts) > 1) {
+                $className = array_pop($parts);
+                $lowerDirs = array_map('strtolower', $parts);
+                $lowerPath = self::$baseDir . DIRECTORY_SEPARATOR . 'core' . DIRECTORY_SEPARATOR
+                    . implode(DIRECTORY_SEPARATOR, $lowerDirs) . DIRECTORY_SEPARATOR . $className . '.php';
+                if (is_file($lowerPath)) {
+                    require_once $lowerPath;
+                }
             }
             return;
         }
