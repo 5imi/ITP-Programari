@@ -881,11 +881,11 @@ body {
   font-weight: 500;
 }
 
-/* Buton + Programare (bara de sus): Albastru Tabler --tblr-primary (#2563eb) cu text alb #ffffff, contur --tblr-purple (3px) si colturi rotunjite 8px. */
+/* Buton + Programare (bara de sus): Albastru Tabler --tblr-primary (#2563eb) cu text alb #ffffff, contur roz #d678c3 (3px) si colturi rotunjite 8px. */
 :root {
   --itp-newappt-bg: var(--tblr-primary);
   --itp-newappt-hover-bg: #1d4ed8;
-  --itp-newappt-border: var(--tblr-purple);
+  --itp-newappt-border: #db2cb8;
   --itp-newappt-fg: #ffffff;
   --itp-newappt-shadow: rgba(37, 99, 235, 0.3);
 }
@@ -900,7 +900,7 @@ body {
   --tblr-btn-active-border-color: var(--itp-newappt-border);
   --tblr-btn-color: var(--itp-newappt-fg);
   background-color: var(--itp-newappt-bg);
-  border: 2px solid var(--itp-newappt-border);
+  border: 5px solid var(--itp-newappt-border);
   border-radius: 8px;
   color: var(--itp-newappt-fg);
   font-weight: 700;
