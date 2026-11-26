@@ -967,14 +967,48 @@ final class AppointmentService
         $eventType = trim((string) ($query['event_type'] ?? 'Toate'));
         $actor = trim((string) ($query['actor'] ?? 'TOȚI'));
         $intactFilter = trim((string) ($query['scope'] ?? ''));
+        $dateFrom = trim((string) ($query['date_from'] ?? ''));
+        $dateTo = trim((string) ($query['date_to'] ?? ''));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $dateFrom = '';
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $dateTo = '';
+        }
+        if ($dateFrom !== '' && $dateTo !== '' && strcmp($dateFrom, $dateTo) > 0) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+        $page = max(1, (int) ($query['page'] ?? 1));
+        $perPage = (int) ($query['per_page'] ?? 0);
+        if ($perPage > 0) {
+            $perPage = max(5, min(100, $perPage));
+        } else {
+            $perPage = 0;
+        }
         $since = $this->config->now()->modify('-60 days')->format('Y-m-d 00:00:00');
 
-        $res = $this->repo->listHistoryEntries($this->db->pdo(), $q, $eventType, $actor, $intactFilter, $since, 500);
+        $res = $this->repo->listHistoryEntries(
+            $this->db->pdo(),
+            $q,
+            $eventType,
+            $actor,
+            $intactFilter,
+            $since,
+            500,
+            $dateFrom !== '' ? $dateFrom : null,
+            $dateTo !== '' ? $dateTo : null,
+            $page,
+            $perPage
+        );
         return [
             'entries' => $res['entries'],
             'all_actors' => $res['all_actors'],
             'truncated' => $res['truncated'],
             'limit' => $res['limit'],
+            'total' => $res['total'],
+            'page' => $res['page'],
+            'per_page' => $res['per_page'],
+            'total_pages' => $res['total_pages'],
         ];
     }
 

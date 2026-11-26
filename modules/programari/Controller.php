@@ -124,6 +124,10 @@ final class Controller
                 'event_type' => $req->query('event_type', 'Toate'),
                 'actor' => $req->query('actor', 'TOȚI'),
                 'scope' => $req->query('scope', ''),
+                'date_from' => $req->query('date_from', ''),
+                'date_to' => $req->query('date_to', ''),
+                'page' => $req->query('page', 1),
+                'per_page' => $req->query('per_page', 0),
             ]);
             return Response::json(array_merge(['ok' => true], $data));
         });
@@ -136,6 +140,9 @@ final class Controller
                 'event_type' => $req->query('event_type', 'Toate'),
                 'actor' => $req->query('actor', 'TOȚI'),
                 'scope' => $req->query('scope', ''),
+                'date_from' => $req->query('date_from', ''),
+                'date_to' => $req->query('date_to', ''),
+                'per_page' => 0,
             ]);
             $rows = [];
             foreach ($data['entries'] as $entry) {

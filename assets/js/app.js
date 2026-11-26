@@ -42,6 +42,13 @@
 
     historyFilter: 'Toate',
     historyUserFilter: 'TOȚI',
+    historyDatePreset: 'today',
+    historyDateFrom: '',
+    historyDateTo: '',
+    historyPage: 1,
+    historyPerPage: 10,
+    historyTotal: 0,
+    historyTotalPages: 1,
     historyEntries: [],
     historyActors: [],
     historyTruncated: false,
@@ -727,6 +734,7 @@
     state.mobileSearchOpen = !state.mobileSearchOpen;
     if (!state.mobileSearchOpen && state.search) {
       state.search = '';
+      state.historyPage = 1;
       document.getElementById('globalSearch').value = '';
       renderNav();
       loadAndRenderCurrentView();
@@ -757,6 +765,7 @@
 
   document.getElementById('globalSearch').addEventListener('input', (e) => {
     state.search = e.target.value || '';
+    state.historyPage = 1;
     clearTimeout(searchReloadTimer);
     searchReloadTimer = setTimeout(() => loadAndRenderCurrentView(), 180);
   });
@@ -838,17 +847,26 @@
       lastAgendaSignature = '';
 
       if (view === 'istoric') {
+        const range = getHistoryDateRange();
         const params = new URLSearchParams({
           q: state.search,
           event_type: state.historyFilter,
           actor: state.historyUserFilter,
+          date_from: range.from,
+          date_to: range.to,
+          page: String(state.historyPage),
+          per_page: String(state.historyPerPage),
         });
         const data = await api.get(`api/m/programari/history?${params.toString()}`);
         if (reqSeq !== viewRequestSeq || state.currentView !== 'istoric') return;
-        state.historyEntries = data.entries || [];
+        const entries = Array.isArray(data.entries) ? data.entries : [];
+        state.historyEntries = entries;
         state.historyActors = Array.isArray(data.all_actors) ? data.all_actors : [];
         state.historyTruncated = Boolean(data.truncated);
         state.historyLimit = Number(data.limit || 500);
+        state.historyTotal = typeof data.total === 'number' ? data.total : entries.length;
+        state.historyPage = Math.max(1, Number(data.page || state.historyPage || 1));
+        state.historyTotalPages = Math.max(1, Number(data.total_pages || Math.ceil(state.historyTotal / state.historyPerPage) || 1));
         titleEl.textContent = 'Istoric Imutabil';
         subEl.textContent = `Audit complet pe programări (Dată + Oră + Utilizator) • ${state.user.actor_label}`;
         root.innerHTML = renderIstoricView();
@@ -1879,8 +1897,72 @@
     }
   });
 
+  function getHistoryDateRange() {
+    const today = state.todayDate || '';
+    if (state.historyDatePreset === 'today' && today) {
+      return { from: today, to: today, label: `Azi (${formatDateRo(today)})` };
+    }
+    if (state.historyDatePreset === '7d' && today) {
+      const from = addDaysIso(today, -6);
+      return { from, to: today, label: `Ultimele 7 zile (${formatDateRo(from)} – ${formatDateRo(today)})` };
+    }
+    if (state.historyDatePreset === 'custom') {
+      const from = state.historyDateFrom || today;
+      const to = state.historyDateTo || from || today;
+      const lbl = from && to
+        ? (from === to ? formatDateRo(from) : `${formatDateRo(from)} – ${formatDateRo(to)}`)
+        : 'Interval personalizat';
+      return { from, to, label: lbl };
+    }
+    return { from: '', to: '', label: 'Toate (ultimele 60 zile)' };
+  }
+
+  function renderHistoryPagination() {
+    const total = Number(state.historyTotal || 0);
+    const totalPages = Math.max(1, Number(state.historyTotalPages || 1));
+    const page = Math.max(1, Math.min(Number(state.historyPage || 1), totalPages));
+    if (totalPages <= 1 || total === 0) return '';
+
+    const pages = [];
+    const maxButtons = 5;
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start + 1 < maxButtons) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+    for (let p = start; p <= end; p++) pages.push(p);
+
+    return `
+      <nav class="card p-2 mt-2 itp-history-pagination" aria-label="Paginare istoric">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <button type="button" class="itp-page-btn" onclick="setHistoryPage(${page - 1})" ${page <= 1 ? 'disabled' : ''} aria-label="Pagina anterioară">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Anterior</span>
+          </button>
+          <div class="d-flex align-items-center gap-1 flex-wrap justify-content-center">
+            ${start > 1 ? `<button type="button" class="itp-page-num d-none d-sm-inline-flex" onclick="setHistoryPage(1)">1</button>${start > 2 ? '<span class="text-muted small px-1 d-none d-sm-inline">…</span>' : ''}` : ''}
+            ${pages.map(p => `<button type="button" class="itp-page-num d-none d-sm-inline-flex ${p === page ? 'active' : ''}" onclick="setHistoryPage(${p})" aria-current="${p === page ? 'page' : 'false'}">${p}</button>`).join('')}
+            ${end < totalPages ? `${end < totalPages - 1 ? '<span class="text-muted small px-1 d-none d-sm-inline">…</span>' : ''}<button type="button" class="itp-page-num d-none d-sm-inline-flex" onclick="setHistoryPage(${totalPages})">${totalPages}</button>` : ''}
+            <span class="small fw-semibold text-secondary d-inline d-sm-none">Pagina ${page} / ${totalPages}</span>
+          </div>
+          <button type="button" class="itp-page-btn" onclick="setHistoryPage(${page + 1})" ${page >= totalPages ? 'disabled' : ''} aria-label="Pagina următoare">
+            <span>Următor</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </nav>
+    `;
+  }
+
   function renderIstoricView() {
     const filters = ['Toate', 'Finalizate', 'Modificate', 'Reveniri', 'Revocate', 'Reprogramate', 'Șterse', 'Intacte'];
+    const datePresets = [
+      { id: 'today', label: 'Azi' },
+      { id: '7d', label: '7 zile' },
+      { id: 'all', label: 'Toate' },
+      { id: 'custom', label: 'Interval' },
+    ];
+    const range = getHistoryDateRange();
     const actorPool = state.historyActors.length
       ? state.historyActors
       : Array.from(new Set(state.historyEntries.flatMap(e => e.actors || [])));
@@ -1892,7 +1974,18 @@
       q: state.search,
       event_type: state.historyFilter,
       actor: state.historyUserFilter,
+      date_from: range.from,
+      date_to: range.to,
     });
+
+    const total = Number(state.historyTotal || 0);
+    const totalPages = Math.max(1, Number(state.historyTotalPages || 1));
+    const page = Math.max(1, Math.min(Number(state.historyPage || 1), totalPages));
+    const perPage = Number(state.historyPerPage || 10);
+    const shownCount = state.historyEntries.length;
+    const startIdx = total > 0 && shownCount > 0 ? ((page - 1) * perPage) + 1 : 0;
+    const endIdx = total > 0 && shownCount > 0 ? Math.min(total, startIdx + shownCount - 1) : 0;
+
     const cards = state.historyEntries.map(h => `
       <div class="card mb-2 p-2 p-sm-3">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
@@ -1916,27 +2009,116 @@
       </div>
     `).join('');
 
-    return `
-      <div class="card p-2 mb-2">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div class="filter-strip mb-0">
-            ${filters.map(f => `<button type="button" class="filter-pill ${state.historyFilter === f ? 'active' : ''}" onclick="setHistoryFilter('${f}')">${esc(f)}</button>`).join('')}
+    const emptyHtml = `
+      <div class="card p-3 text-center text-muted">
+        <div>Nicio înregistrare în Istoric pentru filtrul curent (${esc(range.label)}).</div>
+        ${state.historyDatePreset !== 'all' ? `
+          <div class="d-flex justify-content-center gap-2 mt-2 flex-wrap">
+            ${state.historyDatePreset !== '7d' ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="setHistoryDatePreset('7d')">Vezi ultimele 7 zile</button>` : ''}
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setHistoryDatePreset('all')">Vezi tot istoricul</button>
           </div>
-          <div class="d-flex align-items-center gap-2">
-            <select class="form-select form-select-sm" style="width:auto;" onchange="setHistoryActor(this.value)">
+        ` : ''}
+      </div>
+    `;
+
+    return `
+      <div class="card p-2 mb-2 itp-history-filter-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-2 border-bottom">
+          <div class="itp-history-pills" role="group" aria-label="Perioadă istoric">
+            ${datePresets.map(p => `<button type="button" class="filter-pill ${state.historyDatePreset === p.id ? 'active' : ''}" onclick="setHistoryDatePreset('${p.id}')">${esc(p.label)}</button>`).join('')}
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap itp-history-actions-right">
+            <select class="form-select form-select-sm itp-history-actor-select" aria-label="Filtrare utilizator" onchange="setHistoryActor(this.value)">
               ${actors.map(a => `<option value="${esc(a)}" ${state.historyUserFilter === a ? 'selected' : ''}>${a === 'TOȚI' ? 'Toți utilizatorii' : esc(a)}</option>`).join('')}
             </select>
-            <a class="btn btn-sm btn-outline-primary" href="api/m/programari/history.csv?${csvQs.toString()}" target="_blank" rel="noopener">Export CSV</a>
+            <a class="btn btn-sm btn-outline-primary flex-shrink-0" id="btnHistoryExportCsv" href="api/m/programari/history.csv?${csvQs.toString()}" target="_blank" rel="noopener">Export CSV</a>
           </div>
         </div>
+        ${state.historyDatePreset === 'custom' ? `
+          <div class="itp-history-range-row pt-2 pb-2 border-bottom">
+            <div class="itp-history-date-field">
+              <label class="small text-muted mb-0" for="histDateFromText">De la:</label>
+              <div class="itp-ro-date-wrap">
+                <input type="text" class="form-control form-control-sm fw-medium itp-ro-date-text" id="histDateFromText"
+                  inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
+                  value="${esc(formatDateSlashRo(range.from))}"
+                  onchange="onRoDateTextChange('histDateFromText', 'histDateFromNative', setHistoryDateFrom)">
+                <span class="itp-ro-date-cal-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <input type="date" class="itp-ro-date-native" id="histDateFromNative" aria-label="Data de început"
+                  value="${esc(range.from)}"
+                  onchange="onRoDatePickerChange('histDateFromNative', 'histDateFromText', setHistoryDateFrom)">
+              </div>
+            </div>
+            <div class="itp-history-date-field">
+              <label class="small text-muted mb-0" for="histDateToText">Până la:</label>
+              <div class="itp-ro-date-wrap">
+                <input type="text" class="form-control form-control-sm fw-medium itp-ro-date-text" id="histDateToText"
+                  inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
+                  value="${esc(formatDateSlashRo(range.to))}"
+                  onchange="onRoDateTextChange('histDateToText', 'histDateToNative', setHistoryDateTo)">
+                <span class="itp-ro-date-cal-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <input type="date" class="itp-ro-date-native" id="histDateToNative" aria-label="Data de sfârșit"
+                  value="${esc(range.to)}"
+                  onchange="onRoDatePickerChange('histDateToNative', 'histDateToText', setHistoryDateTo)">
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        <div class="pt-2">
+          <div class="itp-history-pills" role="group" aria-label="Tip acțiune istoric">
+            ${filters.map(f => `<button type="button" class="filter-pill ${state.historyFilter === f ? 'active' : ''}" onclick="setHistoryFilter('${f}')">${esc(f)}</button>`).join('')}
+          </div>
+        </div>
+        <div class="itp-history-summary mt-2 pt-2 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 small text-muted">
+          <span id="historySummaryCount">${total > 0 ? `Afișate <strong>${startIdx}–${endIdx}</strong> din <strong>${total}</strong> programări` : '<strong>0</strong> programări'} • ${esc(range.label)}</span>
+          ${totalPages > 1 ? `<span class="badge bg-blue-lt text-blue">Pagina ${page} / ${totalPages}</span>` : ''}
+        </div>
       </div>
-      ${state.historyTruncated ? `<div class="alert alert-info py-2 px-3 mb-2 small">Se afișează ultimele <strong>${state.historyLimit}</strong> programări din istoric — folosește căutarea sau filtrele pentru rezultate specifice.</div>` : ''}
-      ${cards || `<div class="card p-3 text-center text-muted">Nicio înregistrare în Istoric pentru filtrul curent.</div>`}
+      ${state.historyTruncated ? `<div class="alert alert-info py-2 px-3 mb-2 small">Se afișează ultimele <strong>${state.historyLimit}</strong> programări din istoric — folosește căutarea sau filtrul de perioadă pentru rezultate specifice.</div>` : ''}
+      ${cards || emptyHtml}
+      ${renderHistoryPagination()}
     `;
   }
 
-  window.setHistoryFilter = (f) => { state.historyFilter = f; loadAndRenderCurrentView(); };
-  window.setHistoryActor = (a) => { state.historyUserFilter = a; loadAndRenderCurrentView(); };
+  window.setHistoryFilter = (f) => { state.historyFilter = f; state.historyPage = 1; loadAndRenderCurrentView(); };
+  window.setHistoryActor = (a) => { state.historyUserFilter = a; state.historyPage = 1; loadAndRenderCurrentView(); };
+  window.setHistoryDatePreset = (preset) => {
+    state.historyDatePreset = preset;
+    if (preset === 'custom') {
+      if (!state.historyDateFrom) state.historyDateFrom = state.todayDate || '';
+      if (!state.historyDateTo) state.historyDateTo = state.todayDate || state.historyDateFrom || '';
+    }
+    state.historyPage = 1;
+    loadAndRenderCurrentView();
+  };
+  window.setHistoryDateFrom = (iso) => {
+    if (!iso) return;
+    state.historyDatePreset = 'custom';
+    state.historyDateFrom = iso;
+    if (state.historyDateTo && state.historyDateTo < iso) state.historyDateTo = iso;
+    state.historyPage = 1;
+    loadAndRenderCurrentView();
+  };
+  window.setHistoryDateTo = (iso) => {
+    if (!iso) return;
+    state.historyDatePreset = 'custom';
+    state.historyDateTo = iso;
+    if (state.historyDateFrom && state.historyDateFrom > iso) state.historyDateFrom = iso;
+    state.historyPage = 1;
+    loadAndRenderCurrentView();
+  };
+  window.setHistoryPage = (p) => {
+    const target = Math.max(1, Math.min(Number(p) || 1, Number(state.historyTotalPages || 1)));
+    if (target === state.historyPage) return;
+    state.historyPage = target;
+    loadAndRenderCurrentView().then(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
 
   function renderUsersView() {
     return `

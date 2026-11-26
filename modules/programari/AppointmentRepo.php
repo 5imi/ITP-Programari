@@ -262,7 +262,11 @@ final class AppointmentRepo
         string $actor,
         string $intactFilter,
         string $sinceDateTime,
-        int $maxEntries = 500
+        int $maxEntries = 500,
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        int $page = 1,
+        int $perPage = 0
     ): array {
         $maxEntries = max(50, min(1000, $maxEntries));
         $sql = 'SELECT h.*, a.appt_date, a.appt_time, a.line, a.plate, a.plate_key, a.vehicle, a.client, a.phone, a.status,
@@ -279,6 +283,20 @@ final class AppointmentRepo
             $sql .= ' AND a.deleted_at IS NULL';
         }
 
+        $hasDateRange = ($dateFrom !== null && $dateFrom !== '') || ($dateTo !== null && $dateTo !== '');
+        if ($hasDateRange) {
+            $subClauses = ['hx.appointment_id = h.appointment_id'];
+            if ($dateFrom !== null && $dateFrom !== '') {
+                $subClauses[] = 'hx.action_at >= ?';
+                $args[] = $dateFrom . ' 00:00:00';
+            }
+            if ($dateTo !== null && $dateTo !== '') {
+                $subClauses[] = 'hx.action_at <= ?';
+                $args[] = $dateTo . ' 23:59:59';
+            }
+            $sql .= ' AND EXISTS (SELECT 1 FROM appointment_history hx WHERE ' . implode(' AND ', $subClauses) . ')';
+        }
+
         if ($q !== '') {
             $like = '%' . $q . '%';
             $plateLike = '%' . strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $q)) . '%';
@@ -290,8 +308,8 @@ final class AppointmentRepo
                 array_push($args, ...$phoneClause['params']);
             }
             array_push($args, $like, $like);
-        } else {
-            // Fara cautare explicita, afiseaza fereastra implicita (ex. 60 zile) pentru incarcare rapida
+        } elseif (!$hasDateRange) {
+            // Fara cautare sau interval explicit, afiseaza fereastra implicita (ex. 60 zile) pentru incarcare rapida
             $sql .= ' AND h.action_at >= ?';
             $args[] = $sinceDateTime;
         }
@@ -394,13 +412,27 @@ final class AppointmentRepo
         if (count($out) > $maxEntries) {
             $out = array_slice($out, 0, $maxEntries);
         }
+        $total = count($out);
+        if ($perPage > 0) {
+            $totalPages = max(1, (int) ceil($total / $perPage));
+            $safePage = max(1, min($page, $totalPages));
+            $entriesOut = array_slice($out, ($safePage - 1) * $perPage, $perPage);
+        } else {
+            $totalPages = 1;
+            $safePage = 1;
+            $entriesOut = $out;
+        }
         $allActors = array_keys($allActorsSet);
         sort($allActors, SORT_NATURAL | SORT_FLAG_CASE);
         return [
-            'entries' => $out,
+            'entries' => $entriesOut,
             'all_actors' => $allActors,
             'truncated' => $truncated,
             'limit' => $maxEntries,
+            'total' => $total,
+            'page' => $safePage,
+            'per_page' => $perPage,
+            'total_pages' => $totalPages,
         ];
     }
 

@@ -90,6 +90,94 @@ body {
   flex-shrink: 0;
 }
 
+.itp-history-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.itp-history-actor-select {
+  width: auto;
+  max-width: 100%;
+}
+
+.itp-history-range-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.itp-history-date-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.itp-history-date-field .itp-ro-date-wrap {
+  width: 138px;
+}
+
+.itp-page-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.itp-page-btn:hover:not(:disabled),
+.itp-page-btn:focus-visible:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.itp-page-btn:disabled {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.itp-page-num {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.itp-page-num.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.itp-page-num:hover:not(.active) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
 .itp-ro-date-wrap {
   position: relative;
   display: flex;
@@ -576,6 +664,37 @@ body {
   .itp-azi-btn {
     height: 34px;
     min-height: 34px !important;
+  }
+
+  .itp-history-actions-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .itp-history-actor-select {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .itp-history-date-field {
+    flex: 1 1 120px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+  }
+
+  .itp-history-date-field .itp-ro-date-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .page-wrapper {
+    padding-bottom: 84px !important;
+  }
+
+  .itp-history-pagination,
+  .itp-history-pagination button {
+    scroll-margin-bottom: 80px;
   }
 
   .filter-strip {
