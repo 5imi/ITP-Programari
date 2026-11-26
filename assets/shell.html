@@ -5,9 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ACW - Fălticeni • Programări ITP</title>
-  <link rel="icon" type="image/png" href="references/ui-libs/aw-logo.png">
+  <link rel="icon" type="image/png" href="assets/img/aw-logo.png">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="references/ui-libs/tabler/tabler.min.css">
+  <link rel="stylesheet" href="assets/vendor/tabler/tabler.min.css">
   <link rel="stylesheet" href="assets/css/app.css">
 </head>
 
@@ -16,7 +16,7 @@
   <div class="page page-center d-none" id="setupScreen" style="min-height: 100vh;">
     <div class="container py-4" style="max-width: 540px;">
       <div class="text-center mb-3">
-        <img src="references/ui-libs/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-login mb-2">
+        <img src="assets/img/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-login mb-2">
         <div class="fw-bold fs-3 text-dark lh-sm">Inițializare Sistem Stație ITP</div>
         <div class="text-muted small">Configurare unică la prima pornire — fără credențiale hardcodate</div>
       </div>
@@ -79,7 +79,7 @@
   <div class="page page-center d-none" id="loginScreen" style="min-height: 100vh;">
     <div class="container container-tight py-4">
       <div class="text-center mb-3">
-        <img src="references/ui-libs/aw-logo.png" alt="ACW - Automotive Center Werkstat Fălticeni"
+        <img src="assets/img/aw-logo.png" alt="ACW - Automotive Center Werkstat Fălticeni"
           class="aw-logo-login mb-2">
         <div class="fw-bold fs-3 text-dark lh-sm" id="loginStationTitle">ACW - Fălticeni</div>
         <div class="text-muted small fw-semibold" style="letter-spacing: 0.06em; font-size: 0.72rem;">STAȚIE ITP • ACCES
@@ -172,7 +172,7 @@
         <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1 gap-2">
           <a href="#" class="navbar-brand text-decoration-none d-flex align-items-center gap-2 m-0"
             onclick="switchView('azi'); return false;">
-            <img src="references/ui-libs/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-nav">
+            <img src="assets/img/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-nav">
             <div class="lh-1">
               <div class="fw-bold text-dark" style="font-size: 0.92rem;" id="navStationShort">ACW - Fălticeni</div>
               <div class="text-muted" style="font-size: 0.64rem; font-weight: 600; letter-spacing: 0.04em;">STAȚIE ITP
@@ -226,12 +226,6 @@
             </div>
           </div>
 
-          <div class="mt-auto p-3 d-none d-lg-block">
-            <div class="card bg-azure-lt border-0 p-3">
-              <div class="small fw-bold text-dark">Producție MariaDB InnoDB</div>
-              <div class="text-muted small mt-1">Date salvate tranzacțional pe server (`Europe/Bucharest`).</div>
-            </div>
-          </div>
         </div>
       </div>
     </aside>
@@ -301,13 +295,27 @@
           <div class="alert alert-purple mb-2 py-2 px-2 small d-none" id="reinspectionBanner"></div>
           <div class="row g-1 g-sm-2">
             <div class="col-5">
-              <label class="form-label small mb-1 required">Data</label>
-              <input type="date" class="form-control form-control-sm" id="inpDate" onchange="refreshHourOptions()"
-                required>
+              <label class="form-label small mb-1 required">Data (zz/ll/aaaa)</label>
+              <div class="itp-ro-date-wrap">
+                <input type="text" class="form-control form-control-sm itp-ro-date-text" id="inpDateText"
+                  inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
+                  onchange="onRoDateTextChange('inpDateText', 'inpDate', refreshHourOptions)">
+                <span class="itp-ro-date-cal-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </span>
+                <input type="date" class="itp-ro-date-native" id="inpDate" aria-label="Alege data din calendar"
+                  onchange="onRoDatePickerChange('inpDate', 'inpDateText', refreshHourOptions)" required>
+              </div>
             </div>
             <div class="col-3">
               <label class="form-label small mb-1 required">Ora</label>
-              <select class="form-select form-select-sm" id="inpHour"></select>
+              <select class="form-select form-select-sm" id="inpHour" onchange="onHourSelectChange()"></select>
             </div>
             <div class="col-4">
               <label class="form-label small mb-1 required">Linie (libere)</label>
@@ -322,9 +330,13 @@
               <label class="form-label small mb-1 required">Telefon</label>
               <input type="tel" class="form-control form-control-sm" id="inpPhone" placeholder="0740 111 222" required>
             </div>
-            <div class="col-12">
-              <label class="form-label small mb-1">Client / Mașină</label>
-              <input type="text" class="form-control form-control-sm" id="inpClient" placeholder="Ion Popescu • Logan">
+            <div class="col-6">
+              <label class="form-label small mb-1">Client</label>
+              <input type="text" class="form-control form-control-sm" id="inpClient" placeholder="ex. Ion Popescu">
+            </div>
+            <div class="col-6">
+              <label class="form-label small mb-1">Mașină</label>
+              <input type="text" class="form-control form-control-sm" id="inpVehicle" placeholder="ex. Dacia Logan">
             </div>
           </div>
           <div class="text-primary small mt-2 d-none" id="plateAutofillHint"></div>
@@ -511,7 +523,7 @@
         <div class="modal-header py-2">
           <div>
             <h5 class="modal-title fw-bold mb-0">Jurnal Securitate & Sistem</h5>
-            <div class="text-muted small">Audit imutabil din MariaDB (`core_audit_log`)</div>
+            <div class="text-muted small">Evidență protejată a acțiunilor de sistem și securitate</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
         </div>
@@ -533,7 +545,7 @@
     </div>
   </div>
 
-  <script src="references/ui-libs/tabler/tabler.min.js"></script>
+  <script src="assets/vendor/tabler/tabler.min.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

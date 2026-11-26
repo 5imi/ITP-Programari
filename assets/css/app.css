@@ -51,6 +51,41 @@ body {
   gap: 6px;
 }
 
+.itp-ro-date-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.itp-ro-date-text {
+  padding-right: 30px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.itp-ro-date-cal-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+}
+
+.itp-ro-date-native {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 32px;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
+  border: 0;
+}
+
 .itp-sidebar {
   background: #ffffff;
   border-right: 1px solid var(--itp-border);

@@ -60,15 +60,44 @@ final class AppointmentService
         $line = Validators::assertValidLine($lineRaw, $cfg);
         $allSlots = $this->settings->buildDailySlots($cfg);
 
-        $sql = 'SELECT appt_time FROM appointments WHERE appt_date = ? AND line = ? AND deleted_at IS NULL';
-        $args = [$date, $line];
+        $sql = 'SELECT appt_time, line FROM appointments WHERE appt_date = ? AND deleted_at IS NULL';
+        $args = [$date];
         if ($excludeId !== null && $excludeId > 0) {
             $sql .= ' AND id <> ?';
             $args[] = $excludeId;
         }
         $stmt = $this->db->pdo()->prepare($sql);
         $stmt->execute($args);
-        $taken = array_map('strval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+
+        $taken = [];
+        $takenBySlot = [];
+        $takenCountByLine = [];
+        foreach ($cfg['lines'] as $ln) {
+            $takenCountByLine[$ln] = 0;
+        }
+        foreach ($stmt->fetchAll() as $row) {
+            $slotTime = (string) $row['appt_time'];
+            $slotLine = (string) $row['line'];
+            if (!isset($takenBySlot[$slotTime])) {
+                $takenBySlot[$slotTime] = [];
+            }
+            if (!in_array($slotLine, $takenBySlot[$slotTime], true)) {
+                $takenBySlot[$slotTime][] = $slotLine;
+            }
+            if (array_key_exists($slotLine, $takenCountByLine)) {
+                $takenCountByLine[$slotLine]++;
+            }
+            if ($slotLine === $line) {
+                $taken[] = $slotTime;
+            }
+        }
+        $taken = array_values(array_unique($taken));
+
+        $totalSlotsCount = count($allSlots);
+        $freeCountByLine = [];
+        foreach ($takenCountByLine as $ln => $cnt) {
+            $freeCountByLine[$ln] = max(0, $totalSlotsCount - $cnt);
+        }
 
         return [
             'date' => $date,
@@ -77,6 +106,8 @@ final class AppointmentService
             'all_slots' => $allSlots,
             'taken_slots' => $taken,
             'free_slots' => array_values(array_diff($allSlots, $taken)),
+            'taken_by_slot' => (object) $takenBySlot,
+            'free_count_by_line' => (object) $freeCountByLine,
         ];
     }
 
@@ -87,7 +118,7 @@ final class AppointmentService
             return null;
         }
         $stmt = $this->db->pdo()->prepare(
-            'SELECT plate, phone, client, appt_date, status
+            'SELECT plate, vehicle, phone, client, appt_date, status
              FROM appointments
              WHERE plate_key = ? AND deleted_at IS NULL
              ORDER BY id DESC LIMIT 1'
@@ -127,6 +158,7 @@ final class AppointmentService
                     'line' => $validated['line'],
                     'plate' => $validated['plate'],
                     'plate_key' => $validated['plate_key'],
+                    'vehicle' => $validated['vehicle'],
                     'phone' => $validated['phone'],
                     'client' => $validated['client'],
                     'status' => 'Programat',
@@ -256,7 +288,10 @@ final class AppointmentService
                 $changes[] = sprintf('Telefon: %s → %s', $existing['phone'], $validated['phone']);
             }
             if ($existing['client'] !== $validated['client']) {
-                $changes[] = sprintf('Client/Mașină: %s → %s', $existing['client'], $validated['client']);
+                $changes[] = sprintf('Client: %s → %s', $existing['client'], $validated['client']);
+            }
+            if (($existing['vehicle'] ?? '') !== $validated['vehicle']) {
+                $changes[] = sprintf('Mașină: %s → %s', $existing['vehicle'] ?? '-', $validated['vehicle'] !== '' ? $validated['vehicle'] : '-');
             }
 
             if (empty($changes) && !$overDeadline) {
@@ -269,7 +304,7 @@ final class AppointmentService
 
             $upd = $pdo->prepare(
                 'UPDATE appointments
-                 SET appt_date = ?, appt_time = ?, line = ?, plate = ?, plate_key = ?, phone = ?, client = ?,
+                 SET appt_date = ?, appt_time = ?, line = ?, plate = ?, plate_key = ?, vehicle = ?, phone = ?, client = ?,
                      visit_type = ?, reinspection_deadline = ?, verify_notes = ?,
                      version = version + 1, updated_by = ?, updated_at = ?
                  WHERE id = ? AND version = ?'
@@ -282,6 +317,7 @@ final class AppointmentService
                     $validated['line'],
                     $validated['plate'],
                     $validated['plate_key'],
+                    $validated['vehicle'],
                     $validated['phone'],
                     $validated['client'],
                     $nextVisitType,
@@ -502,6 +538,7 @@ final class AppointmentService
                     'line' => $line,
                     'plate' => $parent['plate'],
                     'plate_key' => $parent['plate_key'],
+                    'vehicle' => $parent['vehicle'] ?? '',
                     'phone' => $parent['phone'],
                     'client' => $parent['client'],
                     'status' => 'Programat',
@@ -734,7 +771,13 @@ final class AppointmentService
         $line = Validators::assertValidLine((string) ($body['line'] ?? ''), $cfg);
         $plateNorm = Validators::normalizePlate((string) ($body['plate'] ?? ''));
         $phone = Validators::normalizePhone((string) ($body['phone'] ?? ''));
-        $client = trim((string) ($body['client'] ?? ''));
+        $clientRaw = trim((string) ($body['client'] ?? ''));
+        $vehicleRaw = trim((string) ($body['vehicle'] ?? ''));
+        if ($vehicleRaw === '' && str_contains($clientRaw, '•')) {
+            $parts = array_values(array_filter(array_map('trim', explode('•', $clientRaw)), static fn(string $s): bool => $s !== ''));
+            $clientRaw = $parts[0] ?? $clientRaw;
+            $vehicleRaw = $parts[1] ?? '';
+        }
 
         if ($date < $this->config->todayIso() && $user['role'] !== 'admin') {
             throw new HttpException(422, 'PAST_DATE', 'Doar Administratorul poate opera în date trecute.');
@@ -754,8 +797,9 @@ final class AppointmentService
             'line' => $line,
             'plate' => $plateNorm['plate'],
             'plate_key' => $plateNorm['plate_key'],
+            'vehicle' => substr($vehicleRaw, 0, 120),
             'phone' => $phone,
-            'client' => substr($client !== '' ? $client : $plateNorm['plate'], 0, 160),
+            'client' => substr($clientRaw !== '' ? $clientRaw : $plateNorm['plate'], 0, 160),
             'is_closed_admin' => $isClosed && $user['role'] === 'admin',
         ];
     }

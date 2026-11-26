@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Core;
 
 /**
- * Descopera modulele din `modules/*/module.json`, sincronizeaza `modules_state` si inregistreaza rutele active.
+ * Descopera modulele din `modules/<nume>/module.json`, sincronizeaza `modules_state` si inregistreaza rutele active.
  */
 final class ModuleLoader
 {

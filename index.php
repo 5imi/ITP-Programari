@@ -26,7 +26,7 @@ try {
     if (!$isApi && $e->errorCode() === 'CONFIG_MISSING') {
         Response::emit(Response::html(
             '<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Configurare necesară</title>'
-            . '<link rel="stylesheet" href="references/ui-libs/tabler/tabler.min.css"></head>'
+            . '<link rel="stylesheet" href="assets/vendor/tabler/tabler.min.css"></head>'
             . '<body class="bg-light d-flex align-items-center justify-content-center" style="min-height:100vh;">'
             . '<div class="card p-4 shadow-sm" style="max-width:520px;">'
             . '<h3 class="fw-bold text-danger mb-2">Configurare bază de date necesară</h3>'

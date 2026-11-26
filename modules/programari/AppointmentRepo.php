@@ -53,10 +53,10 @@ final class AppointmentRepo
         $args = [];
 
         if ($q !== '') {
-            $baseWhere[] = '(plate LIKE ? OR plate_key LIKE ? OR client LIKE ? OR phone LIKE ? OR line LIKE ? OR DATE_FORMAT(appt_date, \'%d.%m.%Y\') LIKE ?)';
+            $baseWhere[] = '(plate LIKE ? OR plate_key LIKE ? OR vehicle LIKE ? OR client LIKE ? OR phone LIKE ? OR line LIKE ? OR DATE_FORMAT(appt_date, \'%d.%m.%Y\') LIKE ?)';
             $like = '%' . $q . '%';
             $plateLike = '%' . strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $q)) . '%';
-            array_push($args, $like, $plateLike, $like, $like, $like, $like);
+            array_push($args, $like, $plateLike, $like, $like, $like, $like, $like);
         }
         if ($line !== '' && $line !== 'Toate') {
             $baseWhere[] = 'line = ?';
@@ -141,11 +141,11 @@ final class AppointmentRepo
     {
         $stmt = $pdo->prepare(
             'INSERT INTO appointments (
-                appt_date, appt_time, line, plate, plate_key, phone, client,
+                appt_date, appt_time, line, plate, plate_key, vehicle, phone, client,
                 status, reject_reasons_json, reject_note, visit_type, parent_id,
                 resolved_by_reinspection_id, reinspection_deadline, verify_notes,
                 version, created_by, created_at, updated_by, updated_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)'
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $data['appt_date'],
@@ -153,6 +153,7 @@ final class AppointmentRepo
             $data['line'],
             $data['plate'],
             $data['plate_key'],
+            $data['vehicle'] ?? '',
             $data['phone'],
             $data['client'],
             $data['status'] ?? 'Programat',
@@ -184,7 +185,7 @@ final class AppointmentRepo
         string $intactFilter,
         string $sinceDateTime
     ): array {
-        $sql = 'SELECT h.*, a.appt_date, a.appt_time, a.line, a.plate, a.plate_key, a.client, a.phone, a.status,
+        $sql = 'SELECT h.*, a.appt_date, a.appt_time, a.line, a.plate, a.plate_key, a.vehicle, a.client, a.phone, a.status,
                        a.deleted_at, a.created_at AS appt_created_at, u.display_name AS creator_name, u.role AS creator_role
                 FROM appointment_history h
                 JOIN appointments a ON a.id = h.appointment_id
@@ -195,8 +196,8 @@ final class AppointmentRepo
         if ($q !== '') {
             $like = '%' . $q . '%';
             $plateLike = '%' . strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $q)) . '%';
-            $sql .= ' AND (a.plate LIKE ? OR a.plate_key LIKE ? OR a.client LIKE ? OR a.phone LIKE ? OR h.summary LIKE ? OR h.actor_name LIKE ?)';
-            array_push($args, $like, $plateLike, $like, $like, $like, $like);
+            $sql .= ' AND (a.plate LIKE ? OR a.plate_key LIKE ? OR a.vehicle LIKE ? OR a.client LIKE ? OR a.phone LIKE ? OR h.summary LIKE ? OR h.actor_name LIKE ?)';
+            array_push($args, $like, $plateLike, $like, $like, $like, $like, $like);
         } else {
             // Fara cautare explicita, afiseaza fereastra implicita (ex. 60 zile) pentru incarcare rapida
             $sql .= ' AND h.action_at >= ?';
@@ -218,6 +219,7 @@ final class AppointmentRepo
                 $grouped[$aid] = [
                     'appointment_id' => $aid,
                     'plate' => $r['plate'],
+                    'vehicle' => $r['vehicle'] ?? '',
                     'client' => $r['client'],
                     'phone' => $r['phone'],
                     'appt_date' => $r['appt_date'],
@@ -252,7 +254,9 @@ final class AppointmentRepo
         $out = [];
         foreach ($grouped as $entry) {
             $entry['actors'] = array_keys($entry['actors']);
-            $entry['last_action_at'] = end($entry['events'])['action_at'] ?? $entry['created_at'];
+            $lastEv = end($entry['events']);
+            $entry['last_action_at'] = $lastEv ? $lastEv['action_at'] : $entry['created_at'];
+            $entry['last_event_id'] = $lastEv ? (int) $lastEv['id'] : 0;
 
             if ($actor !== '' && $actor !== 'TOȚI' && !in_array($actor, $entry['actors'], true)) {
                 continue;
@@ -285,7 +289,7 @@ final class AppointmentRepo
             $out[] = $entry;
         }
 
-        usort($out, static fn(array $a, array $b): int => strcmp((string) $b['last_action_at'], (string) $a['last_action_at']));
+        usort($out, static fn(array $a, array $b): int => strcmp((string) $b['last_action_at'], (string) $a['last_action_at']) ?: ((int) $b['last_event_id'] <=> (int) $a['last_event_id']));
         return $out;
     }
 
@@ -321,6 +325,7 @@ final class AppointmentRepo
             'line' => $row['line'],
             'plate' => $row['plate'],
             'plate_key' => $row['plate_key'],
+            'vehicle' => $row['vehicle'] ?? '',
             'phone' => $row['phone'],
             'client' => $row['client'],
             'status' => $row['status'],

@@ -5,10 +5,10 @@ ServerSignature Off
   RewriteEngine On
 
   # Blocare acces HTTP direct la foldere si fisiere interne sensibile
-  RewriteRule ^(\.git|\.env|config/|core/|modules/|backups/|tests/) - [F,L]
+  RewriteRule ^(\.git|\.agents|\.env|config/|core/|modules/|backups/|tests/|router\.php) - [F,L]
   RewriteRule \.(sql|md|log|db|sqlite|bak)$ - [F,L]
 
-  # Lasa fisierele statice publice existente (assets, references/ui-libs, robots.txt, manifest.json)
+  # Lasa fisierele statice publice existente (assets, robots.txt, manifest.json)
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.php [QSA,L]

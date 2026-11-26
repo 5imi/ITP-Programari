@@ -1,1 +1,0 @@
-# FastAPI HTMX Starter Template

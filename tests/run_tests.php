@@ -235,9 +235,17 @@ foreach ($agendaCheck['body']['appointments'] ?? [] as $a) {
 assertTrue($parentAfter !== null && $parentAfter['resolved_by_reinspection_id'] === null, 'Părintele trebuia să aibă resolved_by_reinspection_id = NULL după ștergerea vizitei de revenire');
 echo "[PASS] Flux complet Revenire + REVOCAT + Reprogramare + eliberare părinte verificat.\n";
 
-// 5. Test Istoric Imutabil & blocare .htaccess (cand ruleaza pe Apache/LiteSpeed)
+// 5. Test Istoric Imutabil
 $hist = httpReq('GET', "$baseUrl/api/m/programari/history?q=SV%2099%20VER", null, '', $cookieFile);
-$events = $hist['body']['entries'][0]['events'] ?? [];
+$winnerEntry = null;
+foreach ($hist['body']['entries'] ?? [] as $entry) {
+    if ((int) ($entry['appointment_id'] ?? 0) === $winnerId) {
+        $winnerEntry = $entry;
+        break;
+    }
+}
+assertTrue($winnerEntry !== null, 'Nu a fost găsită intrarea de istoric pentru programarea părinte');
+$events = $winnerEntry['events'] ?? [];
 $types = array_column($events, 'event_type');
 foreach (['CREAT', 'MODIFICAT', 'REVENIRE', 'REVOCAT', 'REPROGRAMAT'] as $reqType) {
     assertTrue(in_array($reqType, $types, true), "Lipsește tipul de eveniment $reqType din istoric");

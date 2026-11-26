@@ -8,7 +8,7 @@
   "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "references/ui-libs/aw-logo.png",
+      "src": "assets/img/aw-logo.png",
       "sizes": "192x192",
       "type": "image/png"
     }

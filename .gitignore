@@ -14,7 +14,9 @@ backups/
 Thumbs.db
 tools/
 *.exe
-link_cloudflare.txt
+.agents/*
+!.agents/*.md
+link_cloudflare*.txt
 config/env.php
 backups/*
 !backups/.gitkeep

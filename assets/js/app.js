@@ -56,6 +56,7 @@
 
   let plateLookupTimer = null;
   let searchReloadTimer = null;
+  let modalSlotsCache = null;
   const HISTORY_POLL_MS = 10000;
 
   function esc(val) {
@@ -72,6 +73,53 @@
     const [y, m, d] = String(iso).split('-');
     return `${d}.${m}.${y}`;
   }
+
+  function formatDateSlashRo(iso) {
+    if (!iso || !String(iso).includes('-')) return iso || '';
+    const [y, m, d] = String(iso).split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function parseDateSlashRoToIso(raw) {
+    const clean = String(raw || '').trim().replace(/[.\-]/g, '/');
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(clean);
+    if (!m) return null;
+    const day = Number(m[1]);
+    const mon = Number(m[2]);
+    const yr = Number(m[3]);
+    const dt = new Date(yr, mon - 1, day);
+    if (dt.getFullYear() !== yr || dt.getMonth() !== mon - 1 || dt.getDate() !== day) return null;
+    return `${String(yr).padStart(4, '0')}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function setRoDatePair(textId, isoId, iso) {
+    const isoEl = document.getElementById(isoId);
+    const txtEl = document.getElementById(textId);
+    if (isoEl) isoEl.value = iso || '';
+    if (txtEl) txtEl.value = iso ? formatDateSlashRo(iso) : '';
+  }
+
+  window.onRoDateTextChange = (textId, isoId, onValidIso) => {
+    const txtEl = document.getElementById(textId);
+    const isoEl = document.getElementById(isoId);
+    if (!txtEl || !isoEl) return;
+    const parsed = parseDateSlashRoToIso(txtEl.value);
+    if (!parsed) {
+      txtEl.value = isoEl.value ? formatDateSlashRo(isoEl.value) : '';
+      return;
+    }
+    isoEl.value = parsed;
+    txtEl.value = formatDateSlashRo(parsed);
+    if (typeof onValidIso === 'function') onValidIso(parsed);
+  };
+
+  window.onRoDatePickerChange = (isoId, textId, onValidIso) => {
+    const isoEl = document.getElementById(isoId);
+    const txtEl = document.getElementById(textId);
+    if (!isoEl) return;
+    if (txtEl) txtEl.value = isoEl.value ? formatDateSlashRo(isoEl.value) : '';
+    if (isoEl.value && typeof onValidIso === 'function') onValidIso(isoEl.value);
+  };
 
   function addDaysIso(iso, delta) {
     const [y, m, d] = String(iso).split('-').map(Number);
@@ -195,12 +243,22 @@
     else inst.hide();
   }
 
-  function closeMobileSidebar() {
+  function closeMobileSidebar(immediate = false) {
     const navEl = document.getElementById('sidebar-nav');
+    if (!navEl) return;
     const bs = getBsApi();
-    if (navEl && navEl.classList.contains('show') && bs && bs.Collapse) {
+    if (immediate) {
+      navEl.classList.remove('show', 'collapsing');
+      navEl.style.height = '';
+      const tog = document.querySelector('.navbar-toggler[data-bs-target="#sidebar-nav"]');
+      if (tog) tog.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    if (navEl.classList.contains('show') && bs && bs.Collapse) {
       const c = bs.Collapse.getInstance(navEl) || new bs.Collapse(navEl, { toggle: false });
       c.hide();
+    } else {
+      navEl.classList.remove('show', 'collapsing');
     }
   }
 
@@ -288,7 +346,7 @@
       });
       if (res.csrf_token) api.setCsrfToken(res.csrf_token);
       await loadSessionAndEnterApp();
-      showToast('Sistem inițializat și salvat în MariaDB.');
+      showToast('Sistem inițializat cu succes.');
     } catch (err) {
       errEl.textContent = err.message || 'Eroare la inițializare.';
       errEl.classList.remove('d-none');
@@ -296,6 +354,7 @@
   });
 
   async function showLoginScreen(initialError = '') {
+    closeMobileSidebar(true);
     showScreen('loginScreen');
     state.isMasterRecoveryMode = false;
     toggleMasterRecoveryMode(false);
@@ -443,12 +502,14 @@
       lineSel.innerHTML = (state.stationConfig.lines || []).map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
     }
 
+    closeMobileSidebar(true);
     showScreen('appShell');
     renderNav();
     await loadAndRenderCurrentView();
   }
 
   window.requestLogout = async () => {
+    closeMobileSidebar(true);
     try {
       await api.post('api/auth/logout', {});
     } catch (_) {
@@ -629,7 +690,7 @@
         const data = await api.get('api/admin/modules');
         state.modules = data.modules || [];
         titleEl.textContent = 'Module Sistem';
-        subEl.textContent = 'Activare/dezactivare module din MariaDB';
+        subEl.textContent = 'Activare și dezactivare module';
         root.innerHTML = renderModulesView();
         return;
       }
@@ -638,7 +699,7 @@
         const data = await api.get('api/admin/settings');
         state.stationConfig = data.station_config || state.stationConfig;
         titleEl.textContent = 'Setări Stație ITP';
-        subEl.textContent = 'Linii, program de lucru și durată slot (stocate în MariaDB)';
+        subEl.textContent = 'Linii ITP, program de lucru și durată slot';
         root.innerHTML = renderSettingsView();
         return;
       }
@@ -647,7 +708,7 @@
         const data = await api.get('api/admin/backups');
         state.adminBackups = data.backups || [];
         titleEl.textContent = 'Backup Bază Date';
-        subEl.textContent = 'Snapshot JSON descărcabil + backup zilnic Acronis în cPanel';
+        subEl.textContent = 'Export și arhivă de siguranță a datelor';
         root.innerHTML = renderBackupView();
         return;
       }
@@ -707,7 +768,8 @@
             <div class="text-muted small fw-normal">${showDateCol ? `${formatDateRo(a.date)} • ` : ''}${esc(a.line)}</div>
           </td>
           <td><span class="plate-badge">${esc(a.plate)}</span></td>
-          <td colspan="2">
+          <td><div class="fw-medium">${esc(a.vehicle || '-')}</div></td>
+          <td>
             <div class="fw-medium">${esc(a.client)}</div>
             <div class="text-muted small">${esc(a.phone)}</div>
           </td>
@@ -749,7 +811,7 @@
               ${isFutureCard ? `<span class="itp-future-date-note">${esc(formatDateRo(a.date))}</span>` : ''}
             </div>
           </div>
-          <div class="text-muted text-truncate mb-1" style="font-size: 0.77rem;">${esc(a.client)} • ${esc(a.phone)}</div>
+          <div class="text-muted text-truncate mb-1" style="font-size: 0.77rem;">${esc([a.vehicle, a.client, a.phone].filter(Boolean).join(' • '))}</div>
           ${m.rejectSummary ? `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>` : ''}
           <div class="d-flex align-items-center gap-1">
             ${m.canEdit ? `<button class="btn btn-outline-primary itp-mob-act flex-fill" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
@@ -797,7 +859,18 @@
           <div class="d-flex align-items-center gap-1 itp-filter-group">
             <div class="d-flex align-items-center gap-1 flex-grow-1 flex-lg-grow-0">
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(-1)">&lsaquo;</button>
-              <input type="date" class="form-control form-control-sm fw-medium flex-grow-1 flex-lg-grow-0" style="min-height: 28px;" value="${esc(state.selectedDate)}" onchange="selectDate(this.value)">
+              <div class="itp-ro-date-wrap flex-grow-1 flex-lg-grow-0" style="min-width: 128px;">
+                <input type="text" class="form-control form-control-sm fw-medium itp-ro-date-text" id="agendaDateText"
+                  style="min-height: 28px;" inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
+                  value="${esc(formatDateSlashRo(state.selectedDate))}"
+                  onchange="onRoDateTextChange('agendaDateText', 'agendaDateNative', selectDate)">
+                <span class="itp-ro-date-cal-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <input type="date" class="itp-ro-date-native" id="agendaDateNative" aria-label="Selectează data"
+                  value="${esc(state.selectedDate)}"
+                  onchange="onRoDatePickerChange('agendaDateNative', 'agendaDateText', selectDate)">
+              </div>
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(1)">&rsaquo;</button>
               <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
             </div>
@@ -828,7 +901,7 @@
         <div class="table-responsive">
           <table class="table table-vcenter card-table itp-compact-table">
             <thead>
-              <tr><th>Ora / Linie</th><th>Nr. Înmatriculare</th><th colspan="2">Client / Vehicul & Telefon</th><th>Status</th><th class="text-end">Acțiuni rapide</th></tr>
+              <tr><th>Ora / Linie</th><th>Nr. Înmatriculare</th><th>Mașină</th><th>Client & Telefon</th><th>Status</th><th class="text-end">Acțiuni rapide</th></tr>
             </thead>
             <tbody>
               ${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">Nicio programare pentru ziua selectată.</td></tr>`}
@@ -861,6 +934,32 @@
     return state.appointments.find(a => a.id === id) || state.futureAppointments.find(a => a.id === id) || null;
   }
 
+  function updateLineOptionsLabels() {
+    const lineEl = document.getElementById('inpLine');
+    const hourEl = document.getElementById('inpHour');
+    if (!lineEl || !hourEl) return;
+    const selectedHour = hourEl.value || '';
+    const takenBySlot = (modalSlotsCache && modalSlotsCache.taken_by_slot) || {};
+    const freeCountByLine = (modalSlotsCache && modalSlotsCache.free_count_by_line) || {};
+    const takenAtHour = new Set(Array.isArray(takenBySlot[selectedHour]) ? takenBySlot[selectedHour] : []);
+
+    Array.from(lineEl.options).forEach(opt => {
+      const ln = opt.value;
+      const freeCnt = freeCountByLine[ln] !== undefined ? Number(freeCountByLine[ln]) : null;
+      if (selectedHour && takenAtHour.has(ln)) {
+        opt.textContent = `${ln} (ocupat ${selectedHour})`;
+      } else if (freeCnt !== null) {
+        opt.textContent = `${ln} (${freeCnt} lib.)`;
+      } else {
+        opt.textContent = ln;
+      }
+    });
+  }
+
+  window.onHourSelectChange = () => {
+    updateLineOptionsLabels();
+  };
+
   async function refreshHourOptions(forceTime = null, excludeId = null) {
     const dateEl = document.getElementById('inpDate');
     const lineEl = document.getElementById('inpLine');
@@ -873,17 +972,30 @@
     try {
       const qs = new URLSearchParams({ date, line, exclude_id: String(excludeId || 0) });
       const data = await api.get(`api/m/programari/slots?${qs.toString()}`);
+      modalSlotsCache = data;
       const free = new Set(data.free_slots || []);
       const all = data.all_slots || state.dailySlots;
+      const takenBySlot = data.taken_by_slot || {};
       const curVal = forceTime || hourEl.value;
 
       hourEl.innerHTML = all.map(s => {
         const isFree = free.has(s);
-        return `<option value="${esc(s)}" ${isFree ? '' : 'disabled'}>${esc(s)}${isFree ? '' : ' (ocupat)'}</option>`;
+        const busyLines = Array.isArray(takenBySlot[s]) ? takenBySlot[s] : [];
+        let label = s;
+        if (!isFree) {
+          label = `${s} (ocupat)`;
+        } else if (busyLines.length > 0) {
+          const busyShort = busyLines.map(l => String(l).replace(/^Linia\s+/i, 'L')).join(',');
+          label = `${s} (${busyShort} ocup.)`;
+        }
+        return `<option value="${esc(s)}" ${isFree ? '' : 'disabled'}>${esc(label)}</option>`;
       }).join('');
 
-      if (curVal && all.includes(curVal)) hourEl.value = curVal;
+      if (curVal && free.has(curVal)) hourEl.value = curVal;
       else if (data.free_slots && data.free_slots.length) hourEl.value = data.free_slots[0];
+      else if (all.length) hourEl.value = all[0];
+
+      updateLineOptionsLabels();
     } catch (_) {
     }
   }
@@ -903,8 +1015,10 @@
         if (res.match) {
           const phoneEl = document.getElementById('inpPhone');
           const clientEl = document.getElementById('inpClient');
+          const vehicleEl = document.getElementById('inpVehicle');
           if (!phoneEl.value.trim()) phoneEl.value = res.match.phone || '';
           if (!clientEl.value.trim()) clientEl.value = res.match.client || '';
+          if (vehicleEl && !vehicleEl.value.trim()) vehicleEl.value = res.match.vehicle || '';
           hint.textContent = `Găsit în baza de date (${res.match.plate} • ultima vizită ${formatDateRo(res.match.appt_date)}).`;
           hint.classList.remove('d-none');
         } else {
@@ -916,6 +1030,7 @@
   };
 
   window.openNewAppointmentModal = async () => {
+    closeMobileSidebar();
     state.editingAppt = null;
     state.reprogramParent = null;
     document.getElementById('formProgramare').reset();
@@ -927,7 +1042,11 @@
 
     const dateEl = document.getElementById('inpDate');
     dateEl.min = isAdmin() ? '' : state.todayDate;
-    dateEl.value = state.selectedDate >= state.todayDate || isAdmin() ? state.selectedDate : state.todayDate;
+    const defDate = state.selectedDate >= state.todayDate || isAdmin() ? state.selectedDate : state.todayDate;
+    setRoDatePair('inpDateText', 'inpDate', defDate);
+    if (state.lineFilter && state.lineFilter !== 'Toate' && (state.stationConfig.lines || []).includes(state.lineFilter)) {
+      document.getElementById('inpLine').value = state.lineFilter;
+    }
     document.getElementById('inpPlate').disabled = false;
     await refreshHourOptions(null, null);
     setModalVisible('modalProgramare', true);
@@ -945,12 +1064,13 @@
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Salvează modificările';
 
     document.getElementById('inpDate').min = isAdmin() ? '' : state.todayDate;
-    document.getElementById('inpDate').value = a.date;
+    setRoDatePair('inpDateText', 'inpDate', a.date);
     document.getElementById('inpLine').value = a.line;
     document.getElementById('inpPlate').value = a.plate;
     document.getElementById('inpPlate').disabled = false;
     document.getElementById('inpPhone').value = a.phone;
-    document.getElementById('inpClient').value = a.client;
+    document.getElementById('inpClient').value = a.client || '';
+    document.getElementById('inpVehicle').value = a.vehicle || '';
     await refreshHourOptions(a.time, a.id);
     setModalVisible('modalProgramare', true);
   };
@@ -970,22 +1090,27 @@
     document.getElementById('modalProgramareSubmitBtn').textContent = 'Programează revenirea';
 
     document.getElementById('inpDate').min = isAdmin() ? '' : state.todayDate;
-    document.getElementById('inpDate').value = state.todayDate;
+    setRoDatePair('inpDateText', 'inpDate', state.todayDate);
     document.getElementById('inpPlate').value = p.plate;
     document.getElementById('inpPlate').disabled = true;
     document.getElementById('inpPhone').value = p.phone;
-    document.getElementById('inpClient').value = p.client;
+    document.getElementById('inpClient').value = p.client || '';
+    document.getElementById('inpVehicle').value = p.vehicle || '';
     await refreshHourOptions(null, null);
     setModalVisible('modalProgramare', true);
   };
 
   async function submitProgramareWithFlags(extraFlags = {}) {
+    const dateTxtEl = document.getElementById('inpDateText');
+    const typedIso = dateTxtEl ? parseDateSlashRoToIso(dateTxtEl.value) : null;
+    if (typedIso) document.getElementById('inpDate').value = typedIso;
     const date = document.getElementById('inpDate').value;
     const time = document.getElementById('inpHour').value;
     const line = document.getElementById('inpLine').value;
     const plate = document.getElementById('inpPlate').value.trim();
     const phone = document.getElementById('inpPhone').value.trim();
     const client = document.getElementById('inpClient').value.trim();
+    const vehicle = document.getElementById('inpVehicle').value.trim();
 
     try {
       if (state.reprogramParent) {
@@ -996,13 +1121,13 @@
         showToast(`Revenire programată: ${state.reprogramParent.plate} (${formatDateRo(date)} ${time})`, buildJumpToDateAction(date));
       } else if (state.editingAppt) {
         await api.put(`api/m/programari/appointments/${state.editingAppt.id}`, {
-          date, time, line, plate, phone, client, version: state.editingAppt.version, ...extraFlags,
+          date, time, line, plate, phone, client, vehicle, version: state.editingAppt.version, ...extraFlags,
         });
         setModalVisible('modalProgramare', false);
         showToast(`Actualizat: ${plate.toUpperCase()} (${formatDateRo(date)} ${time})`, buildJumpToDateAction(date));
       } else {
         await api.post('api/m/programari/appointments', {
-          date, time, line, plate, phone, client, ...extraFlags,
+          date, time, line, plate, phone, client, vehicle, ...extraFlags,
         });
         setModalVisible('modalProgramare', false);
         showToast(`Programare salvată: ${plate.toUpperCase()} (${formatDateRo(date)} ${time})`, buildJumpToDateAction(date));
@@ -1223,7 +1348,7 @@
   function renderUsersView() {
     return `
       <div class="mb-2 d-flex justify-content-between align-items-center">
-        <span class="text-muted small">Conturile și permisiunile se aplică imediat în MariaDB.</span>
+        <span class="text-muted small">Conturile și permisiunile se aplică imediat.</span>
         <button type="button" class="btn btn-sm btn-primary" onclick="openUserModal(null)">+ Utilizator nou</button>
       </div>
       <div class="row g-2">
@@ -1426,7 +1551,7 @@
               <input type="number" class="form-control form-control-sm" id="cfgSlot" value="${esc(c.slot_minutes)}" min="15" max="60" required>
             </div>
           </div>
-          <button type="submit" class="btn btn-sm btn-primary">Salvează setările în MariaDB</button>
+          <button type="submit" class="btn btn-sm btn-primary">Salvează setările</button>
         </form>
       </div>
     `;
@@ -1456,8 +1581,8 @@
       <div class="card p-3">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div>
-            <div class="fw-bold">Snapshot-uri MariaDB</div>
-            <div class="text-muted small">Backup-ul zilnic automat rulează și prin Acronis în cPanel Romarg.</div>
+            <div class="fw-bold">Copii de siguranță</div>
+            <div class="text-muted small">Salvează local o copie completă a datelor aplicației.</div>
           </div>
           <button type="button" class="btn btn-sm btn-primary" onclick="createBackupNow()">Generează Backup acum</button>
         </div>
@@ -1470,7 +1595,7 @@
               </div>
               <a class="btn btn-sm btn-outline-primary" href="api/admin/backups/${encodeURIComponent(b.filename)}" target="_blank" rel="noopener">Descarcă</a>
             </div>
-          `).join('') || `<div class="p-3 text-muted small text-center">Niciun snapshot generat manual încă.</div>`}
+          `).join('') || `<div class="p-3 text-muted small text-center">Nicio copie de siguranță generată manual încă.</div>`}
         </div>
       </div>
     `;
@@ -1479,7 +1604,7 @@
   window.createBackupNow = async () => {
     try {
       await api.post('api/admin/backups', {});
-      showToast('Snapshot backup creat.');
+      showToast('Copie de siguranță creată.');
       await loadAndRenderCurrentView();
     } catch (err) {
       showToast(err.message);
@@ -1487,6 +1612,7 @@
   };
 
   window.openChangePinModal = () => {
+    closeMobileSidebar();
     document.getElementById('formChangePin').reset();
     document.getElementById('changePinErr').classList.add('d-none');
     setModalVisible('modalChangePin', true);
@@ -1515,9 +1641,20 @@
   });
 
   window.openSecurityLogModal = async () => {
+    closeMobileSidebar();
     setModalVisible('modalSecurityLog', true);
     await loadSecurityLog();
   };
+
+  // Inchide automat meniul mobil la atingerea oricarei zone din afara meniului
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth >= 992) return;
+    const navEl = document.getElementById('sidebar-nav');
+    const sideEl = document.getElementById('sidebarMenu');
+    if (navEl && navEl.classList.contains('show') && sideEl && !sideEl.contains(e.target)) {
+      closeMobileSidebar();
+    }
+  });
 
   window.loadSecurityLog = async () => {
     const box = document.getElementById('securityLogBody');
