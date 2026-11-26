@@ -139,3 +139,4 @@ FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămân�
 - **Decizie finală găzduire (26 noiembrie 2026 — seară):**
   - Adăugat `robots.txt` (`Disallow: /`) pentru neindexare în motoarele de căutare.
   - Confirmată găzduirea 24/7 a aplicației și bazei de date pe **VPS Linux KVM (România, NVMe local)** folosind **Docker (`--workers 1` + volume persistente `./data` și `./backups`) + Caddy HTTPS**, adăugată ca **Etapa 9** în `IMPLEMENTARE.md` și în `PLAN.md`.
+  - **Opțiune alternativă analizată înainte de start cod:** Găzduire Web cPanel (`gazduire-web.html`, ~2–4 €/lună cu backup Acronis și email-uri incluse) — necesită adaptarea backend-ului din `IMPLEMENTARE.md` pe **PHP 8 + MariaDB** (păstrând neschimbat frontend-ul `dashboard.html`). Alegerea finală (**VPS `RMGP-1` Python/Docker** vs. **cPanel `PHP 8 + MariaDB`**) se confirmă la reluare de acasă.
