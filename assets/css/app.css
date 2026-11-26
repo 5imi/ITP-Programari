@@ -217,8 +217,7 @@ body {
 
 .itp-compact-table td,
 .itp-compact-table th {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+  padding: 0.5rem 0.5rem !important;
 }
 
 .itp-actions-cell {
@@ -227,9 +226,14 @@ body {
 }
 
 .itp-desk-act {
-  padding: 0.22rem 0.48rem !important;
-  font-size: 0.76rem !important;
-  line-height: 1.25 !important;
+  min-height: 27px;
+  padding: 0.18rem 0.44rem !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -258,30 +262,6 @@ body {
   background: #166534 !important;
   border-color: #166534 !important;
   color: #ffffff !important;
-}
-
-.itp-desk-act-lg {
-  min-height: 29px;
-  padding: 0.2rem 0.62rem !important;
-  font-size: 0.78rem !important;
-  font-weight: 700 !important;
-  line-height: 1.2 !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.itp-desk-act-sm {
-  min-height: 24px;
-  padding: 0.12rem 0.4rem !important;
-  font-size: 0.69rem !important;
-  font-weight: 600 !important;
-  line-height: 1.2 !important;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .itp-status-cell {
@@ -489,19 +469,6 @@ body {
     padding: 1px 5px;
   }
 
-  .itp-mob-act {
-    min-height: 27px;
-    padding: 0.14rem 0.42rem;
-    font-size: 0.71rem;
-    font-weight: 600;
-    line-height: 1.1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    white-space: nowrap;
-  }
-
   .itp-mob-acts-line {
     display: flex;
     align-items: center;
@@ -509,40 +476,30 @@ body {
     gap: 3px;
   }
 
-  .itp-mob-act-lg {
-    min-height: 31px;
-    padding: 0.2rem 0.35rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    line-height: 1.1;
+  .itp-mob-act {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 0.36rem;
+    font-size: 0.71rem;
+    font-weight: 600;
+    line-height: 1;
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    white-space: nowrap;
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .itp-mob-act-sm {
-    min-height: 25px;
-    padding: 0.1rem 0.28rem;
-    font-size: 0.65rem;
-    font-weight: 600;
-    line-height: 1.1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
     white-space: nowrap;
     flex: 0 0 auto;
   }
 
+  .itp-mob-act-primary {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .itp-mob-icon-btn {
-    min-width: 23px;
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
     flex: 0 0 auto;
   }
 

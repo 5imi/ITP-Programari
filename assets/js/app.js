@@ -1015,14 +1015,14 @@
           </td>
           <td class="text-end itp-actions-cell">
             <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
-              <a class="btn btn-sm itp-desk-act-lg itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WhatsApp</a>
-              <a class="btn btn-sm itp-desk-act-lg itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Telefon</a>
-              ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act-sm" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
-              ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act-sm" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
-              ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act-sm" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
-              ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act-sm" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-              ${m.canEdit ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act-sm" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
-              ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act-sm" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
+              <a class="btn btn-sm itp-desk-act itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WhatsApp</a>
+              <a class="btn btn-sm itp-desk-act itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Telefon</a>
+              ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
+              ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
+              ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
+              ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+              ${m.canEdit ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
+              ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
             </div>
           </td>
         </tr>
@@ -1059,16 +1059,16 @@
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
           ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote && !m.isExpired ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
           <div class="itp-mob-acts-line">
-            <a class="btn itp-mob-act-lg itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WhatsApp</a>
-            <a class="btn itp-mob-act-lg itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Telefon</a>
-            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act-sm" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>` : ''}
-            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act-sm" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
-            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act-sm" onclick="toggleFinalizat(${a.id}, false)">Revocă</button>` : ''}
-            ${m.canReprog ? `<button class="btn btn-purple itp-mob-act-sm" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
-            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act-sm" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-            ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act-sm" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
-            ${m.canEdit ? `<button class="btn btn-outline-secondary itp-mob-act-sm" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
-            ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act-sm itp-mob-icon-btn" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">×</button>` : ''}
+            <a class="btn itp-mob-act itp-mob-act-primary itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WA</a>
+            <a class="btn itp-mob-act itp-mob-act-primary itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Sună</a>
+            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>` : ''}
+            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
+            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act" onclick="toggleFinalizat(${a.id}, false)">Revocă</button>` : ''}
+            ${m.canReprog ? `<button class="btn btn-purple itp-mob-act" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
+            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+            ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
+            ${m.canEdit ? `<button class="btn btn-outline-secondary itp-mob-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
+            ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">×</button>` : ''}
           </div>
         </div>
       `;
