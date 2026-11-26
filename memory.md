@@ -123,3 +123,16 @@ FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămân�
   - `Vlad` și `Gabi` (cu drept `Editare`) pot modifica **orice programare** din agendă.
   - Pornirea prin `start.bat` este soluție temporară până la mutarea pe găzduire.
   - **UX rapid pentru motive:** și motivele de **ștergere / anulare / neprezentare** vor fi implementate cu **butoane-bifă rapide (1 click/tap)** (similar motivelor de revenire), nu dropdown lent.
+
+---
+
+## 9. Actualizare Progres (26 noiembrie 2026 — după-amiază)
+
+- **Actualizări UI/UX & Securitate integrate în machetă (`dashboard.html`) și documentație:**
+  - Logare rapidă prin **selecție utilizator + PIN numeric (4–6 cifre)** cu tastatură numerică pe ecran (model POS/atelier).
+  - **Dual-PIN pentru Administratorul principal (`Laur`):** PIN uzual (`4–6` cifre) + **PIN Secret / Master Recovery (`8–12` cifre)** care deloghează toate celelalte sesiuni (`session_version += 1`), invalidează vechiul PIN uzual, obligă setarea unui PIN uzual nou și scrie `ADMIN_MASTER_RECOVERY` în `core_audit_log`.
+  - **Motive de ștergere / anulare / neprezentare** transformate în **butoane-bifă rapide (1-tap)** în `#modalConfirm`.
+  - **Fundal stil WhatsApp** (`#efeae2` + textură SVG auto/ITP subtilă 100% offline) peste care cardurile albe ies clar în evidență.
+  - Redenumire utilizator demo `Vali` → **`Vlad`** (PIN `2222`).
+  - Demo live expus securizat prin `tools/cloudflared.exe` + `tools/serve_demo.py` (`tools/` ignorat din Git prin `.gitignore`).
+- **Ghid detaliat de implementare creat (`IMPLEMENTARE.md`):** conține pașii exacți pentru **Faza 0 (`Core`) + Faza 1 (`programari`)** — Etapele `0–8`, schemele SQL complete cu trigger-e append-only, regulile și codurile de eroare, endpoint-urile API, planul de testare `pytest` + manual și livrarea (`start.bat` + Firewall).

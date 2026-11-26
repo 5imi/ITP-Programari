@@ -53,6 +53,7 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 ---
 
 ## Structura Repository-ului
+- `IMPLEMENTARE.md` — ghidul pas cu pas de implementare (Etapele 0–8).
 - `dashboard.html` — macheta interactivă completă (PC + mobil).
 - `PLAN.md` — planul de arhitectură modulară (`Core` Faza 0 + `programari` Faza 1 + Etapa 2).
 - `memory.md` — jurnalul deciziilor tehnice și progresului.

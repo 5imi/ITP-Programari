@@ -150,5 +150,6 @@ d:\ITP programari\
 
 ## 7. Referințe și Memorie de Proiect
 
+- [IMPLEMENTARE.md](IMPLEMENTARE.md) — pașii detaliați de implementare Faza 0 (Core) + Faza 1 (programari), cu schema SQL, endpointuri, reguli, teste și livrare.
 - [references/README.md](references/README.md) — indexul proiectelor de referință descărcate (arhitectură modulară FastAPI, RBAC, Audit Log, domeniu auto/inspecții și biblioteci UI offline).
 - [memory.md](memory.md) — jurnalul complet al discuțiilor, deciziilor luate și punctelor deschise pentru reluarea ușoară a proiectării și dezvoltării de acasă.
