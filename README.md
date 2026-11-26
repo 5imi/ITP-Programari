@@ -53,10 +53,11 @@ Aplicație web modulară (`localhost` + LAN/Wi-Fi + expunere demo prin `cloudfla
 ---
 
 ## Structura Repository-ului
-- `IMPLEMENTARE.md` — ghidul pas cu pas de implementare (Etapele 0–8).
+- `PLAN_PHP.md` & `IMPLEMENTARE_PHP.md` — arhitectura și ghidul de implementare confirmat pentru producție (**PHP 8.2+ + MariaDB InnoDB** pe Romarg Găzduire Web cPanel, cu protecție completă la race conditions).
+- `PLAN.md` & `IMPLEMENTARE.md` — arhitectura alternativă păstrată pentru **Python / FastAPI / SQLite / VPS Docker** (în cazul unei migrări ulterioare pe VPS).
 - `dashboard.html` — macheta interactivă completă (PC + mobil).
-- `PLAN.md` — planul de arhitectură modulară (`Core` Faza 0 + `programari` Faza 1 + Etapa 2).
 - `memory.md` — jurnalul deciziilor tehnice și progresului.
+- `robots.txt` — dezactivează indexarea aplicației de către motoarele de căutare.
 - `references/` — resurse UI locale (`tabler`, `fullcalendar`, `htmx`) și referințe arhitecturale.
 
 ## Previzualizare Locală Rapidă

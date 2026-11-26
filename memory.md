@@ -140,3 +140,16 @@ FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămân�
   - Adăugat `robots.txt` (`Disallow: /`) pentru neindexare în motoarele de căutare.
   - Confirmată găzduirea 24/7 a aplicației și bazei de date pe **VPS Linux KVM (România, NVMe local)** folosind **Docker (`--workers 1` + volume persistente `./data` și `./backups`) + Caddy HTTPS**, adăugată ca **Etapa 9** în `IMPLEMENTARE.md` și în `PLAN.md`.
   - **Opțiune alternativă analizată înainte de start cod:** Găzduire Web cPanel (`gazduire-web.html`, ~2–4 €/lună cu backup Acronis și email-uri incluse) — necesită adaptarea backend-ului din `IMPLEMENTARE.md` pe **PHP 8 + MariaDB** (păstrând neschimbat frontend-ul `dashboard.html`). Alegerea finală (**VPS `RMGP-1` Python/Docker** vs. **cPanel `PHP 8 + MariaDB`**) se confirmă la reluare de acasă.
+
+---
+
+## 10. Actualizare Progres (26 noiembrie 2026 — seară, de acasă)
+
+- **Sincronizat cu GitHub (`origin/main` `681bf88`)** și validată decizia finală de producție:
+  - **Backend confirmat:** **PHP 8.2+ pur + MariaDB InnoDB** pe **Romarg Găzduire Web cPanel** (pachetul de bază de la `1,95 €/lună`, cu `UNIQUE KEY` pe slot activ + `SELECT ... FOR UPDATE` + `version` pentru protecție completă la race conditions).
+  - Documentația Python/VPS (`PLAN.md` și `IMPLEMENTARE.md`) se păstrează intactă pentru o eventuală migrare ulterioară pe VPS; au fost create fișierele dedicate **`PLAN_PHP.md`** și **`IMPLEMENTARE_PHP.md`** (actualizat și `README.md` cu referințele către ambele variante).
+- **Audit & completări `dashboard.html` (`acw_itp_demo_v3`):**
+  - **Istoric Imutabil complet (cu Dată + Oră + Utilizator + Tip acțiune):** reparat logarea `CREAT`, separat tipul **`REVOCAT`** de `MODIFICAT`, adăugat filtrul **`Revocate`** și **`Intacte`**, consemnare explicită a datei (`DD.MM.YYYY`) + orei (`HH:MM`) + actorului pe fiecare eveniment (inclusiv în `Export CSV`).
+  - **Jurnal Securitate / Admin (`#modalSecurityLog`):** buton discret în `Istoric` și `Utilizatori & Drepturi` care înregistrează cu dată + oră + utilizator toate acțiunile de sistem (`LOGIN_OK`, `LOGIN_FAIL`, `LOGOUT`, `PIN_CHANGE`, `ADMIN_MASTER_RECOVERY`, `USER_CREATE/UPDATE/BLOCK/UNBLOCK`, `REASON_*`, `MODULE_TOGGLE`, `EXPIRARE_CONTACTATA`, `BACKUP`, `DEMO_RESET`) + Export CSV.
+  - **Reparații scenarii & UX:** eliberare automată `resolvedByReinspectionId` la ștergerea unei vizite `REVENIRE` (redeschide `+ Reprogramează`), verificare termen 30 zile la `Editează` pe `REVENIRE`, regulă **Duminică stație închisă** (`Luni–Sâmbătă`), buton `+ Programează` direct din `Expirări ITP` & `Clienți & Vehicule`, **`Schimbă PIN`** propriu pentru utilizatorul logat, bară clickabilă grad ocupare pe linii (`L1 / L2 / L3`) și readucere buton `🔍` pliabil pe mobil.
+  - **Păstrare context dată curentă la programări în viitor (`showToast` cu buton `Vezi ziua`):** la crearea sau editarea unei programări pe o altă dată decât ziua vizualizată (sau din alte ecrane ca `Expirări ITP`), aplicația păstrează `state.selectedDate` și view-ul curent neschimbate și afișează în toast butonul rapid **`Vezi ziua`** (5 secunde, cu salt opțional în agenda acelei zile). Testat cu Playwright pe Desktop (`1280x800`) și Mobil (`375x812`): toate scenariile au trecut cu `0` erori JS și `overflow=0px`.

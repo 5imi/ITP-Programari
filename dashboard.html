@@ -250,7 +250,8 @@
       }
 
       .page-body {
-        padding-top: 0.4rem;
+        margin-top: 0 !important;
+        padding-top: 0.3rem !important;
         padding-bottom: 0.75rem;
       }
 
@@ -258,14 +259,25 @@
         padding-bottom: 58px;
       }
 
-      .itp-topbar {
-        padding-top: 0.25rem !important;
-        padding-bottom: 0.25rem !important;
+      .itp-sidebar.navbar {
+        min-height: 0 !important;
+        padding-top: 0.15rem !important;
+        padding-bottom: 0.15rem !important;
+      }
+
+      .itp-topbar.navbar {
+        min-height: 0 !important;
+        padding-top: 0.28rem !important;
+        padding-bottom: 0.28rem !important;
+      }
+
+      .itp-topbar:not(.itp-mob-search-open) {
+        display: none !important;
       }
 
       .aw-logo-nav {
-        width: 30px;
-        height: 30px;
+        width: 28px;
+        height: 28px;
       }
 
       .itp-mob-card {
@@ -299,14 +311,18 @@
       }
 
       .itp-filter-card {
-        padding: 6px 8px !important;
+        padding: 5px 7px !important;
         margin-bottom: 6px !important;
       }
 
+      .itp-filter-card > .d-flex {
+        gap: 5px !important;
+      }
+
       .itp-date-btn {
-        min-width: 30px;
-        min-height: 30px !important;
-        padding: 0 7px;
+        min-width: 28px;
+        min-height: 28px !important;
+        padding: 0 6px;
       }
 
       .filter-pill {
@@ -443,11 +459,33 @@
     .itp-toast {
       background: #0f172a;
       color: #ffffff;
-      padding: 10px 16px;
+      padding: 10px 14px;
       border-radius: 10px;
       font-size: 0.88rem;
       box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
       animation: fadeSlide 0.18s ease-out;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      max-width: min(440px, calc(100vw - 24px));
+    }
+
+    .itp-toast-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: 0;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .itp-toast-btn:hover {
+      background: #1d4ed8;
     }
 
     @keyframes fadeSlide {
@@ -679,9 +717,12 @@
             </div>
           </a>
           <div class="d-flex align-items-center gap-1 d-lg-none">
+            <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2" id="btnMobSearchToggle" onclick="toggleMobileSearch()" aria-label="Căutare" title="Caută nr. auto, telefon, client" style="min-height: 30px; min-width: 32px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
             <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2" id="btnNewApptMob"
-              onclick="openNewAppointmentModal()" style="min-height: 30px; font-size: 0.76rem; font-weight: 600;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              onclick="openNewAppointmentModal()" style="min-height: 30px; font-size: 0.75rem; font-weight: 600;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
@@ -705,11 +746,14 @@
           </div>
 
           <div class="d-lg-none border-top mt-2 pt-2 pb-2 px-2">
-            <div class="d-flex align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
               <div class="small text-muted">Logat: <strong class="text-dark" id="mobDrawerUser">Laur (Admin)</strong>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-danger" id="btnLogoutMob"
-                onclick="requestLogout()">Deconectare</button>
+              <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openChangePinModal()">Schimbă PIN</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="btnLogoutMob"
+                  onclick="requestLogout()">Deconectare</button>
+              </div>
             </div>
           </div>
 
@@ -728,7 +772,7 @@
     <!-- Main Wrapper -->
     <div class="page-wrapper">
       <!-- Top Bar -->
-      <header class="navbar navbar-expand-md itp-topbar py-1">
+      <header class="navbar navbar-expand-md itp-topbar py-1" id="appTopbar">
         <div class="container-xl gap-2 d-flex align-items-center flex-nowrap flex-lg-wrap">
           <div class="itp-search-wrap flex-grow-1">
             <div class="input-icon">
@@ -756,6 +800,7 @@
               </svg>
               <span>Programare</span>
             </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openChangePinModal()">Schimbă PIN</button>
             <button type="button" class="btn btn-sm btn-outline-danger" id="btnLogout"
               onclick="requestLogout()">Deconectare</button>
           </div>
@@ -966,6 +1011,68 @@
     </div>
   </div>
 
+  <!-- Modal: Schimba PIN Propriu -->
+  <div class="modal modal-blur fade" id="modalChangePin" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <form id="formChangePin" class="modal-content">
+        <div class="modal-header py-2">
+          <h5 class="modal-title fw-bold mb-0">Schimbă PIN-ul meu</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="small text-muted mb-2">Utilizator activ: <strong class="text-dark" id="chgPinUserLabel">Laur</strong></div>
+          <div class="mb-2">
+            <label class="form-label small mb-1 required" for="chgPinCurrent">PIN actual</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="chgPinCurrent" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1 required" for="chgPinNew">PIN nou (4–6 cifre)</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="chgPinNew" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" placeholder="••••" required>
+          </div>
+          <div class="mb-1">
+            <label class="form-label small mb-1 required" for="chgPinConfirm">Confirmă PIN nou</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="chgPinConfirm" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" placeholder="••••" required>
+          </div>
+          <div class="alert alert-danger mt-2 mb-0 py-1 px-2 small d-none" id="chgPinErr"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3">Salvează PIN-ul</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Jurnal Securitate (Doar Admin) -->
+  <div class="modal modal-blur fade" id="modalSecurityLog" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <div>
+            <h5 class="modal-title fw-bold mb-0">Jurnal securitate & administrare</h5>
+            <div class="text-muted small">Evenimente imutabile de sistem: autentificare, PIN, utilizatori, motive, module, expirări, backup.</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <select id="secLogFilterSelect" class="form-select form-select-sm" style="width: auto;" onchange="renderSecurityLogBody()">
+              <option value="TOATE">Toate evenimentele</option>
+              <option value="AUTH">Autentificare & PIN</option>
+              <option value="USERS">Utilizatori & Drepturi</option>
+              <option value="CONFIG">Motive, Module, Expirări & Backup</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-primary" onclick="exportSecurityLogCsv()">Export CSV</button>
+          </div>
+          <div id="securityLogBody"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Închide</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="references/ui-libs/tabler/tabler.min.js"></script>
   <script>
     const STATUS_META = {
@@ -998,7 +1105,35 @@
       "Alt motiv"
     ];
 
-    const DEMO_STORAGE_KEY = "acw_itp_demo_v2";
+    const EVENT_META = {
+      "CREAT": { badge: "bg-blue-lt text-blue", label: "CREAT" },
+      "MODIFICAT": { badge: "bg-orange-lt text-orange", label: "MODIFICAT" },
+      "REVENIRE": { badge: "bg-purple-lt text-purple", label: "REVENIRE" },
+      "REVOCAT": { badge: "bg-cyan-lt text-cyan", label: "REVOCAT" },
+      "REPROGRAMAT": { badge: "bg-indigo-lt text-indigo", label: "REPROGRAMAT" },
+      "ȘTERS": { badge: "bg-red-lt text-red", label: "ȘTERS" }
+    };
+
+    const SECURITY_EVENT_META = {
+      "LOGIN_OK": { cat: "AUTH", badge: "bg-green-lt text-green", label: "LOGIN OK" },
+      "LOGIN_FAIL": { cat: "AUTH", badge: "bg-red-lt text-red", label: "LOGIN EȘUAT" },
+      "LOGOUT": { cat: "AUTH", badge: "bg-secondary-lt", label: "DECONECTARE" },
+      "PIN_CHANGE": { cat: "AUTH", badge: "bg-blue-lt text-blue", label: "SCHIMBARE PIN" },
+      "ADMIN_MASTER_RECOVERY": { cat: "AUTH", badge: "bg-red-lt text-red", label: "PRELUARE CONTROL ADMIN" },
+      "USER_CREATE": { cat: "USERS", badge: "bg-blue-lt text-blue", label: "UTILIZATOR CREAT" },
+      "USER_UPDATE": { cat: "USERS", badge: "bg-orange-lt text-orange", label: "UTILIZATOR EDITAT" },
+      "USER_BLOCK": { cat: "USERS", badge: "bg-red-lt text-red", label: "CONT BLOCAT" },
+      "USER_UNBLOCK": { cat: "USERS", badge: "bg-green-lt text-green", label: "CONT ACTIVAT" },
+      "REASON_CREATE": { cat: "CONFIG", badge: "bg-blue-lt text-blue", label: "MOTIV ADĂUGAT" },
+      "REASON_UPDATE": { cat: "CONFIG", badge: "bg-orange-lt text-orange", label: "MOTIV EDITAT" },
+      "REASON_DELETE": { cat: "CONFIG", badge: "bg-red-lt text-red", label: "MOTIV ȘTERS" },
+      "MODULE_TOGGLE": { cat: "CONFIG", badge: "bg-purple-lt text-purple", label: "MODUL COMUTAT" },
+      "EXPIRARE_CONTACTATA": { cat: "CONFIG", badge: "bg-green-lt text-green", label: "EXPIRARE ITP" },
+      "BACKUP": { cat: "CONFIG", badge: "bg-azure-lt", label: "BACKUP DB" },
+      "DEMO_RESET": { cat: "CONFIG", badge: "bg-red-lt text-red", label: "RESET DEMO" }
+    };
+
+    const DEMO_STORAGE_KEY = "acw_itp_demo_v3";
 
     function getLocalTodayIso() {
       const d = new Date();
@@ -1021,6 +1156,13 @@
       const mm = String(dt.getMonth() + 1).padStart(2, "0");
       const dd = String(dt.getDate()).padStart(2, "0");
       return `${yy}-${mm}-${dd}`;
+    }
+
+    function isSundayIso(iso) {
+      if (!iso || !iso.includes("-")) return false;
+      const [y, m, d] = iso.split("-").map(Number);
+      const dt = new Date(y, (m || 1) - 1, d || 1);
+      return dt.getDay() === 0;
     }
 
     const TODAY_DATE = getLocalTodayIso();
@@ -1094,6 +1236,7 @@
       currentView: "azi",
       selectedDate: TODAY_DATE,
       searchAllDays: false,
+      mobileSearchOpen: false,
       lineFilter: "Toate",
       statusFilter: "Toate",
       historyFilter: "Toate",
@@ -1108,6 +1251,7 @@
       reinspectionDraft: null,
       plateAutofilled: { phone: false, client: false },
       appointmentHistory: [],
+      securityLog: [],
       stationConfig: { lines: ["Linia 1", "Linia 2", "Linia 3"], lineName: "3 linii", slotMinutes: 30 },
       modules: _initialSeed.modules,
       appointments: _initialSeed.appointments,
@@ -1135,7 +1279,8 @@
           vehicles: state.vehicles,
           expirations: state.expirations,
           rejectionReasons: state.rejectionReasons,
-          deleteReasons: state.deleteReasons
+          deleteReasons: state.deleteReasons,
+          securityLog: state.securityLog
         };
         localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(payload));
       } catch (err) {
@@ -1177,6 +1322,7 @@
         if (Array.isArray(saved.expirations) && saved.expirations.length) state.expirations = saved.expirations;
         if (Array.isArray(saved.rejectionReasons) && saved.rejectionReasons.length) state.rejectionReasons = saved.rejectionReasons;
         if (Array.isArray(saved.deleteReasons) && saved.deleteReasons.length) state.deleteReasons = saved.deleteReasons;
+        if (Array.isArray(saved.securityLog)) state.securityLog = saved.securityLog;
       } catch (err) {
         console.warn("Nu s-a putut restaura starea demo din localStorage:", err);
       }
@@ -1207,6 +1353,7 @@
           state.deleteReasons = fresh.deleteReasons;
           state.editingReason = null;
           state.appointmentHistory = [];
+          state.securityLog = [];
           state.currentUserId = "laur";
           state.role = "admin";
           state.selectedDate = TODAY_DATE;
@@ -1216,9 +1363,12 @@
           state.historyUserFilter = "TOȚI";
           state.search = "";
           state.searchAllDays = false;
+          state.mobileSearchOpen = false;
           const searchEl = document.getElementById("globalSearch");
           if (searchEl) searchEl.value = "";
           initAppointmentHistory();
+          initSecurityLog();
+          recordSecurityEvent("DEMO_RESET", "Datele demo au fost resetate la starea inițială");
           showToast("Datele demo au fost resetate la starea inițială.");
           renderAll();
         }
@@ -1391,12 +1541,14 @@
             date: d0, time: "08:00", line: "Linia 1",
             plate: "CJ 22 MAX", vehicle: "VW Golf 7", client: "Maria Popa", phone: "0744000111", status: "Programat"
           },
+          createdDate: d0,
           createdAt: "07:50",
           createdBy: "Laur (Admin)",
           deleted: false,
           events: [
-            { at: "08:12", actor: "Vlad (User)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
-            { at: "08:35", actor: "Gabi (User)", type: "MODIFICAT", summary: "Telefon: 0744000111 → 0744112233 (număr confirmat pe WhatsApp)" }
+            { date: d0, at: "07:50", actor: "Laur (Admin)", type: "CREAT", summary: "Programare creată inițial pentru 08:00 (Linia 1)" },
+            { date: d0, at: "08:12", actor: "Vlad (User)", type: "MODIFICAT", summary: "Oră: 08:00 → 09:00 (clientul a anunțat întârziere)" },
+            { date: d0, at: "08:35", actor: "Gabi (User)", type: "MODIFICAT", summary: "Telefon: 0744000111 → 0744112233 (număr confirmat pe WhatsApp)" }
           ]
         },
         {
@@ -1405,11 +1557,13 @@
             date: d0, time: "12:00", line: "Linia 2",
             plate: "B 888 VEC", vehicle: "Renault Megane", client: "Radu Vasile", phone: "0722990011", status: "Programat"
           },
+          createdDate: d0,
           createdAt: "08:05",
           createdBy: "Laur (Admin)",
           deleted: true,
           events: [
-            { at: "09:40", actor: "Laur (Admin)", type: "ȘTERS", summary: "Șters din agenda zilei (anulat telefonic de client); slot 12:00 Linia 2 eliberat" }
+            { date: d0, at: "08:05", actor: "Laur (Admin)", type: "CREAT", summary: "Programare creată inițial pentru 12:00 (Linia 2)" },
+            { date: d0, at: "09:40", actor: "Laur (Admin)", type: "ȘTERS", summary: "Șters (Anulat de client: anulat telefonic) — slot 12:00 Linia 2 eliberat" }
           ]
         },
         {
@@ -1418,12 +1572,14 @@
             date: dM1, time: "10:30", line: "Linia 1",
             plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat"
           },
+          createdDate: dM1,
           createdAt: "09:15",
           createdBy: "Gabi (User)",
           deleted: false,
           events: [
-            { at: "11:05", actor: "Vlad (User)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
-            { at: "11:18", actor: "Gabi (User)", type: "REPROGRAMAT", summary: `Reprogramată revenirea pe ${formatDateRo(dP1)} la 10:00 (Linia 2)` }
+            { date: dM1, at: "09:15", actor: "Gabi (User)", type: "CREAT", summary: "Programare creată inițial pentru 10:30 (Linia 1)" },
+            { date: dM1, at: "11:05", actor: "Vlad (User)", type: "REVENIRE", summary: "Marcat Revenire 30 zile • Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
+            { date: dM1, at: "11:18", actor: "Gabi (User)", type: "REPROGRAMAT", summary: `Reprogramată revenirea pe ${formatDateRo(dP1)} la 10:00 (Linia 2)` }
           ]
         },
         {
@@ -1432,37 +1588,47 @@
             date: dM1, time: "09:00", line: "Linia 1",
             plate: "AG 18 VTR", vehicle: "Opel Astra", client: "Ioana Marin", phone: "0745223311", status: "Programat"
           },
+          createdDate: dM1,
           createdAt: "08:20",
           createdBy: "Laur (Admin)",
           deleted: false,
           events: [
-            { at: "08:52", actor: "Gabi (User)", type: "MODIFICAT", summary: "Linie: Linia 1 → Linia 3 (redistribuire pe linie liberă)" }
+            { date: dM1, at: "08:20", actor: "Laur (Admin)", type: "CREAT", summary: "Programare creată inițial pentru 09:00 (Linia 1)" },
+            { date: dM1, at: "08:52", actor: "Gabi (User)", type: "MODIFICAT", summary: "Linie: Linia 1 → Linia 3 (redistribuire pe linie liberă)" }
           ]
         }
       ];
       state.appointments.forEach(a => {
         if (state.appointmentHistory.some(h => h.id === a.id)) return;
-        const events = [];
+        const cDate = a.visitType === "REVENIRE" ? (a.parentDate || dM1) : a.date;
+        const cTime = a.visitType === "REVENIRE" ? "11:18" : "07:45";
+        const cBy = a.visitType === "REVENIRE" ? "Gabi (User)" : "Laur (Admin)";
+        const events = [
+          {
+            date: cDate,
+            at: cTime,
+            actor: cBy,
+            type: "CREAT",
+            summary: a.visitType === "REVENIRE"
+              ? `Revenire programată din ${formatDateRo(a.parentDate)} pentru ${formatDateRo(a.date)} la ${a.time} (${a.line})`
+              : `Programare creată pentru ${formatDateRo(a.date)} la ${a.time} (${a.line})`
+          }
+        ];
         if (a.status === "Revenire") {
           events.push({
+            date: a.date,
             at: a.time,
             actor: "Vlad (User)",
             type: "REVENIRE",
-            summary: `Marcat Revenire 30 zile • ${formatRejectSummary(a) || "Fără detalii"}`
-          });
-        } else if (a.visitType === "REVENIRE") {
-          events.push({
-            at: "11:18",
-            actor: "Gabi (User)",
-            type: "REPROGRAMAT",
-            summary: `Programat ca vizită de revenire (din ${formatDateRo(a.parentDate)})`
+            summary: `Marcat Revenire 30 zile (până la ${formatDateRo(addDaysIso(a.date, 30))}) • ${formatRejectSummary(a) || "Fără detalii"}`
           });
         }
         state.appointmentHistory.push({
           id: a.id,
           initialSnapshot: makeSnapshot(a),
-          createdAt: a.visitType === "REVENIRE" ? "11:18" : a.time,
-          createdBy: a.visitType === "REVENIRE" ? "Gabi (User)" : "Laur (Admin)",
+          createdDate: cDate,
+          createdAt: cTime,
+          createdBy: cBy,
           deleted: false,
           events
         });
@@ -1471,38 +1637,101 @@
 
     function recordHistoryEvent(appt, type, summary, beforeSnap = null) {
       initAppointmentHistory();
+      const actionDate = getLocalTodayIso();
+      const actionTime = nowTime().slice(0, 5);
+      const actor = currentActorLabel();
       let entry = state.appointmentHistory.find(h => h.id === appt.id);
       if (!entry) {
         entry = {
           id: appt.id,
           initialSnapshot: beforeSnap || makeSnapshot(appt),
-          createdAt: nowTime().slice(0, 5),
-          createdBy: currentActorLabel(),
+          createdDate: actionDate,
+          createdAt: actionTime,
+          createdBy: actor,
           deleted: false,
           events: []
         };
         state.appointmentHistory.unshift(entry);
       }
-      if (type !== "CREAT" && summary) {
-        entry.events.push({
-          at: nowTime().slice(0, 5),
-          actor: currentActorLabel(),
-          type,
-          summary
-        });
-      }
+      const evSummary = summary || (type === "CREAT"
+        ? `Programare creată pentru ${formatDateRo(appt.date)} la ${appt.time} (${appt.line})`
+        : type);
+      entry.events.push({
+        date: actionDate,
+        at: actionTime,
+        actor,
+        type,
+        summary: evSummary
+      });
       if (type === "ȘTERS") {
         entry.deleted = true;
       }
     }
 
-    function showToast(msg) {
+    function initSecurityLog() {
+      if (Array.isArray(state.securityLog) && state.securityLog.length) return;
+      const d0 = TODAY_DATE;
+      const dM1 = addDaysIso(TODAY_DATE, -1);
+      state.securityLog = [
+        { date: d0, at: "08:02", actor: "Vlad (User)", action: "LOGIN_OK", summary: "Autentificare PIN reușită" },
+        { date: dM1, at: "18:10", actor: "Laur (Admin)", action: "BACKUP", summary: "Backup bază de date creat manual" }
+      ];
+    }
+
+    function recordSecurityEvent(action, summary, actorOverride = null) {
+      initSecurityLog();
+      state.securityLog.unshift({
+        date: getLocalTodayIso(),
+        at: nowTime().slice(0, 5),
+        actor: actorOverride || currentActorLabel(),
+        action,
+        summary
+      });
+    }
+
+    function showToast(msg, action = null) {
       const c = document.getElementById("toastContainer");
       const el = document.createElement("div");
       el.className = "itp-toast";
-      el.textContent = msg;
+      const textSpan = document.createElement("span");
+      textSpan.textContent = msg;
+      el.appendChild(textSpan);
+      let dismissed = false;
+      const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        el.remove();
+      };
+      if (action && typeof action.onClick === "function" && action.label) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "itp-toast-btn";
+        btn.textContent = action.label;
+        btn.addEventListener("click", () => {
+          dismiss();
+          action.onClick();
+        });
+        el.appendChild(btn);
+      }
       c.appendChild(el);
-      setTimeout(() => el.remove(), 2600);
+      const duration = action && action.durationMs ? action.durationMs : 2600;
+      setTimeout(dismiss, duration);
+    }
+
+    /** Returns a toast quick-jump action when the saved appointment belongs to another day or view. */
+    function buildJumpToDateAction(targetIso) {
+      if (!targetIso || (targetIso === state.selectedDate && state.currentView === "azi")) {
+        return null;
+      }
+      return {
+        label: "Vezi ziua",
+        durationMs: 5000,
+        onClick: () => {
+          state.selectedDate = targetIso;
+          state.currentView = "azi";
+          renderAll();
+        }
+      };
     }
 
     function isModuleEnabled(id) {
@@ -1592,6 +1821,7 @@
       const rawMaster = (mEl ? mEl.value : "").replace(/\D/g, "");
       const rawNewPin = (nEl ? nEl.value : "").replace(/\D/g, "");
       if (!admin || rawMaster !== String(admin.masterPin || "")) {
+        recordSecurityEvent("LOGIN_FAIL", "Încercare eșuată PIN Secret Admin", admin ? `${admin.name} (${admin.roleLabel})` : "Necunoscut");
         if (errEl) {
           errEl.textContent = "PIN Secret Admin incorect.";
           errEl.classList.remove("d-none");
@@ -1611,7 +1841,8 @@
       if (mEl) mEl.value = "";
       if (nEl) nEl.value = "";
       toggleMasterRecoveryMode(false);
-      completeLogin(admin.id);
+      recordSecurityEvent("ADMIN_MASTER_RECOVERY", "Preluare control Admin cu PIN Secret; sesiuni vechi delogate și PIN uzual resetat", `${admin.name} (${admin.roleLabel})`);
+      completeLogin(admin.id, true);
       showToast(`Comandă Admin preluată! PIN uzual actualizat (${rawNewPin}) și celelalte sesiuni delogate.`);
     }
 
@@ -1675,6 +1906,8 @@
       if (pinEl.value === expectedPin) {
         completeLogin(u.id);
       } else if (pinEl.value.length >= expectedPin.length) {
+        recordSecurityEvent("LOGIN_FAIL", `PIN incorect introdus pentru ${u.name}`, `${u.name} (${u.roleLabel})`);
+        saveDemoState();
         if (errEl) {
           errEl.textContent = `PIN incorect pentru ${u.name}. Încearcă din nou.`;
           errEl.classList.remove("d-none");
@@ -1683,11 +1916,12 @@
       }
     }
 
-    function completeLogin(userId) {
+    function completeLogin(userId, skipAuditLog = false) {
       const u = state.demoUsers.find(x => x.id === userId);
       if (!u) return;
       const errEl = document.getElementById("loginErr");
       if (!u.isActive) {
+        recordSecurityEvent("LOGIN_FAIL", `Încercare de autentificare pe cont blocat (${u.name})`, `${u.name} (${u.roleLabel})`);
         if (errEl) {
           errEl.textContent = `Contul "${u.name}" este blocat/suspendat de Administrator.`;
           errEl.classList.remove("d-none");
@@ -1699,6 +1933,9 @@
       state.selectedLoginUserId = u.id;
       state.role = u.role;
       state.currentView = "azi";
+      if (!skipAuditLog) {
+        recordSecurityEvent("LOGIN_OK", `Autentificare reușită (${u.title})`, `${u.name} (${u.roleLabel})`);
+      }
       if (errEl) errEl.classList.add("d-none");
       const pinEl = document.getElementById("loginPin");
       if (pinEl) pinEl.value = "";
@@ -1716,6 +1953,8 @@
         confirmText: "Deconectează",
         variant: "danger",
         onConfirm: () => {
+          recordSecurityEvent("LOGOUT", `Deconectare din sesiune`, `${u.name} (${u.roleLabel})`);
+          saveDemoState();
           state.isAuthenticated = false;
           state.selectedLoginUserId = u.id;
           state.currentView = "azi";
@@ -1732,6 +1971,18 @@
           document.getElementById("loginErr").classList.add("d-none");
         }
       });
+    }
+
+    function openChangePinModal() {
+      const u = getActiveDemoUser();
+      if (!u) return;
+      closeMobileSidebar();
+      document.getElementById("chgPinUserLabel").textContent = `${u.name} (${u.roleLabel})`;
+      document.getElementById("chgPinCurrent").value = "";
+      document.getElementById("chgPinNew").value = "";
+      document.getElementById("chgPinConfirm").value = "";
+      document.getElementById("chgPinErr").classList.add("d-none");
+      setModalVisible("modalChangePin", true);
     }
 
     function switchDemoUser(userId) {
@@ -1796,6 +2047,7 @@
         variant: willBlock ? "danger" : "primary",
         onConfirm: () => {
           u.isActive = !willBlock;
+          recordSecurityEvent(willBlock ? "USER_BLOCK" : "USER_UNBLOCK", `${willBlock ? "Blocat" : "Activat"} contul ${u.name} (${u.username})`);
           showToast(willBlock ? `Contul ${u.name} a fost blocat.` : `Contul ${u.name} a fost activat.`);
           renderAll();
         }
@@ -1942,6 +2194,7 @@
       if (errEl) errEl.classList.add("d-none");
       list.push(val);
       inp.value = "";
+      recordSecurityEvent("REASON_CREATE", `Adăugat motiv (${type === "sterge" ? "Ștergere" : "Revenire"}): "${val}"`);
       showToast(`Motiv salvat: "${val}"`);
       renderAll();
     }
@@ -1981,6 +2234,9 @@
       const oldVal = list[idx];
       list[idx] = val;
       state.editingReason = null;
+      if (oldVal !== val) {
+        recordSecurityEvent("REASON_UPDATE", `Editat motiv (${type === "sterge" ? "Ștergere" : "Revenire"}): "${oldVal}" → "${val}"`);
+      }
       showToast(oldVal === val ? "Nicio modificare." : `Motiv actualizat: "${oldVal}" → "${val}"`);
       renderAll();
     }
@@ -2006,6 +2262,7 @@
           const pos = curr.indexOf(label);
           if (pos !== -1 && curr.length > 1) curr.splice(pos, 1);
           if (state.editingReason && state.editingReason.type === type) state.editingReason = null;
+          recordSecurityEvent("REASON_DELETE", `Șters motiv (${type === "sterge" ? "Ștergere" : "Revenire"}): "${label}"`);
           showToast(`Motiv șters: "${label}"`);
           renderAll();
         }
@@ -2055,7 +2312,7 @@
           item.status = "Programat";
           delete item.rejectReasons;
           delete item.rejectNote;
-          recordHistoryEvent(item, "MODIFICAT", `Revenire revocată → Programat${prevSummary ? ` (anterior: ${prevSummary})` : ""}`, before);
+          recordHistoryEvent(item, "REVOCAT", `Revenire revocată → Programat${prevSummary ? ` (motiv anterior: ${prevSummary})` : ""}`, before);
           showToast(`${item.plate} a fost readus la Programat.`);
           renderAll();
         }
@@ -2071,32 +2328,53 @@
       }
     }
 
-    function openNewAppointmentModal() {
+    function openNewAppointmentModal(prefill = null) {
       if (!userCan("canEdit")) {
         showToast("Nu ai permisiunea să adaugi programări.");
         return;
       }
       state.editingId = null;
       state.reinspectionDraft = null;
+      state.creationSourceLabel = prefill && prefill.source ? prefill.source : "";
       resetPlateAutofillState();
       const form = document.getElementById("formProgramare");
       if (form) form.reset();
-      document.getElementById("modalProgramareTitle").textContent = "Programare nouă ITP";
+      document.getElementById("modalProgramareTitle").textContent = prefill && prefill.source
+        ? `Programare nouă • ${prefill.plate || ""}`
+        : "Programare nouă ITP";
       document.getElementById("modalProgramareSubmitBtn").textContent = "Salvează programarea";
       const banner = document.getElementById("reinspectionBanner");
       if (banner) {
-        banner.classList.add("d-none");
-        banner.innerHTML = "";
+        if (prefill && prefill.source) {
+          banner.className = "alert alert-info mb-2 py-2 px-2 small";
+          banner.innerHTML = `<strong>Precompletat din ${esc(prefill.source)}:</strong> alege data, ora și linia liberă.`;
+          banner.classList.remove("d-none");
+        } else {
+          banner.classList.add("d-none");
+          banner.innerHTML = "";
+        }
       }
       const errEl = document.getElementById("modalErr");
       if (errEl) errEl.classList.add("d-none");
       const dateEl = document.getElementById("inpDate");
       if (dateEl) {
         dateEl.min = state.role === "admin" ? "" : TODAY_DATE;
-        dateEl.value = (state.role !== "admin" && state.selectedDate < TODAY_DATE) ? TODAY_DATE : state.selectedDate;
+        let defDate = (state.role !== "admin" && state.selectedDate < TODAY_DATE) ? TODAY_DATE : state.selectedDate;
+        if (isSundayIso(defDate)) defDate = addDaysIso(defDate, 1);
+        dateEl.value = defDate;
+      }
+      if (prefill) {
+        document.getElementById("inpPlate").value = prefill.plate || "";
+        document.getElementById("inpPhone").value = prefill.phone || "";
+        document.getElementById("inpClient").value = prefill.clientRaw || "";
       }
       refreshHourOptions();
       setModalVisible("modalProgramare", true);
+    }
+
+    function openNewAppointmentFromRecord(plate, phone, client, vehicle, source) {
+      const clientRaw = (client && vehicle && client !== vehicle) ? `${client} • ${vehicle}` : (client || vehicle || "");
+      openNewAppointmentModal({ plate, phone, clientRaw, source });
     }
 
     function openEditAppointmentModal(id) {
@@ -2111,7 +2389,16 @@
         return;
       }
       state.editingId = id;
-      state.reinspectionDraft = null;
+      state.creationSourceLabel = "";
+      state.reinspectionDraft = (a.visitType === "REVENIRE" && a.reinspectionDeadline)
+        ? {
+            parentId: a.parentId || null,
+            parentDate: a.parentDate || a.date,
+            deadline: a.reinspectionDeadline,
+            verifySummary: a.verifyNotes || "",
+            editingVisit: true
+          }
+        : null;
       resetPlateAutofillState();
       document.getElementById("modalProgramareTitle").textContent = `Editează programare • ${a.plate}`;
       document.getElementById("modalProgramareSubmitBtn").textContent = "Salvează modificările";
@@ -2323,7 +2610,16 @@
           const idx = state.appointments.findIndex(a => a.id === id);
           if (idx === -1) return;
           const removed = state.appointments.splice(idx, 1)[0];
-          recordHistoryEvent(removed, "ȘTERS", `Șters (${reasonText || "Neprecizat"}) — ${formatDateRo(removed.date)} ${removed.time}, ${removed.line}`);
+          let reopenedParent = false;
+          if (removed.parentId) {
+            const parent = state.appointments.find(a => a.id === removed.parentId);
+            if (parent && parent.resolvedByReinspectionId === removed.id) {
+              delete parent.resolvedByReinspectionId;
+              reopenedParent = true;
+              recordHistoryEvent(parent, "REPROGRAMAT", `Programarea de revenire din ${formatDateRo(removed.date)} (${removed.time}) a fost ștearsă (${reasonText || "Neprecizat"}) → vizita inițială redeschisă pentru + Reprogramează`);
+            }
+          }
+          recordHistoryEvent(removed, "ȘTERS", `Șters (${reasonText || "Neprecizat"}) — slot eliberat: ${formatDateRo(removed.date)} ${removed.time}, ${removed.line}${reopenedParent ? " • vizita inițială redeschisă" : ""}`);
           showToast(`Programarea ${removed.plate} a fost ștearsă (${reasonText || "păstrată în Istoric"}).`);
           renderAll();
         }
@@ -2342,6 +2638,7 @@
         variant: "primary",
         onConfirm: () => {
           item.contacted = !item.contacted;
+          recordSecurityEvent("EXPIRARE_CONTACTATA", `${item.plate} (${item.client}) marcat ca "${nextLabel}"`);
           showToast(`${item.plate}: ${item.contacted ? "marcat contactat" : "marcat necontactat"}`);
           renderAll();
         }
@@ -2362,6 +2659,7 @@
         onCancel: () => renderAll(),
         onConfirm: () => {
           m.enabled = willEnable;
+          recordSecurityEvent("MODULE_TOGGLE", `Modul "${m.name}" ${m.enabled ? "activat" : "dezactivat"}`);
           showToast(`Modulul "${m.name}" este acum ${m.enabled ? "activ" : "dezactivat"}.`);
           renderAll();
         }
@@ -2378,6 +2676,7 @@
         confirmText: "Rulează backup",
         variant: "primary",
         onConfirm: () => {
+          recordSecurityEvent("BACKUP", "Copie de siguranță creată manual (/backups/itp.db demo)");
           showToast("Backup itp.db salvat în /backups/ (demo)");
           renderAll();
         }
@@ -2397,30 +2696,36 @@
       initAppointmentHistory();
       const q = state.search.trim().toLowerCase();
       const entries = state.appointmentHistory.map(h => {
+        const cDate = h.createdDate || (h.initialSnapshot && h.initialSnapshot.date) || TODAY_DATE;
         const hasModified = h.events.some(ev => ev.type === "MODIFICAT" || ev.type === "REPROGRAMAT");
         const hasRevenire = h.events.some(ev => ev.type === "REVENIRE");
+        const hasRevocat = h.events.some(ev => ev.type === "REVOCAT");
         const isDeleted = !!h.deleted;
         const actors = Array.from(new Set([h.createdBy, ...h.events.map(ev => ev.actor)].filter(Boolean)));
         const badge = isDeleted
           ? `<span class="badge bg-red-lt text-red">Șters din agendă</span>`
-          : (hasModified
-            ? `<span class="badge bg-orange-lt text-orange">Modificat</span>`
-            : (hasRevenire ? `<span class="badge bg-purple-lt text-purple">Revenire</span>` : `<span class="badge bg-blue-lt text-blue">Inițial intact</span>`));
-        return { ...h, hasModified, hasRevenire, isDeleted, actors, badge };
+          : (hasRevocat
+            ? `<span class="badge bg-cyan-lt text-cyan">Revocat</span>`
+            : (hasModified
+              ? `<span class="badge bg-orange-lt text-orange">Modificat</span>`
+              : (hasRevenire ? `<span class="badge bg-purple-lt text-purple">Revenire</span>` : `<span class="badge bg-blue-lt text-blue">Inițial intact</span>`)));
+        return { ...h, createdDate: cDate, hasModified, hasRevenire, hasRevocat, isDeleted, actors, badge };
       });
 
       const bySearchAndUser = entries.filter(h => {
         const s = h.initialSnapshot;
         const okUser = state.historyUserFilter === "TOȚI" || h.actors.includes(state.historyUserFilter);
-        const okQ = !q || [s.plate, s.vehicle, s.client, s.phone, formatDateRo(s.date), s.time, s.line, ...h.actors, ...h.events.map(ev => ev.summary)]
+        const okQ = !q || [s.plate, s.vehicle, s.client, s.phone, formatDateRo(s.date), s.time, s.line, formatDateRo(h.createdDate), ...h.actors, ...h.events.map(ev => `${ev.type} ${formatDateRo(ev.date || h.createdDate)} ${ev.summary}`)]
           .some(v => String(v || "").toLowerCase().includes(q));
         return okUser && okQ;
       });
 
       const filtered = bySearchAndUser
         .filter(h => {
+          if (state.historyFilter === "Intacte") return !h.isDeleted && !h.hasModified && !h.hasRevenire && !h.hasRevocat;
           if (state.historyFilter === "Modificate") return h.hasModified;
           if (state.historyFilter === "Reveniri") return h.hasRevenire;
+          if (state.historyFilter === "Revocate") return h.hasRevocat;
           if (state.historyFilter === "Șterse") return h.isDeleted;
           return true;
         })
@@ -2432,12 +2737,12 @@
     function exportHistoryCsv() {
       if (state.role !== "admin") return;
       const { filtered } = getFilteredHistoryEntries();
-      const rows = [["Nr. Auto", "Dată Inițială", "Oră Inițială", "Linie Inițială", "Vehicul", "Client", "Telefon", "Creat de", "Stare", "Evenimente Ulterioare"]];
+      const rows = [["Nr. Auto", "Dată Inițială", "Oră Inițială", "Linie Inițială", "Vehicul", "Client", "Telefon", "Creat la (Dată Oră • User)", "Stare", "Cronologie Acțiuni (Dată Oră • User • Tip • Detalii)"]];
       filtered.forEach(h => {
         const s = h.initialSnapshot;
-        const st = h.isDeleted ? "Șters" : (h.hasModified ? "Modificat" : (h.hasRevenire ? "Revenire" : "Inițial intact"));
-        const evTxt = h.events.map(ev => `${ev.at} ${ev.actor}: ${ev.summary}`).join(" | ");
-        rows.push([s.plate, formatDateRo(s.date), s.time, s.line, s.vehicle, s.client, s.phone, `${h.createdAt} ${h.createdBy}`, st, evTxt]);
+        const st = h.isDeleted ? "Șters" : (h.hasRevocat ? "Revocat" : (h.hasModified ? "Modificat" : (h.hasRevenire ? "Revenire" : "Inițial intact")));
+        const evTxt = h.events.map(ev => `${formatDateRo(ev.date || h.createdDate)} ${ev.at} • ${ev.actor} [${ev.type}]: ${ev.summary}`).join(" | ");
+        rows.push([s.plate, formatDateRo(s.date), s.time, s.line, s.vehicle, s.client, s.phone, `${formatDateRo(h.createdDate)} ${h.createdAt} • ${h.createdBy}`, st, evTxt]);
       });
       const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -2448,9 +2753,81 @@
       showToast(`Istoric Imutabil exportat în format CSV (${filtered.length} intrări).`);
     }
 
+    function openSecurityLogModal() {
+      if (state.role !== "admin") return;
+      initSecurityLog();
+      renderSecurityLogBody();
+      setModalVisible("modalSecurityLog", true);
+    }
+
+    function getFilteredSecurityLog() {
+      initSecurityLog();
+      const cat = (document.getElementById("secLogFilterSelect") && document.getElementById("secLogFilterSelect").value) || "TOATE";
+      return state.securityLog.filter(ev => {
+        if (cat === "TOATE") return true;
+        const meta = SECURITY_EVENT_META[ev.action] || { cat: "CONFIG" };
+        return meta.cat === cat;
+      });
+    }
+
+    function renderSecurityLogBody() {
+      const box = document.getElementById("securityLogBody");
+      if (!box) return;
+      const list = getFilteredSecurityLog();
+      if (!list.length) {
+        box.innerHTML = `<div class="text-center text-muted py-4 small">Nicio înregistrare pentru filtrul selectat.</div>`;
+        return;
+      }
+      box.innerHTML = `
+        <div class="list-group list-group-flush border rounded">
+          ${list.map(ev => {
+            const meta = SECURITY_EVENT_META[ev.action] || { badge: "bg-secondary-lt", label: ev.action };
+            return `
+              <div class="list-group-item py-2 px-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge ${meta.badge}">${esc(meta.label)}</span>
+                    <span class="fw-semibold text-dark small">${esc(formatDateRo(ev.date))} ${esc(ev.at)}</span>
+                    <span class="text-muted small">• ${esc(ev.actor)}</span>
+                  </div>
+                </div>
+                <div class="small text-dark mt-1">${esc(ev.summary)}</div>
+              </div>`;
+          }).join("")}
+        </div>`;
+    }
+
+    function exportSecurityLogCsv() {
+      if (state.role !== "admin") return;
+      const list = getFilteredSecurityLog();
+      const rows = [["Data", "Ora", "Utilizator", "Tip Actiune", "Detalii"]];
+      list.forEach(ev => rows.push([formatDateRo(ev.date), ev.at, ev.actor, ev.action, ev.summary]));
+      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "itp_jurnal_securitate_demo.csv";
+      a.click();
+      showToast(`Jurnal securitate exportat CSV (${list.length} intrări).`);
+    }
+
     function toggleSearchAllDays() {
       state.searchAllDays = !state.searchAllDays;
       renderAll();
+    }
+
+    function toggleMobileSearch() {
+      state.mobileSearchOpen = !state.mobileSearchOpen;
+      if (!state.mobileSearchOpen && state.search) {
+        state.search = "";
+        const inp = document.getElementById("globalSearch");
+        if (inp) inp.value = "";
+      }
+      renderAll();
+      if (state.mobileSearchOpen) {
+        const inp = document.getElementById("globalSearch");
+        if (inp) inp.focus();
+      }
     }
 
     function renderNav() {
@@ -2483,6 +2860,15 @@
         btnMobAllDays.classList.toggle("d-none", state.currentView !== "azi");
         btnMobAllDays.classList.toggle("btn-primary", !!state.searchAllDays);
         btnMobAllDays.classList.toggle("btn-outline-secondary", !state.searchAllDays);
+      }
+
+      const searchActive = state.mobileSearchOpen || state.search.trim() !== "";
+      const topbarEl = document.getElementById("appTopbar");
+      if (topbarEl) topbarEl.classList.toggle("itp-mob-search-open", searchActive);
+      const btnMobSearch = document.getElementById("btnMobSearchToggle");
+      if (btnMobSearch) {
+        btnMobSearch.classList.toggle("btn-primary", searchActive);
+        btnMobSearch.classList.toggle("btn-outline-secondary", !searchActive);
       }
 
       const adminGroup = document.getElementById("sidebar-admin-group");
@@ -2674,18 +3060,26 @@
         : (isFuture ? `<span class="badge bg-green-lt text-green flex-shrink-0">${isMob ? "Viitor" : "Zi viitoare"}</span>` : `<span class="badge bg-blue-lt text-blue flex-shrink-0">Azi</span>`);
       const dayTotalCount = state.appointments.filter(a => a.date === state.selectedDate).length;
       const freeSlotsDay = Math.max(0, DAILY_SLOTS.length * state.stationConfig.lines.length - dayTotalCount);
+      const isSunday = isSundayIso(state.selectedDate);
+      const dayLineOcc = state.stationConfig.lines.map(ln => ({
+        line: ln,
+        short: ln.replace(/^Linia\s+/i, "L"),
+        used: state.appointments.filter(a => a.date === state.selectedDate && a.line === ln).length,
+        total: DAILY_SLOTS.length
+      }));
 
       return `
+      ${isSunday ? `<div class="alert alert-warning py-1 px-2 mb-2 small"><strong>Duminică — Stație închisă:</strong> programul de lucru este Luni–Sâmbătă (` + `08:00–17:30). Doar Administratorul poate adăuga excepții.</div>` : ""}
       <div class="card p-2 mb-2 itp-filter-card">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div class="d-flex align-items-center gap-1 itp-filter-group">
             <div class="d-flex align-items-center gap-1 flex-grow-1 flex-lg-grow-0">
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(-1)" aria-label="Ziua anterioară" title="Ziua anterioară">&lsaquo;</button>
-              <input type="date" class="form-control form-control-sm fw-medium flex-grow-1 flex-lg-grow-0" style="min-height: 30px; min-width: 0;" value="${esc(state.selectedDate)}" aria-label="Selectează data" onchange="selectDate(this.value)">
+              <input type="date" class="form-control form-control-sm fw-medium flex-grow-1 flex-lg-grow-0" style="min-height: 28px; min-width: 0;" value="${esc(state.selectedDate)}" aria-label="Selectează data" onchange="selectDate(this.value)">
               <button type="button" class="btn btn-sm btn-outline-secondary touch-btn itp-date-btn" onclick="shiftSelectedDate(1)" aria-label="Ziua următoare" title="Ziua următoare">&rsaquo;</button>
             </div>
             ${dayBadge}
-            <span class="badge bg-blue-lt text-blue d-lg-none flex-shrink-0">${freeSlotsDay} lib.</span>
+            ${isSunday ? `<span class="badge bg-amber-lt text-amber flex-shrink-0">Închis</span>` : `<span class="badge bg-blue-lt text-blue d-lg-none flex-shrink-0">${freeSlotsDay} lib.</span>`}
             <label class="d-none d-lg-flex align-items-center gap-2 ms-2 m-0" style="cursor:pointer;">
               <input class="form-check-input m-0" type="checkbox" ${state.searchAllDays ? "checked" : ""} onchange="state.searchAllDays = this.checked; renderAll();">
               <span class="small text-muted">Caută în toate zilele</span>
@@ -2700,6 +3094,10 @@
               ${filters.map(f => `<button class="filter-pill ${state.statusFilter === f.key ? "active" : ""}" onclick="state.statusFilter='${f.key}'; renderAll();">${esc(f.label)} <strong>(${f.count})</strong></button>`).join("")}
             </div>
           </div>
+        </div>
+        <div class="d-flex align-items-center gap-1 mt-1 pt-1 border-top flex-wrap">
+          <span class="text-muted" style="font-size: 0.72rem;">Ocupare ${esc(formatDateRo(state.selectedDate))}:</span>
+          ${dayLineOcc.map(o => `<button type="button" class="badge border-0 ${state.lineFilter === o.line ? "bg-primary text-white" : "bg-light text-dark border"}" style="cursor:pointer; font-size: 0.71rem;" onclick="state.lineFilter = state.lineFilter === '${esc(o.line)}' ? 'Toate' : '${esc(o.line)}'; renderAll();">${esc(o.short)}: ${o.used}/${o.total}</button>`).join("")}
         </div>
       </div>
 
@@ -2721,25 +3119,38 @@
 
       const filters = [
         { key: "Toate", count: bySearchAndUser.length },
+        { key: "Intacte", count: bySearchAndUser.filter(h => !h.isDeleted && !h.hasModified && !h.hasRevenire && !h.hasRevocat).length },
         { key: "Modificate", count: bySearchAndUser.filter(h => h.hasModified).length },
         { key: "Reveniri", count: bySearchAndUser.filter(h => h.hasRevenire).length },
+        { key: "Revocate", count: bySearchAndUser.filter(h => h.hasRevocat).length },
         { key: "Șterse", count: bySearchAndUser.filter(h => h.isDeleted).length }
       ];
+
+      function renderEventLine(ev, fallbackDate) {
+        const meta = EVENT_META[ev.type] || { badge: "bg-secondary-lt", label: ev.type || "ACȚIUNE" };
+        const evDate = formatDateRo(ev.date || fallbackDate);
+        return `
+          <div class="small mt-1 d-flex align-items-baseline gap-1 flex-wrap">
+            <span class="badge ${meta.badge}" style="font-size: 0.66rem;">${esc(meta.label)}</span>
+            <span class="fw-semibold text-dark">${esc(evDate)} ${esc(ev.at)} • ${esc(ev.actor)}:</span>
+            <span>${esc(ev.summary)}</span>
+          </div>`;
+      }
 
       const desktopRows = list.map(h => {
         const s = h.initialSnapshot;
         const evHtml = h.events.length
-          ? h.events.map(ev => `<div class="small mt-1"><span class="fw-semibold text-dark">${esc(ev.at)} • ${esc(ev.actor)}:</span> ${esc(ev.summary)}</div>`).join("")
-          : `<div class="text-muted small mt-1">Fără modificări față de varianta inițială.</div>`;
+          ? h.events.map(ev => renderEventLine(ev, h.createdDate)).join("")
+          : `<div class="text-muted small mt-1">Fără evenimente suplimentare față de varianta inițială.</div>`;
         return `
         <tr>
           <td><span class="plate-badge">${esc(s.plate)}</span></td>
           <td>
             <div class="fw-bold text-dark">${formatDateRo(s.date)} • ${esc(s.time)} • ${esc(s.line)}</div>
             <div class="small">${esc(s.vehicle)} • ${esc(s.client)} (${esc(s.phone)})</div>
-            <div class="text-muted small">Creat inițial: ${esc(h.createdAt)} • ${esc(h.createdBy)}</div>
+            <div class="text-muted small">Creat inițial: <strong>${esc(formatDateRo(h.createdDate))} ${esc(h.createdAt)}</strong> • ${esc(h.createdBy)}</div>
           </td>
-          <td style="white-space: normal; max-width: 460px;">
+          <td style="white-space: normal; max-width: 500px;">
             <div>${h.badge}</div>
             ${evHtml}
           </td>
@@ -2749,7 +3160,7 @@
       const mobileCards = list.map(h => {
         const s = h.initialSnapshot;
         const evHtml = h.events.length
-          ? h.events.map(ev => `<div class="small mt-1"><span class="fw-semibold text-dark">${esc(ev.at)} • ${esc(ev.actor)}:</span> ${esc(ev.summary)}</div>`).join("")
+          ? h.events.map(ev => renderEventLine(ev, h.createdDate)).join("")
           : `<div class="text-muted small mt-1">Fără modificări față de inițial.</div>`;
         return `
         <div class="card p-2">
@@ -2761,7 +3172,7 @@
             <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase; font-weight:700;">Inițial (neschimbat)</div>
             <div class="fw-bold text-dark">${formatDateRo(s.date)} • ${esc(s.time)} • ${esc(s.line)}</div>
             <div>${esc(s.vehicle)} • ${esc(s.client)} (${esc(s.phone)})</div>
-            <div class="text-muted" style="font-size:0.75rem;">Creat inițial: ${esc(h.createdAt)} • ${esc(h.createdBy)}</div>
+            <div class="text-muted" style="font-size:0.75rem;">Creat inițial: <strong>${esc(formatDateRo(h.createdDate))} ${esc(h.createdAt)}</strong> • ${esc(h.createdBy)}</div>
           </div>
           <div>${evHtml}</div>
         </div>`;
@@ -2769,8 +3180,8 @@
 
       return `
       <div class="alert alert-info py-2 px-3 mb-2 small d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div><strong>Registru imutabil (append-only):</strong> starea inițială rămâne salvată permanent, chiar dacă programarea e editată, mutată sau ștearsă.</div>
-        ${state.role === "admin" ? `<button type="button" class="btn btn-sm btn-primary" onclick="exportHistoryCsv()">Export CSV</button>` : ""}
+        <div><strong>Registru imutabil (append-only):</strong> fiecare acțiune salvează permanent <strong>data, ora și utilizatorul</strong>, iar starea inițială rămâne neschimbată.</div>
+        ${state.role === "admin" ? `<div class="d-flex align-items-center gap-1 flex-wrap"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="openSecurityLogModal()">Jurnal securitate</button><button type="button" class="btn btn-sm btn-primary" onclick="exportHistoryCsv()">Export CSV</button></div>` : ""}
       </div>
       <div class="card p-2 mb-2">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -2803,12 +3214,13 @@
 
     function renderClienti() {
       const q = state.search.trim().toLowerCase();
+      const canAdd = userCan("canEdit");
       const list = state.vehicles.filter(v => !q || [v.plate, v.vehicle, v.client, v.phone].some(s => s.toLowerCase().includes(q)));
       return `
       <div class="card desktop-table">
         <div class="table-responsive">
           <table class="table table-vcenter card-table">
-            <thead><tr><th>Nr. Înmatriculare</th><th>Vehicul / Categorie</th><th>Client</th><th>Telefon</th><th>Ultim status</th></tr></thead>
+            <thead><tr><th>Nr. Înmatriculare</th><th>Vehicul / Categorie</th><th>Client</th><th>Telefon</th><th>Ultim status</th><th class="text-end">Acțiune</th></tr></thead>
             <tbody>
               ${list.map(v => `
                 <tr>
@@ -2817,7 +3229,10 @@
                   <td>${esc(v.client)}</td>
                   <td><a href="tel:${esc(v.phone)}">${esc(v.phone)}</a></td>
                   <td><span class="badge bg-azure-lt">${esc(v.lastResult)}</span></td>
-                </tr>`).join("") || `<tr><td colspan="5" class="text-center text-muted py-4">Niciun vehicul găsit.</td></tr>`}
+                  <td class="text-end">
+                    ${canAdd ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="openNewAppointmentFromRecord('${esc(v.plate)}', '${esc(v.phone)}', '${esc(v.client)}', '${esc(v.vehicle)}', 'Clienți & Vehicule')">+ Programează</button>` : ""}
+                  </td>
+                </tr>`).join("") || `<tr><td colspan="6" class="text-center text-muted py-4">Niciun vehicul găsit.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -2831,13 +3246,17 @@
             </div>
             <div class="fw-medium">${esc(v.vehicle)}</div>
             <div class="text-muted small mb-3">${esc(v.category)} • ${esc(v.client)} • ${esc(v.phone)}</div>
-            <a class="btn btn-outline-secondary w-100 touch-btn" href="tel:${esc(v.phone)}">Sună client</a>
+            <div class="row g-2">
+              <div class="${canAdd ? "col-6" : "col-12"}"><a class="btn btn-outline-secondary w-100 touch-btn" href="tel:${esc(v.phone)}">Sună client</a></div>
+              ${canAdd ? `<div class="col-6"><button type="button" class="btn btn-primary w-100 touch-btn" onclick="openNewAppointmentFromRecord('${esc(v.plate)}', '${esc(v.phone)}', '${esc(v.client)}', '${esc(v.vehicle)}', 'Clienți & Vehicule')">+ Programează</button></div>` : ""}
+            </div>
           </div>`).join("") || `<div class="card p-4 text-center text-muted">Niciun vehicul găsit.</div>`}
       </div>`;
     }
 
     function renderExpirari() {
       const q = state.search.trim().toLowerCase();
+      const canAdd = userCan("canEdit");
       const list = state.expirations.filter(e => e.daysLeft <= state.expiryWindow && (!q || [e.plate, e.client, e.phone].some(s => s.toLowerCase().includes(q))));
       return `
       <div class="d-flex gap-2 mb-3">
@@ -2861,6 +3280,7 @@
                   <button class="btn btn-sm ${e.contacted ? "btn-success" : "btn-outline-primary"}" onclick="toggleContacted(${e.id})">
                     ${e.contacted ? "Contactat ✓" : "Marchează contactat"}
                   </button>
+                  ${canAdd ? `<button class="btn btn-sm btn-primary" onclick="openNewAppointmentFromRecord('${esc(e.plate)}', '${esc(e.phone)}', '${esc(e.client)}', '${esc(e.vehicle)}', 'Expirări ITP')">+ Programează</button>` : ""}
                 </div>
               </div>
             </div>`;
@@ -2973,7 +3393,10 @@
         <div class="small text-muted">
           <strong>Control acces stație (${state.demoUsers.length} conturi):</strong> poți adăuga conturi noi, schimba PIN-ul/permisiunile sau bloca temporar accesul la Login.
         </div>
-        <button type="button" class="btn btn-sm btn-primary" onclick="openUserModal(null)">+ Adaugă utilizator</button>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openSecurityLogModal()">Jurnal securitate</button>
+          <button type="button" class="btn btn-sm btn-primary" onclick="openUserModal(null)">+ Adaugă utilizator</button>
+        </div>
       </div>
       <div class="row g-2 mb-3">
         ${state.demoUsers.map(u => {
@@ -3176,7 +3599,7 @@
       }
     }
 
-    function commitNewAppointment({ plate, phone, clientRaw, date, time, line }) {
+    function commitNewAppointment({ plate, phone, clientRaw, date, time, line, extraCreateNotes = [] }) {
       const newId = Date.now();
       const draft = state.reinspectionDraft;
       const parts = clientRaw.split("•").map(s => s.trim()).filter(Boolean);
@@ -3191,6 +3614,10 @@
         phone,
         status: "Programat"
       };
+      const tags = [...extraCreateNotes];
+      if (state.creationSourceLabel) tags.push(`din ${state.creationSourceLabel}`);
+      const tagSuffix = tags.length ? ` (${tags.join(", ")})` : "";
+      const jumpAction = buildJumpToDateAction(date);
       if (draft) {
         newAppt.visitType = "REVENIRE";
         newAppt.parentId = draft.parentId;
@@ -3202,27 +3629,26 @@
           parent.resolvedByReinspectionId = newId;
           recordHistoryEvent(parent, "REPROGRAMAT", `Reprogramată revenirea pe ${formatDateRo(date)} la ${time} (${line})`);
         }
-        recordHistoryEvent(newAppt, "CREAT", `Revenire programată din ${formatDateRo(draft.parentDate)}`);
-        showToast(`Revenire programată: ${plate} (${formatDateRo(date)} ${time})`);
+        recordHistoryEvent(newAppt, "CREAT", `Revenire programată din ${formatDateRo(draft.parentDate)} pentru ${formatDateRo(date)} la ${time} (${line})${tagSuffix}`);
+        showToast(`Revenire programată: ${plate} (${formatDateRo(date)} ${time})`, jumpAction);
       } else {
-        recordHistoryEvent(newAppt, "CREAT", "");
-        showToast(`Programare salvată: ${plate} (${formatDateRo(date)} ${time})`);
+        recordHistoryEvent(newAppt, "CREAT", `Programare creată pentru ${formatDateRo(date)} la ${time} (${line})${tagSuffix}`);
+        showToast(`Programare salvată: ${plate} (${formatDateRo(date)} ${time})`, jumpAction);
       }
       state.appointments.push(newAppt);
       state.appointments.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
       upsertKnownVehicle(newAppt);
-      state.selectedDate = date;
       state.reinspectionDraft = null;
+      state.creationSourceLabel = "";
       resetPlateAutofillState();
       document.getElementById("formProgramare").reset();
-      state.currentView = "azi";
       renderAll();
     }
 
     document.getElementById("formProgramare").addEventListener("submit", e => {
       e.preventDefault();
       const errEl = document.getElementById("modalErr");
-      if (state.reinspectionDraft) {
+      if (state.reinspectionDraft && !state.reinspectionDraft.editingVisit) {
         if (!userCan("canRevenire") && state.role !== "admin") {
           errEl.textContent = "Nu ai permisiunea să reprogramezi reveniri.";
           errEl.classList.remove("d-none");
@@ -3258,6 +3684,11 @@
         errEl.classList.remove("d-none");
         return;
       }
+      if (isSundayIso(date) && state.role !== "admin") {
+        errEl.textContent = `Stația ITP este închisă duminica (${formatDateRo(date)}). Alege o zi Luni–Sâmbătă.`;
+        errEl.classList.remove("d-none");
+        return;
+      }
 
       const conflict = state.appointments.find(a => a.id !== state.editingId && a.date === date && a.time === time && a.line === line);
       if (conflict) {
@@ -3269,6 +3700,8 @@
 
       const excludeParentId = state.reinspectionDraft ? state.reinspectionDraft.parentId : null;
       const sameDayDup = findSameDayPlateConflict(plateKey, date, state.editingId, excludeParentId);
+      const expiredReinspection = state.reinspectionDraft && state.reinspectionDraft.deadline && date > state.reinspectionDraft.deadline;
+      const isSundayAdmin = isSundayIso(date) && state.role === "admin";
 
       if (state.editingId !== null) {
         const existing = state.appointments.find(a => a.id === state.editingId);
@@ -3285,6 +3718,7 @@
 
           if (!changes.length) {
             state.editingId = null;
+            state.reinspectionDraft = null;
             e.target.reset();
             setModalVisible("modalProgramare", false);
             showToast("Nicio modificare detectată.");
@@ -3292,21 +3726,32 @@
           }
 
           const editTargetId = existing.id;
-          const dupNote = sameDayDup
-            ? `\nAtenție dublură: ${sameDayDup.plate} există deja pe ${formatDateRo(sameDayDup.date)} la ${sameDayDup.time} (${sameDayDup.line})`
-            : "";
+          const extraWarnings = [];
+          if (expiredReinspection) {
+            extraWarnings.push(`Termen 30 zile (${formatDateRo(state.reinspectionDraft.deadline)}) depășit → trece pe ITP complet`);
+          }
+          if (sameDayDup) {
+            extraWarnings.push(`Dublură în aceeași zi: ${sameDayDup.plate} pe ${formatDateRo(sameDayDup.date)} la ${sameDayDup.time} (${sameDayDup.line})`);
+          }
+          if (isSundayAdmin) {
+            extraWarnings.push(`Zi de Duminică (${formatDateRo(date)} — în afara programului Luni–Sâmbătă)`);
+          }
+          const hasWarn = extraWarnings.length > 0;
           setModalVisible("modalProgramare", false);
           openConfirmModal({
-            title: sameDayDup ? "Atenție: număr duplicat în aceeași zi" : "Confirmă modificările",
-            message: sameDayDup
-              ? "Vehiculul are deja o programare în ziua selectată. Sigur salvezi aceste modificări?"
+            title: expiredReinspection
+              ? "Termen 30 zile depășit"
+              : (sameDayDup ? "Atenție: număr duplicat în aceeași zi" : (isSundayAdmin ? "Atenție: programare Duminică" : "Confirmă modificările")),
+            message: hasWarn
+              ? "Există avertizări pentru modificările alese. Sigur salvezi în agendă?"
               : "Aplici aceste modificări în agendă? Starea inițială va rămâne salvată în Istoric:",
-            detail: `${plate}\n• ${changes.join("\n• ")}${dupNote}`,
-            confirmText: sameDayDup ? "Salvează oricum" : "Da, salvează",
-            variant: sameDayDup ? "warning" : "primary",
+            detail: `${plate}\n• ${changes.join("\n• ")}${hasWarn ? `\n\nAvertizări:\n• ${extraWarnings.join("\n• ")}` : ""}`,
+            confirmText: expiredReinspection ? "Salvează ITP complet" : (hasWarn ? "Salvează oricum" : "Da, salvează"),
+            variant: expiredReinspection ? "danger" : (hasWarn ? "warning" : "primary"),
             onCancel: () => setModalVisible("modalProgramare", true),
             onConfirm: () => {
               const target = state.appointments.find(a => a.id === editTargetId);
+              const jumpAction = buildJumpToDateAction(date);
               if (target) {
                 target.date = date;
                 target.time = time;
@@ -3316,30 +3761,35 @@
                 const parts = clientRaw.split("•").map(s => s.trim()).filter(Boolean);
                 target.client = parts[0] || clientRaw;
                 target.vehicle = parts[1] || parts[0] || clientRaw;
-
-                const diffText = changes.join(" | ");
+                if (expiredReinspection && target.visitType === "REVENIRE") {
+                  delete target.visitType;
+                  delete target.reinspectionDeadline;
+                  delete target.verifyNotes;
+                }
+                const diffText = changes.join(" | ") + (expiredReinspection ? " | Trecut pe ITP complet (peste 30 zile)" : "") + (sameDayDup ? " | Duplicat confirmat" : "") + (isSundayAdmin ? " | Duminică confirmată Admin" : "");
                 recordHistoryEvent(target, "MODIFICAT", diffText, before);
-                showToast(`Actualizat: ${plate} (${formatDateRo(date)} ${time}) — inițialul păstrat în Istoric`);
+                showToast(`Actualizat: ${plate} (${formatDateRo(date)} ${time}) — salvat în Istoric`, jumpAction);
               }
               state.editingId = null;
-              state.selectedDate = date;
+              state.reinspectionDraft = null;
               document.getElementById("formProgramare").reset();
-              state.currentView = "azi";
               renderAll();
             }
           });
           return;
         }
         state.editingId = null;
+        state.reinspectionDraft = null;
         e.target.reset();
         setModalVisible("modalProgramare", false);
         renderAll();
         return;
       }
 
-      const expiredReinspection = state.reinspectionDraft && date > state.reinspectionDraft.deadline;
       if (expiredReinspection) {
         const deadlineRo = formatDateRo(state.reinspectionDraft.deadline);
+        const parentRefId = state.reinspectionDraft.parentId;
+        const parentRefDate = state.reinspectionDraft.parentDate;
         setModalVisible("modalProgramare", false);
         openConfirmModal({
           title: "Termen 30 zile depășit",
@@ -3349,23 +3799,35 @@
           variant: "danger",
           onCancel: () => setModalVisible("modalProgramare", true),
           onConfirm: () => {
+            const parent = state.appointments.find(a => a.id === parentRefId);
+            if (parent) {
+              recordHistoryEvent(parent, "REPROGRAMAT", `Termen 30 zile depășit (din ${formatDateRo(parentRefDate)}) → programat ITP complet pe ${formatDateRo(date)} la ${time} (${line})`);
+            }
             state.reinspectionDraft = null;
-            commitNewAppointment({ plate, phone, clientRaw, date, time, line });
+            commitNewAppointment({ plate, phone, clientRaw, date, time, line, extraCreateNotes: [`ITP complet (termen 30 zile din ${formatDateRo(parentRefDate)} depășit)`] });
           }
         });
         return;
       }
 
-      if (sameDayDup) {
+      if (sameDayDup || isSundayAdmin) {
+        const warns = [];
+        if (sameDayDup) warns.push(`Existentă: ${sameDayDup.plate} • ${formatDateRo(sameDayDup.date)} la ${sameDayDup.time} (${sameDayDup.line}) — ${sameDayDup.client}`);
+        if (isSundayAdmin) warns.push(`Zi de Duminică (${formatDateRo(date)}) — în afara programului Luni–Sâmbătă`);
+        const extraNotes = [];
+        if (sameDayDup) extraNotes.push("duplicat în aceeași zi confirmat");
+        if (isSundayAdmin) extraNotes.push("excepție Duminică Admin");
         setModalVisible("modalProgramare", false);
         openConfirmModal({
-          title: "Posibilă programare dublă",
-          message: "Acest număr auto are deja o programare în ziua selectată. Sigur creezi încă una?",
-          detail: `Existentă: ${sameDayDup.plate} • ${formatDateRo(sameDayDup.date)} la ${sameDayDup.time} (${sameDayDup.line}) — ${sameDayDup.client}\nNouă: ${plate} • ${formatDateRo(date)} la ${time} (${line})`,
+          title: sameDayDup ? "Posibilă programare dublă" : "Confirmă programare Duminică",
+          message: sameDayDup
+            ? "Acest număr auto are deja o programare în ziua selectată. Sigur creezi încă una?"
+            : "Duminică stația este închisă conform programului. Sigur creezi programarea ca excepție Admin?",
+          detail: `${warns.join("\n")}\nNouă: ${plate} • ${formatDateRo(date)} la ${time} (${line})`,
           confirmText: "Salvează oricum",
           variant: "warning",
           onCancel: () => setModalVisible("modalProgramare", true),
-          onConfirm: () => commitNewAppointment({ plate, phone, clientRaw, date, time, line })
+          onConfirm: () => commitNewAppointment({ plate, phone, clientRaw, date, time, line, extraCreateNotes: extraNotes })
         });
         return;
       }
@@ -3434,6 +3896,7 @@
       if (state.editingUserId) {
         const target = state.demoUsers.find(u => u.id === state.editingUserId);
         if (target) {
+          const pinChanged = target.pin !== pin;
           target.name = name;
           if (!target.locked) target.username = username;
           target.pin = pin;
@@ -3444,6 +3907,7 @@
           }
           target.perms = perms;
           if (target.id === state.currentUserId) state.role = target.role;
+          recordSecurityEvent("USER_UPDATE", `Cont editat: ${target.name} (${roleLabel})${pinChanged ? " • PIN actualizat" : ""}`);
           showToast(`Cont actualizat: ${target.name} (PIN actualizat)`);
         }
       } else {
@@ -3462,10 +3926,44 @@
           perms,
           desc: ""
         });
+        recordSecurityEvent("USER_CREATE", `Utilizator creat: ${name} (${username}, ${roleLabel})`);
         showToast(`Utilizator adăugat: ${name} (PIN: ${pin})`);
       }
       state.editingUserId = null;
       setModalVisible("modalUser", false);
+      renderAll();
+    });
+
+    document.getElementById("formChangePin").addEventListener("submit", e => {
+      e.preventDefault();
+      const u = getActiveDemoUser();
+      const errEl = document.getElementById("chgPinErr");
+      if (!u) return;
+      const cur = document.getElementById("chgPinCurrent").value.trim();
+      const nw = document.getElementById("chgPinNew").value.trim();
+      const cnf = document.getElementById("chgPinConfirm").value.trim();
+      if (cur !== String(u.pin || "")) {
+        recordSecurityEvent("LOGIN_FAIL", `PIN actual greșit la încercare schimbare PIN (${u.name})`);
+        saveDemoState();
+        errEl.textContent = "PIN-ul actual este incorect.";
+        errEl.classList.remove("d-none");
+        return;
+      }
+      if (!/^\d{4,6}$/.test(nw)) {
+        errEl.textContent = "Noul PIN trebuie să conțină 4–6 cifre.";
+        errEl.classList.remove("d-none");
+        return;
+      }
+      if (nw !== cnf) {
+        errEl.textContent = "Confirmarea noului PIN nu coincide.";
+        errEl.classList.remove("d-none");
+        return;
+      }
+      errEl.classList.add("d-none");
+      u.pin = nw;
+      recordSecurityEvent("PIN_CHANGE", `${u.name} și-a actualizat PIN-ul uzual`);
+      setModalVisible("modalChangePin", false);
+      showToast("PIN-ul tău a fost actualizat.");
       renderAll();
     });
 
@@ -3477,11 +3975,15 @@
       const u = getSelectedLoginUser();
       if (!u) return;
       if (!u.isActive) {
+        recordSecurityEvent("LOGIN_FAIL", `Încercare login pe cont blocat (${u.name})`, `${u.name} (${u.roleLabel})`);
+        saveDemoState();
         errEl.textContent = `Contul "${u.name}" este blocat/suspendat de Administrator.`;
         errEl.classList.remove("d-none");
         return;
       }
       if (rawPin !== String(u.pin || "")) {
+        recordSecurityEvent("LOGIN_FAIL", `PIN incorect la submit pentru ${u.name}`, `${u.name} (${u.roleLabel})`);
+        saveDemoState();
         errEl.textContent = `PIN incorect pentru ${u.name}. Încearcă din nou.`;
         errEl.classList.remove("d-none");
         if (pinEl) {
@@ -3496,6 +3998,7 @@
 
     loadDemoState();
     initAppointmentHistory();
+    initSecurityLog();
     state.ready = true;
     syncAuthVisibility();
     renderAll();
