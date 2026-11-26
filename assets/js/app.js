@@ -987,6 +987,9 @@
       };
     };
 
+    const telIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.58 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+    const waIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>';
+
     const buildDesktopRow = (a, showDateCol, isFutureRow) => {
       const m = buildRowMeta(a);
       const reprogBadge = m.isRev && a.reinspection_date
@@ -1014,15 +1017,19 @@
             ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} small mt-1">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} ${formatDateRo(m.deadline)}${m.deadlineClosedNote && !m.isExpired ? `<div class="text-orange small fw-medium">${esc(m.deadlineClosedNote)}</div>` : ''}</div>` : ''}
           </td>
           <td class="text-end itp-actions-cell">
-            <div class="d-inline-flex flex-nowrap justify-content-end align-items-center gap-1">
-              ${m.canEdit ? `<button class="btn btn-sm btn-outline-primary itp-desk-act" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
-              ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
-              ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
-              ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-              ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
-              <a class="btn btn-sm btn-outline-secondary itp-desk-act" href="tel:${esc(m.telHref)}">Sună</a>
-              <a class="btn btn-sm btn-outline-success itp-desk-act" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}">WA</a>
-              ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
+            <div class="d-inline-flex flex-column align-items-end gap-1">
+              <div class="d-inline-flex flex-nowrap align-items-center gap-1">
+                <a class="btn btn-sm itp-desk-act-lg itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">${telIconSvg}<span>Telefon</span></a>
+                <a class="btn btn-sm itp-desk-act-lg itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">${waIconSvg}<span>WhatsApp</span></a>
+              </div>
+              <div class="d-inline-flex flex-nowrap align-items-center gap-1">
+                ${m.canEdit ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act-sm" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : `<span class="badge bg-secondary-lt">Doar citire</span>`}
+                ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-success itp-desk-act-sm" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
+                ${m.canFinal && m.isFinal ? `<button class="btn btn-sm btn-outline-secondary itp-desk-act-sm" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
+                ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-sm btn-outline-purple itp-desk-act-sm" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+                ${m.canReprog ? `<button class="btn btn-sm btn-purple itp-desk-act-sm" onclick="openReprogramModal(${a.id})">+ Reprogramează</button>` : ''}
+                ${m.canDel ? `<button class="btn btn-sm btn-ghost-danger itp-desk-act-sm" onclick="openDeleteModal(${a.id})">Șterge</button>` : ''}
+              </div>
             </div>
           </td>
         </tr>
@@ -1058,17 +1065,19 @@
             ? `<button type="button" class="btn bg-purple-lt text-purple rounded px-2 py-1 mb-1 w-100 text-start border-0 text-wrap fw-normal" style="font-size: 0.74rem; line-height: 1.3;" onclick="openRejectModal(${a.id})" aria-label="Editează sau revocă motivul revenirii"><strong>Motiv:</strong> ${esc(m.rejectSummary)} <span class="ms-1 text-decoration-underline fw-semibold">(editează)</span></button>`
             : `<div class="bg-purple-lt text-purple rounded px-2 py-1 mb-1" style="font-size: 0.74rem;"><strong>Motiv:</strong> ${esc(m.rejectSummary)}</div>`) : ''}
           ${m.isRev && !a.resolved_by_reinspection_id ? `<div class="${m.isExpired ? 'text-danger fw-medium' : 'text-muted'} mb-1" style="font-size: 0.72rem;">${m.isChainChild ? 'Termen inițial:' : `Termen ${m.termDays} zile:`} <strong>${formatDateRo(m.deadline)}</strong>${m.deadlineClosedNote && !m.isExpired ? ` <span class="text-orange fw-semibold">${esc(m.deadlineClosedNote)}</span>` : ''}</div>` : ''}
+          <div class="itp-mob-primary-acts">
+            <a class="btn itp-mob-act-lg itp-btn-tel" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">${telIconSvg}<span>Telefon</span></a>
+            <a class="btn itp-mob-act-lg itp-btn-wa" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">${waIconSvg}<span>WhatsApp</span></a>
+          </div>
           <div class="d-flex align-items-center flex-wrap gap-1">
-            ${m.canEdit ? `<button class="btn btn-outline-primary itp-mob-act flex-fill" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
-            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act flex-fill" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
-            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act flex-fill" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
-            ${m.canReprog ? `<button class="btn btn-purple itp-mob-act flex-fill" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
-            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
-            ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act flex-fill" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
-            <a class="btn btn-outline-secondary itp-mob-act itp-mob-icon-btn" href="tel:${esc(m.telHref)}" aria-label="Sună clientul">Tel</a>
-            <a class="btn btn-outline-success itp-mob-act itp-mob-icon-btn" target="_blank" rel="noopener" href="https://wa.me/${cleanPhoneWa(a.phone)}?text=${m.waMsg}" aria-label="Trimite mesaj WhatsApp">WA</a>
-            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act itp-mob-icon-btn" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>` : ''}
-            ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">×</button>` : ''}
+            ${m.canReprog ? `<button class="btn btn-purple itp-mob-act-sm" onclick="openReprogramModal(${a.id})">+ Reprog.</button>` : ''}
+            ${m.canEdit ? `<button class="btn btn-outline-secondary itp-mob-act-sm" onclick="openEditAppointmentModal(${a.id})">Editează</button>` : ''}
+            ${m.canRev && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-purple itp-mob-act-sm" onclick="openRejectModal(${a.id})">Revenire</button>` : ''}
+            ${m.canRev && m.isRev && !m.rejectSummary ? `<button class="btn btn-outline-purple itp-mob-act-sm" onclick="openRejectModal(${a.id})">Motiv / Revocă</button>` : ''}
+            ${m.canFinal && !m.isRev && !m.isFinal ? `<button class="btn btn-outline-success itp-mob-act-sm" onclick="toggleFinalizat(${a.id}, true)">Admis</button>` : ''}
+            ${m.canFinal && m.isFinal ? `<button class="btn btn-outline-secondary itp-mob-act-sm" onclick="toggleFinalizat(${a.id}, false)">Revocă Admis</button>` : ''}
+            ${!m.isLandline ? `<a class="btn btn-outline-azure itp-mob-act-sm" href="${esc(m.smsHref)}" aria-label="Trimite SMS" title="SMS">SMS</a>` : ''}
+            ${m.canDel ? `<button class="btn btn-outline-danger itp-mob-act-sm itp-mob-icon-btn ms-auto" onclick="openDeleteModal(${a.id})" aria-label="Șterge programarea" title="Șterge">×</button>` : ''}
           </div>
         </div>
       `;
