@@ -881,27 +881,37 @@ body {
   font-weight: 500;
 }
 
-/* Buton + Programare (bara de sus): Varianta B (rosu ACW, culoarea siglei). Varianta A: #1e40af / #1e3a8a / rgba(30, 64, 175, 0.35). */
+/* Buton + Programare (bara de sus): Verde Smarald #047857 cu text alb #ffffff (contrast WCAG AA 5.48:1 normal / >7:1 hover). [LEGACY] #d678c3 / #0f172a; Varianta B: #dc2626 / #b91c1c; Varianta A: #1e40af / #1e3a8a. */
 :root {
-  --itp-newappt-bg: #dc2626;
-  --itp-newappt-border: #b91c1c;
-  --itp-newappt-shadow: rgba(185, 28, 28, 0.35);
+  --itp-newappt-bg: #047857;
+  --itp-newappt-border: #065f46;
+  --itp-newappt-fg: #ffffff;
+  --itp-newappt-shadow: rgba(4, 120, 87, 0.35);
 }
 
 #btnNewAppt,
 #btnNewApptMob {
+  --tblr-btn-bg: var(--itp-newappt-bg);
+  --tblr-btn-border-color: var(--itp-newappt-border);
+  --tblr-btn-hover-bg: var(--itp-newappt-border);
+  --tblr-btn-hover-border-color: var(--itp-newappt-border);
+  --tblr-btn-active-bg: var(--itp-newappt-border);
+  --tblr-btn-active-border-color: var(--itp-newappt-border);
+  --tblr-btn-color: var(--itp-newappt-fg);
   background-color: var(--itp-newappt-bg);
   border-color: var(--itp-newappt-border);
-  color: #ffffff;
+  color: var(--itp-newappt-fg);
   font-weight: 700;
   box-shadow: 0 2px 4px var(--itp-newappt-shadow);
 }
 
 #btnNewAppt:hover,
 #btnNewAppt:focus-visible,
+#btnNewAppt:active,
 #btnNewApptMob:hover,
-#btnNewApptMob:focus-visible {
+#btnNewApptMob:focus-visible,
+#btnNewApptMob:active {
   background-color: var(--itp-newappt-border);
   border-color: var(--itp-newappt-border);
-  color: #ffffff;
+  color: var(--itp-newappt-fg);
 }
