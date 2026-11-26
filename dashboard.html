@@ -488,6 +488,53 @@
       background: #1d4ed8;
     }
 
+    .itp-future-divider td {
+      background: #f1f5f9 !important;
+      color: #0f172a;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 6px 12px !important;
+      border-top: 2px solid #cbd5e1 !important;
+      border-bottom: 1px solid #cbd5e1 !important;
+    }
+
+    .itp-future-row td {
+      background: #f8fafc;
+    }
+
+    .itp-future-row td:first-child {
+      border-left: 3px solid #0284c7;
+    }
+
+    .itp-future-mob-card {
+      background: #f8fafc !important;
+      border-left: 3px solid #0284c7 !important;
+    }
+
+    .itp-mob-future-sep {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      margin: 4px 0 2px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .itp-future-date-note {
+      color: #0369a1;
+      font-size: 0.73rem;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
     @keyframes fadeSlide {
       from {
         opacity: 0;
@@ -1165,13 +1212,26 @@
       return dt.getDay() === 0;
     }
 
+    /** Advances by N open working days (Luni-Sambata), skipping Sundays. */
+    function addOpenDaysIso(iso, openSteps) {
+      let cur = iso;
+      let remaining = openSteps;
+      while (remaining > 0) {
+        cur = addDaysIso(cur, 1);
+        if (!isSundayIso(cur)) remaining -= 1;
+      }
+      return cur;
+    }
+
     const TODAY_DATE = getLocalTodayIso();
 
     function createDefaultDemoData() {
       const d0 = TODAY_DATE;
       const dM1 = addDaysIso(TODAY_DATE, -1);
       const dM2 = addDaysIso(TODAY_DATE, -2);
-      const dP1 = addDaysIso(TODAY_DATE, 1);
+      const dP1 = addOpenDaysIso(TODAY_DATE, 1);
+      const dP2 = addOpenDaysIso(TODAY_DATE, 2);
+      const dP3 = addOpenDaysIso(TODAY_DATE, 3);
       const dM1Deadline = addDaysIso(dM1, 30);
       return {
         demoUsers: [
@@ -1204,7 +1264,10 @@
           { id: 23, date: dM2, time: "12:00", line: "Linia 1", plate: "B 640 FRT", vehicle: "Mercedes Sprinter", client: "SC Express Cargo", phone: "0736119922", status: "Revenire", rejectReasons: ["Anvelope / Jante", "Scurgeri lichide"], rejectNote: "Anvelope spate uzate + scurgere ulei" },
           { id: 24, date: dM2, time: "14:30", line: "Linia 1", plate: "GR 52 QWE", vehicle: "Hyundai i30", client: "Marius Tudor", phone: "0764554433", status: "Programat" },
 
-          { id: 31, date: dP1, time: "10:00", line: "Linia 2", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat", visitType: "REVENIRE", parentId: 13, parentDate: dM1, reinspectionDeadline: dM1Deadline, verifyNotes: "Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" }
+          { id: 31, date: dP1, time: "10:00", line: "Linia 2", plate: "B 305 TAX", vehicle: "Skoda Rapid", client: "SC Taxi Nord SRL", phone: "0731445566", status: "Programat", visitType: "REVENIRE", parentId: 13, parentDate: dM1, reinspectionDeadline: dM1Deadline, verifyNotes: "Frâne, Direcție / Suspensie — Dezechilibru frână spate + pivot stânga" },
+          { id: 32, date: dP1, time: "11:30", line: "Linia 1", plate: "SV 42 KLM", vehicle: "VW Passat B8", client: "George Ilie", phone: "0742556677", status: "Programat" },
+          { id: 33, date: dP2, time: "09:00", line: "Linia 3", plate: "BT 19 VWS", vehicle: "Skoda Superb", client: "Elena Lungu", phone: "0751889900", status: "Programat" },
+          { id: 34, date: dP3, time: "14:30", line: "Linia 2", plate: "IS 63 TDN", vehicle: "Dacia Jogger", client: "SC Moldo Construct SRL", phone: "0749332211", status: "Programat" }
         ],
         vehicles: [
           { plate: "B 458 ITP", vehicle: "Dacia Duster 1.5 dCi", category: "M1 (Turism)", client: "Andrei Ionescu", phone: "0721334556", lastResult: "Programat", expiresInDays: 365 },
@@ -2925,22 +2988,27 @@
       );
     }
 
-    function renderAppointmentsList(list, showDateInTime = false, emptyText = "Nicio programare găsită pentru filtrul curent.") {
-      const desktopRows = list.map(a => {
-        const sm = STATUS_META[a.status] || STATUS_META["Programat"];
-        const isRevenire = a.status === "Revenire";
-        const rejectSummary = isRevenire ? formatRejectSummary(a) : "";
-        const deadline = isRevenire ? addDaysIso(a.date, 30) : "";
-        const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline);
-        const rowCanEdit = (a.date >= TODAY_DATE && userCan("canEdit")) || state.role === "admin";
-        const rowCanRev = (a.date >= TODAY_DATE && userCan("canRevenire")) || state.role === "admin";
-        const rowCanDel = userCan("canDelete");
-        const canScheduleReinspection = isRevenire && !a.resolvedByReinspectionId && rowCanRev;
+    function getAppointmentRowMeta(a) {
+      const sm = STATUS_META[a.status] || STATUS_META["Programat"];
+      const isRevenire = a.status === "Revenire";
+      const rejectSummary = isRevenire ? formatRejectSummary(a) : "";
+      const deadline = isRevenire ? addDaysIso(a.date, 30) : "";
+      const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline);
+      const rowCanEdit = (a.date >= TODAY_DATE && userCan("canEdit")) || state.role === "admin";
+      const rowCanRev = (a.date >= TODAY_DATE && userCan("canRevenire")) || state.role === "admin";
+      const rowCanDel = userCan("canDelete");
+      const canScheduleReinspection = isRevenire && !a.resolvedByReinspectionId && rowCanRev;
+      return { sm, isRevenire, rejectSummary, deadline, waMsg, rowCanEdit, rowCanRev, rowCanDel, canScheduleReinspection };
+    }
+
+    function renderAppointmentsList(list, showDateInTime = false, emptyText = "Nicio programare găsită pentru filtrul curent.", futureList = []) {
+      const buildDesktopRow = (a, showDateCol, isFutureRow) => {
+        const { sm, isRevenire, rejectSummary, deadline, waMsg, rowCanEdit, rowCanRev, rowCanDel, canScheduleReinspection } = getAppointmentRowMeta(a);
         return `
-        <tr>
+        <tr class="${isFutureRow ? "itp-future-row" : ""}">
           <td class="fw-bold text-dark text-nowrap">
             ${esc(a.time)}
-            <div class="text-muted small fw-normal">${showDateInTime ? `${formatDateRo(a.date)} • ` : ""}${esc(a.line)}</div>
+            <div class="text-muted small fw-normal">${showDateCol ? `${formatDateRo(a.date)} • ` : ""}${esc(a.line)}</div>
           </td>
           <td><span class="plate-badge">${esc(a.plate)}</span></td>
           <td>
@@ -2950,6 +3018,7 @@
           <td>
             <span class="badge ${sm.badge}">${esc(sm.label)}</span>
             ${a.visitType === "REVENIRE" ? `<span class="badge bg-purple-lt text-purple ms-1">Din ${formatDateRo(a.parentDate)}</span>` : ""}
+            ${isFutureRow ? `<div class="itp-future-date-note">${esc(formatDateRo(a.date))}</div>` : ""}
             ${a.visitType === "REVENIRE" && a.verifyNotes ? `<div class="text-purple small mt-1" style="max-width: 240px; white-space: normal;"><strong>De verificat:</strong> ${esc(a.verifyNotes)}</div>` : ""}
             ${rejectSummary ? `<div><button type="button" class="btn btn-link p-0 text-start text-purple small mt-1 text-decoration-none" style="max-width: 240px; white-space: normal;" onclick="${rowCanRev ? `openRejectModal(${a.id})` : ""}" title="${rowCanRev ? "Apasă pentru a modifica motivul" : ""}">${esc(rejectSummary)}${rowCanRev ? ` <span class="text-muted text-decoration-underline ms-1">modifică</span>` : ""}</button></div>` : ""}
             ${isRevenire && !a.resolvedByReinspectionId ? `<div class="text-muted small mt-1">Termen 30 zile: ${formatDateRo(deadline)}</div>` : ""}
@@ -2965,34 +3034,32 @@
             </div>
           </td>
         </tr>`;
-      }).join("");
+      };
+
+      const desktopRows = list.map(a => buildDesktopRow(a, showDateInTime, false)).join("");
+      const futureDesktopRows = futureList.map(a => buildDesktopRow(a, false, true)).join("");
 
       const iconPhone = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2"/></svg>`;
       const iconTrash = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>`;
 
-      const mobileCards = list.map(a => {
-        const sm = STATUS_META[a.status] || STATUS_META["Programat"];
-        const isRevenire = a.status === "Revenire";
-        const rejectSummary = isRevenire ? formatRejectSummary(a) : "";
-        const deadline = isRevenire ? addDaysIso(a.date, 30) : "";
-        const waMsg = buildAppointmentWaMsg(a, rejectSummary, deadline);
-        const rowCanEdit = (a.date >= TODAY_DATE && userCan("canEdit")) || state.role === "admin";
-        const rowCanRev = (a.date >= TODAY_DATE && userCan("canRevenire")) || state.role === "admin";
-        const rowCanDel = userCan("canDelete");
-        const canScheduleReinspection = isRevenire && !a.resolvedByReinspectionId && rowCanRev;
+      const buildMobileCard = (a, showDateInline, isFutureCard) => {
+        const { sm, isRevenire, rejectSummary, deadline, waMsg, rowCanEdit, rowCanRev, rowCanDel, canScheduleReinspection } = getAppointmentRowMeta(a);
         const shortLine = String(a.line || "").replace(/^Linia\s+/i, "L");
         const shortParent = a.parentDate ? formatDateRo(a.parentDate).slice(0, 5) : "";
         return `
-        <div class="card itp-mob-card">
+        <div class="card itp-mob-card${isFutureCard ? " itp-future-mob-card" : ""}">
           <div class="d-flex justify-content-between align-items-center gap-1 mb-1">
             <div class="d-flex align-items-center gap-1 flex-nowrap min-w-0">
               <span class="plate-badge itp-mob-plate">${esc(a.plate)}</span>
-              <span class="fw-bold text-nowrap" style="font-size: 0.8rem;">${showDateInTime ? `${formatDateRo(a.date).slice(0, 5)} ` : ""}${esc(a.time)}</span>
+              <span class="fw-bold text-nowrap" style="font-size: 0.8rem;">${showDateInline ? `${formatDateRo(a.date).slice(0, 5)} ` : ""}${esc(a.time)}</span>
               <span class="text-muted text-nowrap" style="font-size: 0.75rem;">• ${esc(shortLine)}</span>
             </div>
-            <div class="text-end flex-shrink-0 d-flex align-items-center gap-1">
-              ${a.visitType === "REVENIRE" ? `<span class="badge bg-purple-lt text-purple" style="font-size: 0.67rem;">Din ${esc(shortParent)}</span>` : ""}
-              <span class="badge ${sm.badge}" style="font-size: 0.7rem;">${esc(sm.label)}</span>
+            <div class="text-end flex-shrink-0 d-flex flex-column align-items-end">
+              <div class="d-flex align-items-center gap-1">
+                ${a.visitType === "REVENIRE" ? `<span class="badge bg-purple-lt text-purple" style="font-size: 0.67rem;">Din ${esc(shortParent)}</span>` : ""}
+                <span class="badge ${sm.badge}" style="font-size: 0.7rem;">${esc(sm.label)}</span>
+              </div>
+              ${isFutureCard ? `<span class="itp-future-date-note">${esc(formatDateRo(a.date))}</span>` : ""}
             </div>
           </div>
           <div class="text-muted text-truncate mb-1" style="font-size: 0.77rem;">${esc(a.vehicle)} • ${esc(a.client)} • ${esc(a.phone)}</div>
@@ -3007,7 +3074,30 @@
             ${rowCanDel ? `<button class="btn btn-outline-danger itp-mob-act itp-mob-icon-btn" onclick="deleteAppointment(${a.id})" aria-label="Șterge" title="Șterge">${iconTrash}</button>` : ""}
           </div>
         </div>`;
-      }).join("");
+      };
+
+      const mobileCards = list.map(a => buildMobileCard(a, showDateInTime, false)).join("");
+      const futureMobileCards = futureList.map(a => buildMobileCard(a, false, true)).join("");
+
+      const desktopFutureSection = futureList.length ? `
+        <tr class="itp-future-divider">
+          <td colspan="6">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+              <span>Programări în viitor (${futureList.length})</span>
+              <span class="text-muted fw-normal" style="font-size: 0.74rem;">Urmează în zilele următoare • nu afectează locurile de azi</span>
+            </div>
+          </td>
+        </tr>
+        ${futureDesktopRows}
+      ` : "";
+
+      const mobileFutureSection = futureList.length ? `
+        <div class="itp-mob-future-sep">
+          <span>Programări în viitor (${futureList.length})</span>
+          <span class="text-muted fw-normal">în zilele următoare</span>
+        </div>
+        ${futureMobileCards}
+      ` : "";
 
       return `
       <div class="card desktop-table">
@@ -3016,12 +3106,18 @@
             <thead>
               <tr><th>Ora / Linie</th><th>Nr. Înmatriculare</th><th>Vehicul</th><th>Client</th><th>Status</th><th class="text-end">Acțiuni rapide</th></tr>
             </thead>
-            <tbody>${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">${esc(emptyText)}</td></tr>`}</tbody>
+            <tbody>
+              ${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">${esc(emptyText)}</td></tr>`}
+              ${desktopFutureSection}
+            </tbody>
           </table>
         </div>
       </div>
 
-      <div class="mobile-cards">${mobileCards || `<div class="card p-3 text-center text-muted">${esc(emptyText)}</div>`}</div>
+      <div class="mobile-cards">
+        ${mobileCards || `<div class="card p-3 text-center text-muted">${esc(emptyText)}</div>`}
+        ${mobileFutureSection}
+      </div>
     `;
     }
 
@@ -3043,6 +3139,18 @@
       const list = baseList
         .filter(a => state.statusFilter === "Toate" || a.status === state.statusFilter)
         .sort((a, b) => (searchAll ? b.date.localeCompare(a.date) : 0) || a.time.localeCompare(b.time));
+
+      const futureList = (state.selectedDate === TODAY_DATE && !searchAll)
+        ? state.appointments
+          .filter(a => {
+            if (a.date <= TODAY_DATE) return false;
+            const okQ = !q || [a.plate, a.client, a.phone, a.vehicle, a.line, formatDateRo(a.date)].some(v => String(v || "").toLowerCase().includes(q));
+            const okLine = state.lineFilter === "Toate" || a.line === state.lineFilter;
+            const okStatus = state.statusFilter === "Toate" || a.status === state.statusFilter;
+            return okQ && okLine && okStatus;
+          })
+          .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+        : [];
 
       const countsByStatus = baseList.reduce((acc, a) => {
         acc[a.status] = (acc[a.status] || 0) + 1;
@@ -3101,7 +3209,7 @@
         </div>
       </div>
 
-      ${renderAppointmentsList(list, searchAll, "Nicio programare găsită pentru ziua și filtrul selectat.")}
+      ${renderAppointmentsList(list, searchAll, "Nicio programare găsită pentru ziua și filtrul selectat.", futureList)}
     `;
     }
 
