@@ -881,11 +881,11 @@ body {
   font-weight: 500;
 }
 
-/* Buton + Programare (bara de sus): Varianta A. Pentru Varianta B (rosu ACW) se schimba doar cele 3 variabile de mai jos. */
+/* Buton + Programare (bara de sus): Varianta B (rosu ACW, culoarea siglei). Varianta A: #1e40af / #1e3a8a / rgba(30, 64, 175, 0.35). */
 :root {
-  --itp-newappt-bg: #1e40af;
-  --itp-newappt-border: #1e3a8a;
-  --itp-newappt-shadow: rgba(30, 64, 175, 0.35);
+  --itp-newappt-bg: #dc2626;
+  --itp-newappt-border: #b91c1c;
+  --itp-newappt-shadow: rgba(185, 28, 28, 0.35);
 }
 
 #btnNewAppt,
