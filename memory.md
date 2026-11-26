@@ -37,20 +37,22 @@
 | **Tip aplicație & Acces** | `localhost` + LAN/Wi-Fi; expunere demo către beneficiar prin `cloudflared.exe`; pregătit din start (rute relative + `.env`) pentru migrare ulterioară pe domeniu + găzduire |
 | **Arhitectură** | Modulară: Bază (`core/`) + module independente (`modules/<id>/`), ușor de extins și întreținut |
 | **Scop Faza 1 (MVP)** | **Strict `Core` + modulul `programari`**; modulele `clienti-vehicule`, `inspectii`, `expirari-itp`, `tarife-incasari` trec în Etapa 2 |
-| **Dimensionare stație** | **3 linii ITP (`Linia 1`, `Linia 2`, `Linia 3`)** și **slot de 30 minute**, cu blocaj strict anti-suprapunere |
+| **Dimensionare & Program stație** | **3 linii ITP (`Linia 1`, `Linia 2`, `Linia 3`)**, program **Luni – Sâmbătă (`08:00–17:30`)** și **slot de 30 minute**, cu blocaj strict anti-suprapunere |
 | **Backend & DB** | Python 3.14 + FastAPI + Uvicorn + SQLite WAL (`sqlite3` + migrări `.sql` per modul); reutilizare utilitare/pattern-uri testate din `D:\Proiecte\ITP-Sentinel` (backup WAL, `bcrypt`, CSRF, rate-limit, validări RO) |
-| **Frontend & UI** | HTML5 + CSS3 + JS + Tabler UI salvat local (`references/ui-libs/`), exclusiv **Temă Deschisă (Light Theme)**, responsive PC + telefon |
-| **Utilizatori & Acces** | Administrator (`Laur`) + Utilizatori (`Vali`, `Gabi` + conturi noi dinamice cu permisiuni granulare `Editare` / `Revenire` / `Ștergere`, blocare/reactivare și `First-Start` strict local) |
-| **Istoric Imutabil & Siguranță** | **`Istoric Imutabil`** centralizat în UI (append-only, snapshot inițial protejat + modificări + filtru utilizator + Export CSV), completat în backend de log tehnic intern SQLite (`login`, `backup`), plus **reconfirmare obligatorie (`#modalConfirm`)** pe toate acțiunile sensibile |
-| **Stadiu curent** | Plan complet (`PLAN.md`, `memory.md`, `README.md`) + machetă interactivă completă și testată (`dashboard.html`) cu Login (`admin/admin`), CRUD utilizatori/blocare, toate scenariile de programări (`Programări`, `Istoric Imutabil`, duplicare live, revenire 30 zile, revocare, motiv ștergere) — pregătit pentru **Faza 0 (Backend)** |
+| **Frontend & UI** | HTML5 + CSS3 + JS + Tabler UI salvat local (`references/ui-libs/`), exclusiv **Temă Deschisă (Light Theme)**, responsive PC + telefon, **bife rapide (1-tap)** inclusiv pentru motivele de ștergere/neprezentare |
+| **Utilizatori & Acces** | Administrator (`Laur`) + Utilizatori (`Vali`, `Gabi` + conturi noi dinamice cu permisiuni granulare `Editare` — pe orice programare a stației / `Revenire` / `Ștergere`, blocare/reactivare și `First-Start` strict local) |
+| **Istoric Imutabil & Siguranță** | **`Istoric Imutabil`** pe programări (`appointment_history` cu trigger SQLite + soft-delete `WHERE deleted_at IS NULL` + fereastră 30–60z + căutare globală nr. auto) + **`core_audit_log`** silențios accesibil Adminului printr-un buton discret `Jurnal securitate / Admin`, plus **reconfirmare obligatorie (`#modalConfirm`)** |
+| **Stadiu curent** | Toate deciziile operaționale confirmate; `PLAN.md`, `memory.md`, `README.md` și `dashboard.html` aliniate — gata pentru începerea **Fazei 0 (Backend)** |
 
 ---
 
-## 4. Decizii Rămase Deschise (Detalii Operaționale)
+## 4. Decizii Operaționale Confirmate (26 noiembrie 2026)
 
-1. **Programul orar al stației:** intervalul exact de programări pe zi (ex. `08:00–18:00`) și zilele lucrătoare.
-2. **Editarea programărilor colegilor:** dacă utilizatorii pot edita programările create de alți colegi sau doar ștergerea rămâne la Admin.
-3. **Pornirea pe PC-ul stației:** manual prin `start.bat` sau automat la pornirea Windows.
+1. **Programul orar al stației:** **Luni – Sâmbătă**, `08:00–17:30` (configurabil în Setări).
+2. **Editarea programărilor colegilor:** `Vali` și `Gabi` (cu drept de `Editare`) pot modifica **orice programare** din agendă.
+3. **Pornirea pe PC-ul stației:** temporar prin `start.bat` până la migrarea pe domeniu + găzduire.
+4. **Istoric Imutabil + Jurnal Securitate:** `Istoric Imutabil` rămâne strict pe programări (cu trigger SQLite + tranzacție atomică), iar `core_audit_log` are acces discret doar pentru Admin (`Jurnal securitate / Admin`).
+5. **Motive rapide cu bife:** atât la `Revenire`, cât și la `Ștergere / Neprezentare / Anulare`, motivele folosesc **butoane-bifă rapide (1 click/tap)** în locul listei dropdown.
 
 ---
 
@@ -108,3 +110,15 @@ FullCalendar (pentru viitorul Modul de Programări) — Calendar zi/săptămân�
     - Regula de **reconfirmare obligatorie (`#modalConfirm`)**: aplicată uniform în `dashboard.html` pentru `Șterge` programare, salvarea modificărilor din `Editează` (cu listă clară a câmpurilor modificate și revenire pe form la `Renunță`), activare/dezactivare `Module`, `Backup`, `Resetează Demo` și status `Expirări`.
     - Eliminat tab-ul separat `Audit Log` din UI (`dashboard.html`) pentru simplitate maximă (rămân 4 tab-uri curate pe mobil: `Programări`, `Istoric`, `Mașini`, `Expirări`); trasabilitatea s-a mutat integral în **`Istoric Imutabil`** (scenarii demo complete cu `Laur`, `Vali`, `Gabi`: editări multiple `CJ 22 MAX`, ștergere `B 888 VEC`, revenire + reprogramare `B 305 TAX` pe ziua următoare, mutare linie `AG 18 VTR`, filtru pe utilizator + `Export CSV`), iar în backend rămâne doar un log intern SQLite de securitate/backup.
     - Confirmată strategia de livrare: `localhost` + LAN + **`cloudflared.exe`** pentru demo live către beneficiar, apoi migrare pe domeniu + găzduire; actualizate `PLAN.md`, `memory.md` și `dashboard.html` corespunzător.
+
+---
+
+## 8. Actualizare Progres (26 noiembrie 2026)
+
+- **Sincronizat cu versiunea de acasă (`f6b03b9`):** `dashboard.html` complet (Login ACW Fălticeni, logo `aw-logo.png`, useri `Laur`/`Vali`/`Gabi` + CRUD & blocare, validări RO, autocomplete, duplicat live, revenire 30 zile + revocare + reprogramare, secțiune `Motive`, `Istoric Imutabil`, densitate mobilă optimizată).
+- **Decizii operaționale închise și trecute în `PLAN.md`:**
+  - Arhitectură pe 2 straturi pentru trasabilitate: `appointment_history` (strict pe programări în UI, scris atomic în aceeași tranzacție cu `appointments` + soft-delete `WHERE deleted_at IS NULL` + trigger SQLite `BEFORE UPDATE`/`DELETE`, afișare implicită 30–60z + căutare globală nr. auto) + `core_audit_log` silențios accesibil Adminului printr-un buton discret `Jurnal securitate / Admin`.
+  - Program stație: **Luni – Sâmbătă (`08:00–17:30`)**.
+  - `Vali` și `Gabi` (cu drept `Editare`) pot modifica **orice programare** din agendă.
+  - Pornirea prin `start.bat` este soluție temporară până la mutarea pe găzduire.
+  - **UX rapid pentru motive:** și motivele de **ștergere / anulare / neprezentare** vor fi implementate cu **butoane-bifă rapide (1 click/tap)** (similar motivelor de revenire), nu dropdown lent.
