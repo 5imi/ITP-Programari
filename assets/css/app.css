@@ -720,6 +720,21 @@ body {
     padding-bottom: 84px !important;
   }
 
+  .page-body {
+    margin-top: 0.4rem !important;
+    margin-bottom: 0 !important;
+  }
+
+  #pageHeaderBar {
+    margin-bottom: 0.35rem !important;
+    row-gap: 0 !important;
+  }
+
+  #pageHeaderBar #viewTitle {
+    font-size: 1.15rem !important;
+    line-height: 1.25;
+  }
+
   .itp-history-pagination,
   .itp-history-pagination button {
     scroll-margin-bottom: 80px;
