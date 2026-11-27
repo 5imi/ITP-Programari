@@ -728,6 +728,12 @@
 
     const topbar = document.getElementById('itpTopbar');
     if (topbar) topbar.classList.toggle('itp-mob-search-open', !!state.mobileSearchOpen);
+    const schedEl = document.getElementById('sidebarScheduleSummary');
+    if (schedEl) {
+      const cfg = state.stationConfig || {};
+      const linesCount = Array.isArray(cfg.lines) ? cfg.lines.length : 3;
+      schedEl.textContent = `${cfg.open_time || '08:00'}–${cfg.close_time || '17:30'} • ${linesCount} linii × ${cfg.slot_minutes || 30}m`;
+    }
     syncMobAllDaysButton();
   }
 

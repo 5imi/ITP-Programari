@@ -516,7 +516,7 @@ body {
   white-space: nowrap;
 }
 
-/* Vizibilitate implicita Desktop si camp cautare globala: Tabel vizibil pe desktop, carduri si bara de jos ascunse, cautare max 340px pe >=992px. */
+/* Vizibilitate implicita Desktop si camp cautare globala: Tabel vizibil pe desktop, carduri si bara de jos ascunse, latime fluida pe >=992px. */
 .desktop-table {
   display: block;
 }
@@ -534,8 +534,68 @@ body {
 }
 
 @media (min-width: 992px) {
+  .itp-sidebar {
+    width: 13.5rem !important;
+    max-width: 13.5rem;
+  }
+
+  .navbar-expand-lg.navbar-vertical ~ .page-wrapper {
+    margin-left: 13.5rem !important;
+  }
+
+  .itp-sidebar .navbar-collapse {
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+  }
+
+  .itp-sidebar .navbar-nav {
+    flex: 0 0 auto !important;
+    flex-grow: 0 !important;
+    min-height: 0 !important;
+  }
+
+  #sidebar-admin-group {
+    margin-top: 0.65rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--itp-border);
+  }
+
+  #itpTopbar > .container-xl,
+  .page-body > .container-xl {
+    max-width: none;
+    width: 100%;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .page-body {
+    margin-top: 0.65rem !important;
+    margin-bottom: 1rem !important;
+  }
+
   .itp-search-wrap {
-    max-width: 340px;
+    max-width: 520px;
+  }
+
+  .itp-status-cell {
+    max-width: 420px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .itp-compact-table td,
+  .itp-compact-table th {
+    padding: 0.5rem 0.7rem !important;
+  }
+}
+
+@media (min-width: 1400px) {
+  .itp-search-wrap {
+    max-width: 640px;
+  }
+
+  .itp-status-cell {
+    max-width: 540px;
   }
 }
 
