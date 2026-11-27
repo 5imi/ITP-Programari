@@ -502,7 +502,7 @@ final class AdminController
         $limit = max(10, min(500, (int) $req->query('limit', 250)));
 
         $catActions = [
-            'AUTH' => ['LOGIN_OK', 'LOGIN_FAIL', 'LOGOUT', 'PIN_CHANGE', 'ADMIN_MASTER_RECOVERY', 'FIRST_START_SETUP'],
+            'AUTH' => ['LOGIN_OK', 'LOGIN_FAIL', 'LOGOUT', 'PIN_CHANGE', 'MASTER_PIN_CHANGE', 'ADMIN_MASTER_RECOVERY', 'FIRST_START_SETUP'],
             'USERS' => ['USER_CREATE', 'USER_UPDATE', 'USER_BLOCK', 'USER_UNBLOCK'],
             'CONFIG' => ['REASON_ADD', 'REASON_UPDATE', 'REASON_DELETE', 'MODULE_TOGGLE', 'SETTINGS_UPDATE', 'BACKUP', 'BACKUP_DOWNLOAD', 'EXPORT'],
         ];

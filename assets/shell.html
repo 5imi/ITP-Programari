@@ -527,8 +527,47 @@
           <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="changePinErr"></div>
         </div>
         <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-outline-warning me-auto d-none" id="btnSwitchToMasterPin"
+            onclick="openChangeMasterPinModal()">PIN Secret Master</button>
           <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
           <button type="submit" class="btn btn-sm btn-primary px-3">Actualizează PIN</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Schimba PIN Secret Master (#modalChangeMasterPin): Actualizare PIN Secret Master (8-12 cifre) doar de catre Administratorul principal. -->
+  <div class="modal modal-blur fade" id="modalChangeMasterPin" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+      <form id="formChangeMasterPin" class="modal-content">
+        <div class="modal-header py-2">
+          <div>
+            <h5 class="modal-title fw-bold mb-0">Schimbă PIN Secret Master</h5>
+            <div class="text-muted small">Valabil doar pentru Administratorul principal</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+        </div>
+        <div class="modal-body py-2">
+          <div class="mb-2">
+            <label class="form-label small mb-1 required">PIN Secret Master actual</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="changeMasterCurrent"
+              inputmode="numeric" maxlength="12" autocomplete="off" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1 required">PIN Secret Master nou (8–12 cifre)</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="changeMasterNew"
+              inputmode="numeric" maxlength="12" autocomplete="off" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small mb-1 required">Confirmă PIN Secret Master nou</label>
+            <input type="password" class="form-control form-control-sm pin-input" id="changeMasterConfirm"
+              inputmode="numeric" maxlength="12" autocomplete="off" required>
+          </div>
+          <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="changeMasterErr"></div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3">Actualizează PIN Secret</button>
         </div>
       </form>
     </div>
@@ -565,7 +604,7 @@
 
   <script src="assets/vendor/tabler/tabler.min.js"></script>
   <script src="assets/js/api.js"></script>
-  <script src="assets/js/app.js"></script>
+  <script src="assets/js/app.js?v=20261127b"></script>
 </body>
 
 </html>

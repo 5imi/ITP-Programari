@@ -53,6 +53,7 @@ final class App
         $this->router->add('POST', '/api/auth/login', [$authCtrl, 'login']);
         $this->router->add('POST', '/api/auth/master-recovery', [$authCtrl, 'masterRecovery']);
         $this->router->add('POST', '/api/auth/change-pin', [$authCtrl, 'changePin']);
+        $this->router->add('POST', '/api/auth/change-master-pin', [$authCtrl, 'changeMasterPin']);
         $this->router->add('POST', '/api/auth/logout', [$authCtrl, 'logout']);
         $this->router->add('GET', '/api/auth/me', [$authCtrl, 'me']);
         $this->router->add('GET', '/api/core/menu', [$authCtrl, 'menu']);

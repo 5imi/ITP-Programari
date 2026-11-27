@@ -66,8 +66,10 @@ assertTrue($setupStatus['status'] === 200, 'setup-status trebuie să întoarcă 
 $csrf = '';
 $adminPin = '4921';
 $masterPin = '87654321';
+$canTestMasterRotate = false;
 
 if (!empty($setupStatus['body']['needs_setup'])) {
+    $canTestMasterRotate = true;
     $fs = httpReq('POST', "$baseUrl/api/setup/first-start", [
         'station_name' => 'ACW Test Station',
         'display_name' => 'LaurTest',
@@ -80,6 +82,11 @@ if (!empty($setupStatus['body']['needs_setup'])) {
 } else {
     echo "[INFO] Baza are deja utilizatori — se autentifică primul admin disponibil cu PIN din ITP_TEST_ADMIN_PIN.\n";
     $adminPin = getenv('ITP_TEST_ADMIN_PIN') ?: $adminPin;
+    $envMaster = getenv('ITP_TEST_MASTER_PIN');
+    if (is_string($envMaster) && $envMaster !== '') {
+        $masterPin = $envMaster;
+        $canTestMasterRotate = true;
+    }
     $users = httpReq('GET', "$baseUrl/api/auth/users");
     $admin = null;
     foreach ($users['body']['users'] ?? [] as $u) {
@@ -322,7 +329,46 @@ assertTrue(
     $masterBlock['status'] === 403 && ($masterBlock['body']['error'] ?? '') === 'MASTER_PIN_PROTECTED',
     'Modificarea master_pin prin panoul standard trebuia respinsă cu 403 MASTER_PIN_PROTECTED'
 );
-echo "[PASS] Protecții securitate (422 change-pin, 403 MASTER_PIN_PROTECTED) verificate.\n";
+$badMasterFormat = httpReq('POST', "$baseUrl/api/auth/change-master-pin", [
+    'current_master_pin' => $masterPin,
+    'new_master_pin' => '1234',
+], $csrf, $cookieFile);
+assertTrue(
+    $badMasterFormat['status'] === 422 && ($badMasterFormat['body']['error'] ?? '') === 'INVALID_MASTER_PIN',
+    'PIN Secret Master nou invalid trebuia respins cu 422 INVALID_MASTER_PIN'
+);
+$sameMaster = httpReq('POST', "$baseUrl/api/auth/change-master-pin", [
+    'current_master_pin' => $masterPin,
+    'new_master_pin' => $masterPin,
+], $csrf, $cookieFile);
+assertTrue(
+    $sameMaster['status'] === 422 && ($sameMaster['body']['error'] ?? '') === 'SAME_MASTER_PIN',
+    'PIN Secret Master identic trebuia respins cu 422 SAME_MASTER_PIN'
+);
+if ($canTestMasterRotate) {
+    $rotatedMaster = '98765432';
+    $rot1 = httpReq('POST', "$baseUrl/api/auth/change-master-pin", [
+        'current_master_pin' => $masterPin,
+        'new_master_pin' => $rotatedMaster,
+    ], $csrf, $cookieFile);
+    assertTrue($rot1['status'] === 200 && !empty($rot1['body']['ok']), 'Schimbarea PIN-ului Secret Master a eșuat: ' . ($rot1['raw'] ?? ''));
+
+    $badCurMaster = httpReq('POST', "$baseUrl/api/auth/change-master-pin", [
+        'current_master_pin' => $masterPin,
+        'new_master_pin' => '13572468',
+    ], $csrf, $cookieFile);
+    assertTrue(
+        $badCurMaster['status'] === 422 && ($badCurMaster['body']['error'] ?? '') === 'INVALID_CURRENT_MASTER_PIN',
+        'PIN Secret Master actual greșit trebuia să întoarcă 422 INVALID_CURRENT_MASTER_PIN'
+    );
+
+    $rot2 = httpReq('POST', "$baseUrl/api/auth/change-master-pin", [
+        'current_master_pin' => $rotatedMaster,
+        'new_master_pin' => $masterPin,
+    ], $csrf, $cookieFile);
+    assertTrue($rot2['status'] === 200 && !empty($rot2['body']['ok']), 'Restaurarea PIN-ului Secret Master a eșuat: ' . ($rot2['raw'] ?? ''));
+}
+echo "[PASS] Protecții securitate (422 change-pin, 403 MASTER_PIN_PROTECTED, change-master-pin) verificate.\n";
 
 // 5. Test Istoric Imutabil
 $hist = httpReq('GET', "$baseUrl/api/m/programari/history?q=SV%2099%20VER", null, '', $cookieFile);

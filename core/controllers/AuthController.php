@@ -73,15 +73,7 @@ final class AuthController
 
         $extraUsers = is_array($body['additional_users'] ?? null) ? $body['additional_users'] : [];
 
-        $result = $this->db->transaction(function (\PDO $pdo) use (
-            $req,
-            $displayName,
-            $username,
-            $pin,
-            $masterPin,
-            $stationName,
-            $extraUsers
-        ): array {
+        $result = $this->db->transaction(function (\PDO $pdo) use ($req, $displayName, $username, $pin, $masterPin, $stationName, $extraUsers): array {
             // Blocaj atomic: verificare ca tabela users este inca goala in tranzactie
             $existing = (int) $pdo->query('SELECT COUNT(*) FROM users FOR UPDATE')->fetchColumn();
             if ($existing > 0) {
@@ -384,35 +376,83 @@ final class AuthController
         $currentPin = (string) ($body['current_pin'] ?? '');
         $newPin = (string) ($body['new_pin'] ?? '');
 
-        if ($currentPin === '') {
-            throw new HttpException(422, 'MISSING_CURRENT_PIN', 'Introdu PIN-ul actual.');
+        return $this->rotateUserCredential($req, $ctx, $currentPin, $newPin, false);
+    }
+
+    public function changeMasterPin(Request $req): array
+    {
+        $ctx = $this->auth->requireAdmin($req, true);
+        if (empty($ctx['user']['is_primary_admin'])) {
+            throw new HttpException(
+                403,
+                'PRIMARY_ADMIN_ONLY',
+                'Doar Administratorul principal poate schimba PIN-ul Secret Master.'
+            );
         }
-        Security::assertValidPinFormat($newPin, false);
-        if ($currentPin === $newPin) {
-            throw new HttpException(422, 'SAME_PIN', 'PIN-ul nou trebuie să fie diferit de cel actual.');
+
+        $body = $req->json();
+        $currentMasterPin = (string) ($body['current_master_pin'] ?? '');
+        $newMasterPin = (string) ($body['new_master_pin'] ?? '');
+
+        return $this->rotateUserCredential($req, $ctx, $currentMasterPin, $newMasterPin, true);
+    }
+
+    /**
+     * Roteste PIN-ul uzual (4-6 cifre) sau PIN-ul Secret Master (8-12 cifre) cu rate-limit si invalidarea altor sesiuni.
+     */
+    private function rotateUserCredential(
+        Request $req,
+        array $ctx,
+        string $currentSecret,
+        string $newSecret,
+        bool $isMaster
+    ): array {
+        if ($currentSecret === '') {
+            throw new HttpException(
+                422,
+                $isMaster ? 'MISSING_CURRENT_MASTER_PIN' : 'MISSING_CURRENT_PIN',
+                $isMaster ? 'Introdu PIN-ul Secret Master actual.' : 'Introdu PIN-ul actual.'
+            );
+        }
+
+        Security::assertValidPinFormat($newSecret, $isMaster);
+        if ($currentSecret === $newSecret) {
+            throw new HttpException(
+                422,
+                $isMaster ? 'SAME_MASTER_PIN' : 'SAME_PIN',
+                $isMaster
+                ? 'PIN-ul Secret Master nou trebuie să fie diferit de cel actual.'
+                : 'PIN-ul nou trebuie să fie diferit de cel actual.'
+            );
         }
 
         $userId = (int) $ctx['user']['id'];
         $ip = $req->clientIp();
         $pdo = $this->db->pdo();
-        Security::enforceRateLimit($pdo, 'pin', $userId, $ip, $this->config);
+        $rateKind = $isMaster ? 'master' : 'pin';
+        $column = $isMaster ? 'master_pin_hash' : 'pin_hash';
 
-        $payload = $this->db->transaction(function (\PDO $txPdo) use ($ctx, $userId, $ip, $currentPin, $newPin, $req): array {
+        Security::enforceRateLimit($pdo, $rateKind, $userId, $ip, $this->config);
+
+        $payload = $this->db->transaction(function (\PDO $txPdo) use ($ctx, $userId, $ip, $currentSecret, $newSecret, $isMaster, $rateKind, $column, $req): array {
             $stmt = $txPdo->prepare('SELECT * FROM users WHERE id = ? FOR UPDATE');
             $stmt->execute([$userId]);
             $row = $stmt->fetch();
 
-            if (!$row || !Security::verifyPin($currentPin, (string) $row['pin_hash'])) {
+            $storedHash = $row ? (string) ($row[$column] ?? '') : '';
+            $invalidPrimary = $isMaster && (!$row || (int) $row['is_primary_admin'] !== 1 || $storedHash === '');
+            if (!$row || $invalidPrimary || !Security::verifyPin($currentSecret, $storedHash)) {
                 return ['__failed' => true];
             }
 
             $nextVersion = ((int) $row['session_version']) + 1;
             $now = $this->config->nowString();
 
-            $upd = $txPdo->prepare(
-                'UPDATE users SET pin_hash = ?, session_version = ?, must_change_pin = 0, updated_at = ? WHERE id = ?'
-            );
-            $upd->execute([Security::hashPin($newPin), $nextVersion, $now, $userId]);
+            $sql = $isMaster
+                ? 'UPDATE users SET master_pin_hash = ?, session_version = ?, updated_at = ? WHERE id = ?'
+                : 'UPDATE users SET pin_hash = ?, session_version = ?, must_change_pin = 0, updated_at = ? WHERE id = ?';
+            $upd = $txPdo->prepare($sql);
+            $upd->execute([Security::hashPin($newSecret), $nextVersion, $now, $userId]);
 
             // Pastreaza sesiunea curenta activa, invalideaza eventualele sesiuni vechi de pe alte dispozitive
             $delOther = $txPdo->prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?');
@@ -421,14 +461,16 @@ final class AuthController
             $updCurr = $txPdo->prepare('UPDATE sessions SET session_version = ? WHERE token_hash = ?');
             $updCurr->execute([$nextVersion, $ctx['session']['token_hash']]);
 
-            Security::recordLoginAttempt($txPdo, $userId, $ip, 'pin', true, $this->config);
+            Security::recordLoginAttempt($txPdo, $userId, $ip, $rateKind, true, $this->config);
 
             $this->audit->log(
                 $txPdo,
                 $userId,
                 $ctx['user']['actor_label'],
-                'PIN_CHANGE',
-                'Utilizatorul și-a schimbat propriul PIN uzual.',
+                $isMaster ? 'MASTER_PIN_CHANGE' : 'PIN_CHANGE',
+                $isMaster
+                ? 'Administratorul principal a schimbat PIN-ul Secret Master.'
+                : 'Utilizatorul și-a schimbat propriul PIN uzual.',
                 'core',
                 'user',
                 (string) $userId,
@@ -439,18 +481,22 @@ final class AuthController
 
             return [
                 'ok' => true,
-                'message' => 'PIN actualizat cu succes.',
+                'message' => $isMaster
+                    ? 'PIN Secret Master actualizat cu succes.'
+                    : 'PIN actualizat cu succes.',
             ];
         });
 
         if (!empty($payload['__failed'])) {
-            Security::recordLoginAttempt($pdo, $userId, $ip, 'pin', false, $this->config);
+            Security::recordLoginAttempt($pdo, $userId, $ip, $rateKind, false, $this->config);
             $this->audit->log(
                 $pdo,
                 $userId,
                 $ctx['user']['actor_label'],
                 'LOGIN_FAIL',
-                'PIN actual introdus greșit la schimbarea PIN-ului.',
+                $isMaster
+                ? 'PIN Secret Master actual introdus greșit la schimbare.'
+                : 'PIN actual introdus greșit la schimbarea PIN-ului.',
                 'core',
                 'user',
                 (string) $userId,
@@ -458,8 +504,14 @@ final class AuthController
                 null,
                 $req
             );
-            // 422 (nu 401): sesiunea ramane autentificata, doar validarea PIN-ului actual a esuat
-            throw new HttpException(422, 'INVALID_CURRENT_PIN', 'PIN-ul actual nu este corect.');
+            // 422 (nu 401): sesiunea ramane autentificata, doar validarea secretului actual a esuat
+            throw new HttpException(
+                422,
+                $isMaster ? 'INVALID_CURRENT_MASTER_PIN' : 'INVALID_CURRENT_PIN',
+                $isMaster
+                ? 'PIN-ul Secret Master actual nu este corect.'
+                : 'PIN-ul actual nu este corect.'
+            );
         }
 
         return Response::json($payload);

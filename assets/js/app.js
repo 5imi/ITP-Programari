@@ -2160,6 +2160,7 @@
                   <div class="text-muted small mt-1">Drepturi: ${esc((u.permissions || []).join(', ') || 'Doar citire')}</div>
                 </div>
                 <div class="d-flex gap-1">
+                  ${u.is_primary_admin && state.user && state.user.id === u.id && state.user.has_master_pin ? `<button type="button" class="btn btn-sm btn-outline-warning" onclick="openChangeMasterPinModal()">PIN Secret</button>` : ''}
                   <button type="button" class="btn btn-sm btn-outline-primary" onclick="openUserModal(${u.id})">Editează</button>
                   ${u.is_primary_admin ? '' : `<button type="button" class="btn btn-sm btn-outline-${u.is_active ? 'danger' : 'success'}" onclick="toggleUserActive(${u.id})">${u.is_active ? 'Blochează' : 'Activează'}</button>`}
                 </div>
@@ -2530,8 +2531,51 @@
     closeMobileSidebar();
     document.getElementById('formChangePin').reset();
     document.getElementById('changePinErr').classList.add('d-none');
+    const masterBtn = document.getElementById('btnSwitchToMasterPin');
+    if (masterBtn) {
+      const canMaster = !!(state.user && state.user.is_primary_admin && state.user.has_master_pin);
+      masterBtn.classList.toggle('d-none', !canMaster);
+    }
     setModalVisible('modalChangePin', true);
   };
+
+  window.openChangeMasterPinModal = () => {
+    closeMobileSidebar();
+    setModalVisible('modalChangePin', false);
+    document.getElementById('formChangeMasterPin').reset();
+    document.getElementById('changeMasterErr').classList.add('d-none');
+    setModalVisible('modalChangeMasterPin', true);
+  };
+
+  document.getElementById('formChangeMasterPin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
+    await withBusy('formChangeMasterPin', submitBtn, async () => {
+      const errEl = document.getElementById('changeMasterErr');
+      errEl.classList.add('d-none');
+      const cur = document.getElementById('changeMasterCurrent').value.trim();
+      const n1 = document.getElementById('changeMasterNew').value.trim();
+      const n2 = document.getElementById('changeMasterConfirm').value.trim();
+      if (!/^\d{8,12}$/.test(n1)) {
+        errEl.textContent = 'PIN-ul Secret Master nou trebuie să conțină exact 8–12 cifre.';
+        errEl.classList.remove('d-none');
+        return;
+      }
+      if (n1 !== n2) {
+        errEl.textContent = 'Confirmarea PIN-ului Secret Master nu coincide.';
+        errEl.classList.remove('d-none');
+        return;
+      }
+      try {
+        await api.post('api/auth/change-master-pin', { current_master_pin: cur, new_master_pin: n1 });
+        setModalVisible('modalChangeMasterPin', false);
+        showToast('PIN Secret Master actualizat cu succes.');
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('d-none');
+      }
+    });
+  });
 
   document.getElementById('formChangePin').addEventListener('submit', async (e) => {
     e.preventDefault();
