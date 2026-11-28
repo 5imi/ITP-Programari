@@ -58,6 +58,8 @@
 
     adminUsers: [],
     adminBackups: [],
+    securityLogCategory: 'TOATE',
+    securityLogEvents: [],
 
     editingAppt: null,
     reprogramParent: null,
@@ -730,6 +732,7 @@
   };
 
   window.switchView = (view) => {
+    hideAllOpenModals();
     state.currentView = view;
     closeMobileSidebar();
     renderNav();
@@ -747,6 +750,7 @@
       { id: 'module', label: 'Module' },
       { id: 'setari', label: 'Setări Stație' },
       { id: 'backup', label: 'Backup Bază Date' },
+      { id: 'jurnal', label: 'Jurnal Securitate' },
     ];
 
     document.getElementById('sidebar-module-links').innerHTML = opLinks.map(l => `
@@ -766,16 +770,10 @@
             <span class="nav-link-title">${esc(l.label)}</span>
           </a>
         </li>
-      `).join('') + `
-        <li class="nav-item">
-          <a class="nav-link" href="#" onclick="openSecurityLogModal(); return false;">
-            <span class="nav-link-title">Jurnal Securitate</span>
-          </a>
-        </li>
-      `;
+      `).join('');
     }
 
-    const adminViewIds = ['users', 'motive', 'module', 'setari', 'backup'];
+    const adminViewIds = ['users', 'motive', 'module', 'setari', 'backup', 'jurnal'];
     const mobIcons = {
       azi: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
       istoric: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>',
@@ -1011,6 +1009,17 @@
         titleEl.textContent = 'Backup Bază Date';
         subEl.textContent = 'Export și arhivă de siguranță a datelor';
         root.innerHTML = renderBackupView();
+        return;
+      }
+
+      if (view === 'jurnal' && isAdmin()) {
+        const cat = state.securityLogCategory || 'TOATE';
+        const data = await api.get(`api/admin/audit?category=${encodeURIComponent(cat)}`);
+        if (reqSeq !== viewRequestSeq || state.currentView !== 'jurnal') return;
+        state.securityLogEvents = data.events || [];
+        titleEl.textContent = 'Jurnal Securitate & Sistem';
+        subEl.textContent = 'Evidență protejată a acțiunilor de sistem și securitate';
+        root.innerHTML = renderSecurityLogView();
         return;
       }
 
@@ -2243,11 +2252,11 @@
       { id: 'module', label: 'Module' },
       { id: 'setari', label: 'Setări' },
       { id: 'backup', label: 'Backup' },
+      { id: 'jurnal', label: 'Jurnal' },
     ];
     return `
       <div class="d-lg-none mb-2 itp-admin-subnav" role="navigation" aria-label="Sub-secțiuni Administrare">
         ${tabs.map(t => `<button type="button" class="filter-pill ${activeView === t.id ? 'active' : ''}" onclick="switchView('${t.id}')">${esc(t.label)}</button>`).join('')}
-        <button type="button" class="filter-pill" onclick="openSecurityLogModal()">Jurnal</button>
       </div>
     `;
   }
@@ -2732,10 +2741,71 @@
     });
   });
 
-  window.openSecurityLogModal = async () => {
-    closeMobileSidebar();
-    setModalVisible('modalSecurityLog', true);
-    await loadSecurityLog();
+  /* Vedere dedicata Jurnal Securitate (renderSecurityLogView): Filtre pastile pe categorii, cautare locala, badge-uri semantice WCAG AA si Export CSV. */
+  function renderSecurityLogView() {
+    const cat = state.securityLogCategory || 'TOATE';
+    const categories = [
+      { id: 'TOATE', label: 'Toate' },
+      { id: 'AUTH', label: 'Autentificare & PIN' },
+      { id: 'USERS', label: 'Utilizatori & Drepturi' },
+      { id: 'CONFIG', label: 'Motive, Setări & Backup' },
+    ];
+    const q = (state.search || '').trim().toLowerCase();
+    const list = (state.securityLogEvents || []).filter(ev => {
+      if (!q) return true;
+      const hay = `${ev.action || ''} ${ev.actor_name || ''} ${ev.ip_address || ''} ${ev.summary || ''} ${ev.date || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    const badgeClsForAction = (act) => {
+      const a = String(act || '').toUpperCase();
+      if (a.includes('FAIL') || a.includes('BLOCK') || a.includes('DELETE')) return 'bg-red-lt text-red';
+      if (a.includes('OK') || a.includes('UNBLOCK') || a.includes('FIRST_START')) return 'bg-green-lt text-green';
+      if (a.includes('MASTER') || a.includes('PIN')) return 'bg-orange-lt text-orange';
+      return 'bg-azure-lt text-azure';
+    };
+
+    const itemsHtml = list.length ? `
+      <div class="card">
+        <div class="list-group list-group-flush">
+          ${list.map(ev => `
+            <div class="list-group-item py-2 px-3 small">
+              <div class="d-flex flex-wrap align-items-center gap-1">
+                <span class="badge ${badgeClsForAction(ev.action)}">${esc(ev.action)}</span>
+                <strong class="ms-1 text-dark">${esc(formatDateRo(ev.date))} ${esc(ev.at)}</strong>
+                <span class="text-muted">• ${esc(ev.actor_name)} (${esc(ev.ip_address)})</span>
+              </div>
+              <div class="mt-1 text-dark">${esc(ev.summary)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : `<div class="card p-3 text-center text-muted small">Nicio înregistrare pentru filtrul selectat.</div>`;
+
+    return `
+      ${renderAdminSubNav('jurnal')}
+      <div class="card p-2 mb-2">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="itp-history-pills" role="group" aria-label="Categorie jurnal securitate">
+            ${categories.map(c => `<button type="button" class="filter-pill ${cat === c.id ? 'active' : ''}" onclick="setSecurityLogCategory('${c.id}')">${esc(c.label)}</button>`).join('')}
+          </div>
+          <div class="d-flex align-items-center gap-2 ms-auto">
+            <span class="small text-muted">${list.length} evenimente</span>
+            <a class="btn btn-sm btn-outline-primary itp-admin-act-btn" id="secLogExportBtn" href="api/admin/audit.csv?category=${encodeURIComponent(cat)}" target="_blank" rel="noopener">Export CSV</a>
+          </div>
+        </div>
+      </div>
+      ${itemsHtml}
+    `;
+  }
+
+  window.setSecurityLogCategory = (cat) => {
+    state.securityLogCategory = cat || 'TOATE';
+    loadAndRenderCurrentView();
+  };
+
+  window.openSecurityLogModal = () => {
+    switchView('jurnal');
   };
 
   // Delegare sigura pentru actiuni cu valori dinamice (evita interpolarea in atribute onclick)
@@ -2761,29 +2831,10 @@
   });
 
   window.loadSecurityLog = async () => {
-    const box = document.getElementById('securityLogBody');
-    const cat = document.getElementById('secLogFilterSelect').value || 'TOATE';
-    const exportBtn = document.getElementById('secLogExportBtn');
-    if (exportBtn) {
-      exportBtn.href = `api/admin/audit.csv?category=${encodeURIComponent(cat)}`;
-    }
-    try {
-      const data = await api.get(`api/admin/audit?category=${encodeURIComponent(cat)}`);
-      const list = data.events || [];
-      box.innerHTML = list.length ? `
-        <div class="list-group list-group-flush border rounded">
-          ${list.map(ev => `
-            <div class="list-group-item py-2 px-3 small">
-              <span class="badge bg-azure-lt text-azure">${esc(ev.action)}</span>
-              <strong class="ms-1">${esc(formatDateRo(ev.date))} ${esc(ev.at)}</strong>
-              <span class="text-muted">• ${esc(ev.actor_name)} (${esc(ev.ip_address)})</span>
-              <div class="mt-1">${esc(ev.summary)}</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : `<div class="text-center text-muted py-3 small">Nicio înregistrare pentru filtrul selectat.</div>`;
-    } catch (err) {
-      box.innerHTML = `<div class="alert alert-danger small">${esc(err.message)}</div>`;
+    if (state.currentView === 'jurnal') {
+      await loadAndRenderCurrentView();
+    } else {
+      switchView('jurnal');
     }
   };
 

@@ -80,6 +80,56 @@ body {
   border-color: var(--itp-tone-rev-border);
 }
 
+/* Contrast WCAG AA (>= 6:1) pentru badge-urile de status si etichetele light (fara a modifica tonurile cardurilor). */
+.badge.bg-blue-lt,
+.badge.bg-blue-lt.text-blue {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.badge.bg-green-lt,
+.badge.bg-green-lt.text-green {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.badge.bg-purple-lt,
+.badge.bg-purple-lt.text-purple,
+.bg-purple-lt.text-purple {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+}
+
+.badge.bg-indigo-lt,
+.badge.bg-indigo-lt.text-indigo,
+.bg-indigo-lt.text-indigo {
+  background-color: #e0e7ff !important;
+  color: #3730a3 !important;
+}
+
+.badge.bg-red-lt,
+.badge.bg-red-lt.text-red {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.badge.bg-orange-lt,
+.badge.bg-orange-lt.text-orange {
+  background-color: #ffedd5 !important;
+  color: #9a3412 !important;
+}
+
+.badge.bg-azure-lt,
+.badge.bg-azure-lt.text-azure {
+  background-color: #e0f2fe !important;
+  color: #075985 !important;
+}
+
+.badge.bg-secondary-lt {
+  background-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
 .table > :not(caption) > * > * {
   background-color: transparent;
 }
@@ -1097,6 +1147,31 @@ body {
     min-height: 44px;
     height: 44px;
     font-size: 0.9rem;
+  }
+
+  /* Modal Revenire si Confirmare Stergere (#modalRespingere / #modalConfirm): Bife rapide si butoane footer minim 44px pe mobil. */
+  .reason-check-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  #modalRespingere .modal-footer,
+  #modalConfirm .modal-footer {
+    padding: 0.5rem 0.85rem max(0.5rem, env(safe-area-inset-bottom, 0px));
+    gap: 0.5rem;
+  }
+
+  #modalRespingere .modal-footer .btn,
+  #modalConfirm .modal-footer .btn {
+    min-height: 44px;
+    height: 44px;
+    font-size: 0.88rem;
+  }
+
+  #modalRespingere textarea.form-control {
+    min-height: 54px;
+    font-size: 0.92rem;
   }
 }
 

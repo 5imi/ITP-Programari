@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/img/aw-logo.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="assets/vendor/tabler/tabler.min.css">
-  <link rel="stylesheet" href="assets/css/app.css?v=20261128i">
+  <link rel="stylesheet" href="assets/css/app.css?v=20261128j">
 </head>
 
 <body>
@@ -575,38 +575,9 @@
     </div>
   </div>
 
-  <!-- Modal Jurnal Securitate Admin (#modalSecurityLog): Evidenta protejata core_audit_log cu filtrare pe categorie (AUTH, USERS, CONFIG) si Export CSV. -->
-  <div class="modal modal-blur fade" id="modalSecurityLog" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header py-2">
-          <div>
-            <h5 class="modal-title fw-bold mb-0">Jurnal Securitate & Sistem</h5>
-            <div class="text-muted small">Evidență protejată a acțiunilor de sistem și securitate</div>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
-        </div>
-        <div class="modal-body py-2">
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <select id="secLogFilterSelect" class="form-select form-select-sm" style="max-width: 240px;"
-              aria-label="Filtrare categorie jurnal securitate" onchange="loadSecurityLog()">
-              <option value="TOATE">Toate categoriile</option>
-              <option value="AUTH">Autentificare & PIN</option>
-              <option value="USERS">Utilizatori & Drepturi</option>
-              <option value="CONFIG">Motive, Setări & Backup</option>
-            </select>
-            <a class="btn btn-sm btn-outline-primary" id="secLogExportBtn" href="api/admin/audit.csv" target="_blank" rel="noopener">Export
-              CSV</a>
-          </div>
-          <div id="securityLogBody"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script src="assets/vendor/tabler/tabler.min.js"></script>
-  <script src="assets/js/api.js?v=20261128h"></script>
-  <script src="assets/js/app.js?v=20261128h"></script>
+  <script src="assets/js/api.js?v=20261128k"></script>
+  <script src="assets/js/app.js?v=20261128k"></script>
 </body>
 
 </html>
