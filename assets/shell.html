@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="assets/img/aw-logo.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="assets/vendor/tabler/tabler.min.css">
-  <link rel="stylesheet" href="assets/css/app.css?v=20261127a">
+  <link rel="stylesheet" href="assets/css/app.css?v=20261128h">
 </head>
 
 <body>
@@ -76,18 +76,18 @@
   </div>
 
   <!-- Ecran Autentificare (#loginScreen): Selectie utilizator (#pinUserGrid), tastatura PIN numerica (#pinKeypad) si mod recuperare PIN Secret Admin (#masterRecoveryBox). -->
-  <div class="page page-center d-none" id="loginScreen" style="min-height: 100vh;">
+  <div class="page page-center d-none" id="loginScreen">
     <div class="container container-tight py-4">
-      <div class="text-center mb-3">
+      <div class="text-center mb-3 aw-login-brand">
         <img src="assets/img/aw-logo.png" alt="ACW - Automotive Center Werkstat Fălticeni"
           class="aw-logo-login mb-2">
         <div class="fw-bold fs-3 text-dark lh-sm" id="loginStationTitle">ACW - Fălticeni</div>
-        <div class="text-muted small fw-semibold" style="letter-spacing: 0.06em; font-size: 0.72rem;">STAȚIE ITP</div>
+        <div class="text-muted small fw-semibold aw-login-subtitle" style="letter-spacing: 0.06em; font-size: 0.72rem;">STAȚIE ITP</div>
       </div>
       <div class="card card-md aw-login-card">
         <div class="card-body p-3 p-sm-4">
           <h2 class="h3 text-center fw-bold mb-1">Autentificare cu PIN</h2>
-          <div class="text-muted small text-center mb-3">1. Alege utilizatorul • 2. Introdu PIN-ul</div>
+          <div class="text-muted small text-center mb-3 aw-login-hint">1. Alege utilizatorul • 2. Introdu PIN-ul</div>
 
           <div class="row g-2 mb-3" id="pinUserGrid"></div>
 
@@ -172,6 +172,7 @@
         <div class="d-flex align-items-center justify-content-between w-100 px-1 py-1 gap-2">
           <div class="d-flex align-items-center gap-2 min-w-0">
             <a href="#" class="navbar-brand text-decoration-none d-flex align-items-center gap-2 m-0 p-0 min-w-0"
+              aria-label="Acasă — Programări Azi"
               onclick="switchView('azi'); return false;">
               <img src="assets/img/aw-logo.png" alt="ACW - Fălticeni" class="aw-logo-nav flex-shrink-0">
             </a>
@@ -186,27 +187,27 @@
                 style="font-size: 0.68rem; font-weight: 700; max-width: 145px;">-</button>
             </div>
           </div>
-          <div class="d-flex align-items-center gap-1 d-lg-none">
+          <div class="d-flex align-items-center d-lg-none itp-mob-top-actions">
             <button type="button"
-              class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2"
+              class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center px-2 itp-mob-top-icon"
               id="btnMobSearchToggle" onclick="toggleMobileSearch()" aria-label="Căutare"
-              title="Caută nr. auto, telefon, client" style="min-height: 30px; min-width: 32px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+              title="Caută nr. auto, telefon, client">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
             </button>
-            <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2" id="btnNewApptMob"
-              onclick="openNewAppointmentModal()" style="min-height: 30px; font-size: 0.75rem; font-weight: 600;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+            <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1 px-2 itp-mob-new-btn" id="btnNewApptMob"
+              onclick="openNewAppointmentModal()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
               </svg>
               <span>Programare</span>
             </button>
-            <button class="navbar-toggler p-1" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-nav"
+            <button class="navbar-toggler p-1 itp-mob-top-icon" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-nav"
               aria-label="Meniu">
               <span class="navbar-toggler-icon"></span>
             </button>
@@ -258,6 +259,7 @@
                 </svg>
               </span>
               <input type="search" id="globalSearch" class="form-control form-control-sm"
+                aria-label="Caută nr. auto, telefon sau client"
                 placeholder="Caută nr. auto, telefon, client...">
             </div>
           </div>
@@ -313,9 +315,9 @@
         </div>
         <div class="modal-body py-2">
           <div class="alert alert-purple mb-2 py-2 px-2 small d-none" id="reinspectionBanner"></div>
-          <div class="row g-1 g-sm-2">
-            <div class="col-12 col-sm-5">
-              <label class="form-label small mb-1 required">Data (zz/ll/aaaa)</label>
+          <div class="row g-2">
+            <div class="col-6 col-sm-4 order-1">
+              <label class="form-label small mb-1 required" for="inpDateText">Data (zz/ll/aaaa)</label>
               <div class="itp-ro-date-wrap">
                 <input type="text" class="form-control form-control-sm itp-ro-date-text" id="inpDateText"
                   inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
@@ -333,29 +335,29 @@
                   onchange="onRoDatePickerChange('inpDate', 'inpDateText', onModalDateChange)" required>
               </div>
             </div>
-            <div class="col-5 col-sm-3">
-              <label class="form-label small mb-1 required">Ora</label>
+            <div class="col-12 col-sm-4 order-3 order-sm-2">
+              <label class="form-label small mb-1 required" for="inpHour">Ora</label>
               <select class="form-select form-select-sm" id="inpHour" onchange="onHourSelectChange()"></select>
             </div>
-            <div class="col-7 col-sm-4">
-              <label class="form-label small mb-1 required">Linie (libere)</label>
+            <div class="col-6 col-sm-4 order-2 order-sm-3">
+              <label class="form-label small mb-1 required" for="inpLine">Linie (libere)</label>
               <select class="form-select form-select-sm" id="inpLine" onchange="refreshHourOptions()"></select>
             </div>
-            <div class="col-6">
-              <label class="form-label small mb-1 required">Nr. auto</label>
+            <div class="col-6 order-4">
+              <label class="form-label small mb-1 required" for="inpPlate">Nr. auto</label>
               <input type="text" class="form-control form-control-sm text-uppercase fw-bold" id="inpPlate"
                 placeholder="SV 08 LZB" oninput="onPlateInput()" required>
             </div>
-            <div class="col-6">
-              <label class="form-label small mb-1 required">Telefon</label>
+            <div class="col-6 order-4">
+              <label class="form-label small mb-1 required" for="inpPhone">Telefon</label>
               <input type="tel" class="form-control form-control-sm" id="inpPhone" placeholder="0740 111 222" required>
             </div>
-            <div class="col-6">
-              <label class="form-label small mb-1">Client</label>
+            <div class="col-6 order-5">
+              <label class="form-label small mb-1" for="inpClient">Client</label>
               <input type="text" class="form-control form-control-sm" id="inpClient" placeholder="ex. Ion Popescu">
             </div>
-            <div class="col-6">
-              <label class="form-label small mb-1">Mașină</label>
+            <div class="col-6 order-5">
+              <label class="form-label small mb-1" for="inpVehicle">Mașină</label>
               <input type="text" class="form-control form-control-sm" id="inpVehicle" placeholder="ex. Dacia Logan">
             </div>
           </div>
@@ -366,8 +368,8 @@
           <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="modalErr"></div>
         </div>
         <div class="modal-footer py-2">
-          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
-          <button type="submit" class="btn btn-sm btn-primary px-3" id="modalProgramareSubmitBtn">Salvează
+          <button type="button" class="btn btn-sm btn-link link-secondary touch-btn" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3 touch-btn" id="modalProgramareSubmitBtn">Salvează
             programarea</button>
         </div>
       </form>
@@ -398,11 +400,11 @@
           <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="rejectErr"></div>
         </div>
         <div class="modal-footer py-2 justify-content-between">
-          <button type="button" class="btn btn-sm btn-outline-danger d-none" id="btnRevokeReject"
+          <button type="button" class="btn btn-sm btn-outline-danger touch-btn d-none" id="btnRevokeReject"
             onclick="revokeRevenireFromModal()">Revocă revenirea</button>
           <div class="d-flex gap-2 ms-auto">
-            <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
-            <button type="submit" class="btn btn-sm btn-purple px-3">Salvează motivul</button>
+            <button type="button" class="btn btn-sm btn-link link-secondary touch-btn" data-bs-dismiss="modal">Renunță</button>
+            <button type="submit" class="btn btn-sm btn-purple px-3 touch-btn">Salvează motivul</button>
           </div>
         </div>
       </form>
@@ -453,22 +455,22 @@
         <div class="modal-body py-2">
           <div class="row g-2">
             <div class="col-sm-6">
-              <label class="form-label small mb-1 required">Nume afișat</label>
+              <label class="form-label small mb-1 required" for="userNameInp">Nume afișat</label>
               <input type="text" class="form-control form-control-sm" id="userNameInp" required>
             </div>
             <div class="col-sm-6">
-              <label class="form-label small mb-1 required">Username</label>
+              <label class="form-label small mb-1 required" for="userUsernameInp">Username</label>
               <input type="text" class="form-control form-control-sm" id="userUsernameInp" required>
             </div>
             <div class="col-sm-6">
-              <label class="form-label small mb-1">Rol sistem</label>
+              <label class="form-label small mb-1" for="userRoleInp">Rol sistem</label>
               <select class="form-select form-select-sm" id="userRoleInp" onchange="onUserRoleSelectChange()">
                 <option value="user">Utilizator operațional</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
             <div class="col-sm-6">
-              <label class="form-label small mb-1" id="userPinLabel">PIN (4–6 cifre)</label>
+              <label class="form-label small mb-1" id="userPinLabel" for="userPinInp">PIN (4–6 cifre)</label>
               <input type="password" class="form-control form-control-sm pin-input" id="userPinInp" inputmode="numeric"
                 maxlength="6" placeholder="••••">
             </div>
@@ -493,8 +495,8 @@
           <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="userErr"></div>
         </div>
         <div class="modal-footer py-2">
-          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
-          <button type="submit" class="btn btn-sm btn-primary px-3">Salvează utilizatorul</button>
+          <button type="button" class="btn btn-sm btn-link link-secondary touch-btn" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3 touch-btn">Salvează utilizatorul</button>
         </div>
       </form>
     </div>
@@ -510,27 +512,27 @@
         </div>
         <div class="modal-body py-2">
           <div class="mb-2">
-            <label class="form-label small mb-1 required">PIN actual</label>
+            <label class="form-label small mb-1 required" for="changePinCurrent">PIN actual</label>
             <input type="password" class="form-control form-control-sm pin-input" id="changePinCurrent"
               inputmode="numeric" maxlength="6" required>
           </div>
           <div class="mb-2">
-            <label class="form-label small mb-1 required">PIN nou (4–6 cifre)</label>
+            <label class="form-label small mb-1 required" for="changePinNew">PIN nou (4–6 cifre)</label>
             <input type="password" class="form-control form-control-sm pin-input" id="changePinNew" inputmode="numeric"
               maxlength="6" required>
           </div>
           <div class="mb-2">
-            <label class="form-label small mb-1 required">Confirmă PIN nou</label>
+            <label class="form-label small mb-1 required" for="changePinConfirm">Confirmă PIN nou</label>
             <input type="password" class="form-control form-control-sm pin-input" id="changePinConfirm"
               inputmode="numeric" maxlength="6" required>
           </div>
           <div class="alert alert-danger mt-2 mb-0 py-2 px-2 small d-none" id="changePinErr"></div>
         </div>
         <div class="modal-footer py-2">
-          <button type="button" class="btn btn-sm btn-outline-warning me-auto d-none" id="btnSwitchToMasterPin"
+          <button type="button" class="btn btn-sm btn-outline-warning me-auto touch-btn d-none" id="btnSwitchToMasterPin"
             onclick="openChangeMasterPinModal()">PIN Secret Master</button>
-          <button type="button" class="btn btn-sm btn-link link-secondary" data-bs-dismiss="modal">Renunță</button>
-          <button type="submit" class="btn btn-sm btn-primary px-3">Actualizează PIN</button>
+          <button type="button" class="btn btn-sm btn-link link-secondary touch-btn" data-bs-dismiss="modal">Renunță</button>
+          <button type="submit" class="btn btn-sm btn-primary px-3 touch-btn">Actualizează PIN</button>
         </div>
       </form>
     </div>
@@ -587,7 +589,7 @@
         <div class="modal-body py-2">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
             <select id="secLogFilterSelect" class="form-select form-select-sm" style="max-width: 240px;"
-              onchange="loadSecurityLog()">
+              aria-label="Filtrare categorie jurnal securitate" onchange="loadSecurityLog()">
               <option value="TOATE">Toate categoriile</option>
               <option value="AUTH">Autentificare & PIN</option>
               <option value="USERS">Utilizatori & Drepturi</option>
@@ -603,8 +605,8 @@
   </div>
 
   <script src="assets/vendor/tabler/tabler.min.js"></script>
-  <script src="assets/js/api.js"></script>
-  <script src="assets/js/app.js?v=20261127b"></script>
+  <script src="assets/js/api.js?v=20261128h"></script>
+  <script src="assets/js/app.js?v=20261128h"></script>
 </body>
 
 </html>

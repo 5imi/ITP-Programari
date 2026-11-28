@@ -207,8 +207,34 @@ body {
 .itp-page-btn:disabled {
   background: #f8fafc;
   border-color: #e2e8f0;
-  color: #94a3b8;
+  color: #64748b;
   cursor: not-allowed;
+}
+
+/* Indicator discret de incarcare la schimbarea vederii/filtrelor si butoane Admin uniforme. */
+#viewRoot.itp-view-loading {
+  opacity: 0.62;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.itp-admin-act-btn {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.itp-occ-pill {
+  cursor: pointer;
+  font-size: 0.74rem;
+  padding: 4px 8px;
+}
+
+.itp-admin-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .itp-page-num {
@@ -286,13 +312,13 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #475569;
   padding: 10px 16px 4px;
 }
 
 .itp-sidebar .nav-link.active {
   background: #fee2e2;
-  color: var(--aw-red);
+  color: #991b1b;
   font-weight: 600;
   border-radius: 8px;
 }
@@ -375,11 +401,47 @@ body {
   font-weight: 700;
 }
 
+/* Tastatura numerica PIN: Feedback tactil instant pe :active si eliminare sticky :hover pe ecrane touch. */
 .pin-keypad-btn {
   min-height: 44px;
   font-size: 1.05rem;
   font-weight: 700;
   border-radius: 10px;
+  transition: transform 0.08s ease, background-color 0.1s ease;
+}
+
+.pin-keypad-btn:active {
+  transform: scale(0.97);
+}
+
+@media (hover: none) {
+  .pin-keypad-btn.btn-outline-secondary:hover {
+    background-color: transparent !important;
+    color: var(--tblr-secondary, #475569) !important;
+    border-color: var(--tblr-border-color, #cbd5e1) !important;
+  }
+
+  .pin-keypad-btn.btn-outline-danger:hover {
+    background-color: transparent !important;
+    color: var(--aw-red) !important;
+    border-color: var(--aw-red) !important;
+  }
+
+  .pin-keypad-btn.btn-outline-secondary:active {
+    background-color: #dbeafe !important;
+    border-color: #93c5fd !important;
+    color: #1e40af !important;
+  }
+
+  .pin-keypad-btn.btn-outline-danger:active {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+  }
+}
+
+#pinKeypad {
+  --tblr-gutter-x: 0.5rem;
+  --tblr-gutter-y: 0.5rem;
 }
 
 /* Banda filtre status agenda: Pastile rotunjite 999px (#ffffff inactiv, albastru #2563eb cu text alb cand sunt active). */
@@ -726,13 +788,18 @@ body {
     width: auto;
   }
 
+  #sidebarMenu > .container-fluid {
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+  }
+
   .aw-logo-nav {
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
   }
 
   .itp-mob-card {
-    padding: 7px 9px !important;
+    padding: 8px 8px !important;
     border-radius: 10px;
   }
 
@@ -741,6 +808,40 @@ body {
     padding: 1px 5px;
   }
 
+  /* Actiuni bara de sus mobil (Cautare, + Programare, Meniu) si pastile ocupare linii: Tinte tactile 44x44px. */
+  .itp-mob-top-actions {
+    gap: 6px;
+  }
+
+  .itp-mob-top-icon {
+    min-height: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .itp-mob-new-btn {
+    min-height: 44px;
+    height: 44px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .itp-agenda-date-wrap {
+    min-width: 120px;
+  }
+
+  .itp-line-select {
+    width: auto;
+    min-height: 36px;
+  }
+
+  .itp-occ-pill {
+    cursor: pointer;
+    font-size: 0.74rem;
+    padding: 4px 8px;
+  }
+
+  /* Butoane actiuni card mobil: Inaltime 44px pe o singura linie, cu separator vertical si spatiu suplimentar inaintea butonului distructiv Sterge. */
   .itp-mob-acts-line {
     display: flex;
     align-items: center;
@@ -749,13 +850,13 @@ body {
   }
 
   .itp-mob-act {
-    height: 28px;
-    min-height: 28px;
-    padding: 0 0.32rem;
-    font-size: 0.71rem;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 0.3rem;
+    font-size: 0.74rem;
     font-weight: 600;
     line-height: 1;
-    border-radius: 6px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -765,15 +866,29 @@ body {
   }
 
   .itp-mob-act-primary {
-    flex: 1.2 1 0;
+    flex: 1.05 1 0;
     min-width: 0;
   }
 
   .itp-mob-icon-btn {
-    width: 32px;
-    min-width: 32px;
+    width: 44px;
+    min-width: 44px;
+    margin-left: 12px;
     padding: 0;
     flex: 0 0 auto;
+    position: relative;
+    background-color: #fff5f5;
+  }
+
+  .itp-mob-icon-btn::before {
+    content: "";
+    position: absolute;
+    left: -7px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background-color: #e2c9c9;
+    pointer-events: none;
   }
 
   .itp-filter-card {
@@ -786,17 +901,21 @@ body {
   }
 
   .itp-date-btn {
-    min-width: 38px;
-    width: 38px;
-    height: 34px;
-    min-height: 34px !important;
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px !important;
     padding: 0;
   }
 
   .itp-filter-date-group .itp-ro-date-text,
   .itp-azi-btn {
-    height: 34px;
-    min-height: 34px !important;
+    height: 44px;
+    min-height: 44px !important;
+  }
+
+  .itp-azi-btn {
+    min-width: 44px;
   }
 
   .itp-history-actions-right {
@@ -850,13 +969,17 @@ body {
   }
 
   .filter-pill {
-    padding: 2px 8px;
-    font-size: 0.74rem;
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 0.77rem;
+    display: inline-flex;
+    align-items: center;
   }
 
   .itp-all-days-btn {
-    font-size: 0.72rem;
-    padding: 0.22rem 0.48rem;
+    font-size: 0.74rem;
+    min-height: 32px;
+    padding: 0.25rem 0.55rem;
     white-space: nowrap;
   }
 
@@ -868,9 +991,12 @@ body {
   .itp-filter-group {
     width: 100%;
     flex-wrap: wrap;
-    row-gap: 4px;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    row-gap: 6px;
   }
 
+  /* Bara fixa navigare jos mobil: Contrast WCAG AA (#475569 inactiv 6.5:1, #b91c1c activ 5.8:1 pe #f5f0e8), iconite 18px si suport safe-area-inset-bottom. */
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
@@ -880,8 +1006,8 @@ body {
     background: var(--itp-cream);
     border-top: 1px solid var(--itp-border);
     z-index: 1030;
-    height: 54px;
-    padding: 0 4px;
+    height: calc(58px + env(safe-area-inset-bottom, 0px));
+    padding: 0 4px env(safe-area-inset-bottom, 0px);
   }
 
   .mobile-nav-btn {
@@ -894,16 +1020,16 @@ body {
     border: 0;
     border-top: 2px solid transparent;
     background: transparent;
-    color: #64748b;
-    font-size: 0.68rem;
+    color: #475569;
+    font-size: 0.72rem;
     font-weight: 600;
     padding: 4px 2px;
     cursor: pointer;
   }
 
   .mobile-nav-btn.active {
-    color: var(--aw-red);
-    border-top-color: var(--aw-red);
+    color: #b91c1c;
+    border-top-color: #b91c1c;
   }
 
   /* Ajustari pozitie Toast pe mobil: Aliniere stanga/dreapta 12px si top 56px sub bara compacta. */
@@ -912,10 +1038,65 @@ body {
     right: 12px;
     top: 56px;
   }
+
+  /* Modal Programare & adaptare tastatura mobila (.modal / #modalProgramare): Tinte 44x44px, inaltime dinamica --itp-vvh (visualViewport) si scroll intern fluid. */
+  .modal {
+    height: var(--itp-vvh, 100dvh);
+    max-height: var(--itp-vvh, 100dvh);
+  }
+
+  .modal .modal-dialog.modal-dialog-scrollable {
+    margin: 0.5rem auto;
+    height: calc(var(--itp-vvh, 100dvh) - 1rem);
+    max-height: calc(var(--itp-vvh, 100dvh) - 1rem);
+    min-height: 0;
+  }
+
+  .modal .modal-dialog.modal-dialog-scrollable .modal-content {
+    max-height: calc(var(--itp-vvh, 100dvh) - 1rem);
+    overflow: hidden;
+  }
+
+  .modal .modal-dialog.modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal .btn-close {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+    margin: -0.5rem -0.5rem -0.5rem auto;
+  }
+
+  #modalProgramare .form-control,
+  #modalProgramare .form-select {
+    min-height: 44px;
+    height: 44px;
+    font-size: 0.92rem;
+  }
+
+  #modalProgramare .form-select {
+    padding-right: 1.9rem;
+    background-position: right 0.55rem center;
+  }
+
+  #modalProgramare .modal-footer {
+    padding: 0.5rem 0.85rem max(0.5rem, env(safe-area-inset-bottom, 0px));
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  #modalProgramare .modal-footer .btn {
+    min-height: 44px;
+    height: 44px;
+    font-size: 0.9rem;
+  }
 }
 
-/* Ajustari ecrane foarte inguste (<= 359.98px, ex. 320px): Compactare header, butoane actiune pe 2 randuri daca e necesar si butoane calendar 34px. */
-@media (max-width: 359.98px) {
+/* Ajustari bara de sus pe ecrane intre 375px si 383px: Pastreaza tintele 44x44px fara clipping. */
+@media (max-width: 383.98px) {
   #sidebarMenu > .container-fluid {
     padding-left: 0.45rem !important;
     padding-right: 0.45rem !important;
@@ -925,23 +1106,129 @@ body {
     gap: 4px !important;
   }
 
+  .aw-logo-nav {
+    width: 36px;
+    height: 36px;
+  }
+
+  #navStationShort {
+    font-size: 0.84rem !important;
+  }
+
+  .itp-mob-top-actions {
+    gap: 4px;
+  }
+}
+
+/* Ajustari bara de sus pe ecrane inguste (<= 374.98px, ex. 360px): Pastreaza inaltimea 44px si previne iesirea butonului Meniu in afara ecranului. */
+@media (max-width: 374.98px) {
+  .aw-logo-nav {
+    width: 32px;
+    height: 32px;
+  }
+
   #navStationShort {
     font-size: 0.8rem !important;
   }
 
+  .itp-mob-top-icon {
+    min-height: 44px;
+    height: 44px;
+    min-width: 38px;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+  }
+
   #btnNewApptMob {
-    padding-left: 0.38rem !important;
-    padding-right: 0.38rem !important;
-    font-size: 0.7rem !important;
+    min-height: 44px;
+    height: 44px;
+    padding-left: 0.4rem !important;
+    padding-right: 0.4rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .itp-date-btn {
+    min-width: 38px;
+    width: 38px;
+  }
+
+  .itp-mob-icon-btn {
+    width: 40px;
+    min-width: 40px;
+    margin-left: 10px;
+  }
+
+  .itp-mob-icon-btn::before {
+    left: -6px;
+  }
+}
+
+/* Ajustari ecrane foarte inguste (<= 359.98px, ex. 320px): Compactare bara data, carduri actiune si butoane calendar fara overflow. */
+@media (max-width: 359.98px) {
+  .aw-logo-nav {
+    width: 28px;
+    height: 28px;
+  }
+
+  #navStationShort {
+    font-size: 0.75rem !important;
+  }
+
+  .itp-mob-top-icon {
+    min-height: 40px;
+    height: 40px;
+    min-width: 32px;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+
+  #btnNewApptMob {
+    min-height: 40px;
+    height: 40px;
+    padding-left: 0.3rem !important;
+    padding-right: 0.3rem !important;
+    font-size: 0.68rem !important;
+  }
+
+  .itp-agenda-date-wrap {
+    min-width: 106px;
   }
 
   .itp-mob-acts-line {
-    flex-wrap: wrap;
+    gap: 3px;
+    flex-wrap: nowrap;
+  }
+
+  .itp-mob-act {
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .itp-mob-icon-btn {
+    width: 36px;
+    min-width: 36px;
+    margin-left: 8px;
+  }
+
+  .itp-mob-icon-btn::before {
+    left: -5px;
   }
 
   .itp-date-btn {
     min-width: 34px;
     width: 34px;
+    height: 40px;
+    min-height: 40px !important;
+  }
+
+  .itp-filter-date-group .itp-ro-date-text,
+  .itp-azi-btn {
+    height: 40px;
+    min-height: 40px !important;
+  }
+
+  .itp-azi-btn {
+    min-width: 38px;
   }
 
   .itp-filter-date-group .itp-ro-date-text {
@@ -957,6 +1244,17 @@ body {
   .itp-azi-btn {
     padding-left: 0.45rem !important;
     padding-right: 0.45rem !important;
+  }
+
+  #modalProgramare .form-control,
+  #modalProgramare .form-select {
+    font-size: 0.82rem;
+    padding-left: 0.5rem;
+  }
+
+  #modalProgramare .form-select {
+    padding-right: 1.6rem;
+    background-position: right 0.4rem center;
   }
 }
 
@@ -1001,4 +1299,177 @@ body {
   background-color: var(--itp-newappt-hover-bg);
   border-color: var(--itp-newappt-border);
   color: var(--itp-newappt-fg);
+}
+
+/* Ecran autentificare PIN (#loginScreen): Incadrare in viewport dinamic (100dvh), tinte tactile minim 44x44px si zero scroll pe toate rezolutiile. */
+#loginScreen {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#loginScreen .pin-user-card {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#loginScreen .pin-input {
+  min-height: 44px;
+  height: 44px;
+}
+
+#loginScreen #btnTogglePwd {
+  min-height: 44px;
+  height: 44px;
+  min-width: 56px;
+}
+
+#loginScreen .pin-keypad-btn {
+  min-height: 44px;
+  height: 44px;
+}
+
+#loginScreen .btn-aw.touch-btn {
+  min-height: 44px;
+}
+
+#loginScreen #btnShowMasterRecovery {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 575.98px), (max-height: 780px) {
+  #loginScreen.page-center {
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+  }
+
+  #loginScreen > .container-tight {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.4rem !important;
+  }
+
+  #loginScreen .aw-login-brand {
+    margin-bottom: 0.4rem !important;
+  }
+
+  #loginScreen .aw-logo-login {
+    width: 84px;
+    height: 84px;
+    margin-bottom: 0.25rem !important;
+  }
+
+  #loginScreen #loginStationTitle {
+    font-size: 1.15rem !important;
+  }
+
+  #loginScreen .aw-login-subtitle {
+    font-size: 0.65rem !important;
+  }
+
+  #loginScreen .aw-login-card > .card-body {
+    padding: 0.7rem 0.85rem !important;
+  }
+
+  #loginScreen h2.h3 {
+    font-size: 1.08rem;
+    margin-bottom: 0.1rem !important;
+  }
+
+  #loginScreen .aw-login-hint {
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem !important;
+  }
+
+  #loginScreen #pinUserGrid {
+    margin-bottom: 0.4rem !important;
+  }
+
+  #loginScreen .pin-user-card {
+    padding: 4px 4px;
+  }
+
+  #loginScreen .pin-input {
+    font-size: 1.2rem;
+  }
+
+  #loginScreen #pinKeypad {
+    margin-bottom: 0.45rem !important;
+  }
+
+  #loginScreen .pin-keypad-btn {
+    font-size: 1.05rem;
+    padding: 0;
+  }
+
+  #loginScreen .btn-aw.touch-btn {
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+
+  #loginScreen #btnShowMasterRecovery {
+    margin-top: 0.1rem !important;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.78rem;
+  }
+}
+
+/* Ecrane scurte (<= 660px, ex. 360x640 si 320x568): Antet compact pe un rand ca tastele de 44px sa incapa fara scroll. */
+@media (max-height: 660px) {
+  #loginScreen.page-center {
+    padding-top: 0.15rem;
+  }
+
+  #loginScreen .aw-login-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: left !important;
+    margin-bottom: 0.35rem !important;
+  }
+
+  #loginScreen .aw-logo-login {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0 !important;
+    flex-shrink: 0;
+  }
+
+  #loginScreen #loginStationTitle {
+    font-size: 1rem !important;
+  }
+
+  #loginScreen .aw-login-card > .card-body {
+    padding: 0.55rem 0.7rem !important;
+  }
+}
+
+@media (max-height: 590px) {
+  #loginScreen > .container-tight {
+    padding-top: 0.15rem !important;
+    padding-bottom: 0.15rem !important;
+  }
+
+  #loginScreen .aw-login-hint {
+    display: none;
+  }
+
+  #loginScreen h2.h3 {
+    font-size: 0.98rem;
+    margin-bottom: 0.3rem !important;
+  }
+
+  #loginScreen #pinKeypad {
+    --tblr-gutter-y: 0.375rem;
+    margin-bottom: 0.35rem !important;
+  }
+
+  #loginScreen #btnShowMasterRecovery {
+    margin-top: 0 !important;
+  }
 }

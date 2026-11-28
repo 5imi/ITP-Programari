@@ -336,6 +336,66 @@
     return window.bootstrap || (window.tabler && window.tabler.bootstrap) || window.tabler || null;
   }
 
+  /* Adaptare dinamica modale la tastatura mobila (visualViewport): Sincronizeaza --itp-vvh si aduce campul focusat in zona vizibila. */
+  function syncVisualViewportHeight() {
+    const vvh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    if (vvh && vvh > 0) {
+      document.documentElement.style.setProperty('--itp-vvh', `${Math.round(vvh)}px`);
+    }
+  }
+  syncVisualViewportHeight();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncVisualViewportHeight);
+  }
+  window.addEventListener('resize', syncVisualViewportHeight);
+
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (!el || window.innerWidth >= 992) return;
+    if (el.closest && el.closest('.modal.show .modal-body')) {
+      setTimeout(() => {
+        syncVisualViewportHeight();
+        try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+      }, 180);
+    }
+  });
+
+  /* Suport buton fizic Inapoi (Android Back): Inchide modalul sau meniul mobil deschis in loc sa paraseasca aplicatia. */
+  function pushOverlayHistoryState() {
+    try {
+      if (!(window.history && window.history.state && window.history.state.itpOverlay)) {
+        window.history.pushState({ itpOverlay: true }, '');
+      }
+    } catch (_) {
+    }
+  }
+
+  document.addEventListener('shown.bs.modal', () => {
+    pushOverlayHistoryState();
+  });
+
+  document.addEventListener('shown.bs.collapse', (e) => {
+    if (e.target && e.target.id === 'sidebar-nav' && window.innerWidth < 992) {
+      pushOverlayHistoryState();
+    }
+  });
+
+  window.addEventListener('popstate', () => {
+    const openModals = Array.from(document.querySelectorAll('.modal.show'));
+    if (openModals.length > 0) {
+      const topModal = openModals.find(m => m.id === 'modalConfirm') || openModals[openModals.length - 1];
+      setModalVisible(topModal.id, false);
+      if (openModals.length > 1) {
+        pushOverlayHistoryState();
+      }
+      return;
+    }
+    const navEl = document.getElementById('sidebar-nav');
+    if (navEl && navEl.classList.contains('show') && window.innerWidth < 992) {
+      closeMobileSidebar();
+    }
+  });
+
   function setModalVisible(id, visible) {
     const el = document.getElementById(id);
     const bs = getBsApi();
@@ -399,6 +459,11 @@
       if (setup.station_name) {
         const t = document.getElementById('loginStationTitle');
         if (t) t.textContent = setup.station_name;
+        const sub = document.querySelector('#loginScreen .aw-login-subtitle');
+        if (sub) {
+          const norm = String(setup.station_name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          sub.classList.toggle('d-none', norm.includes('statie itp'));
+        }
       }
 
       if (setup.needs_setup) {
@@ -710,14 +775,21 @@
       `;
     }
 
+    const adminViewIds = ['users', 'motive', 'module', 'setari', 'backup'];
+    const mobIcons = {
+      azi: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      istoric: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>',
+      users: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>',
+    };
     const mobBtns = [
-      { id: 'azi', label: 'Programări' },
-      { id: 'istoric', label: 'Istoric' },
+      { id: 'azi', label: 'Programări', active: state.currentView === 'azi' },
+      { id: 'istoric', label: 'Istoric', active: state.currentView === 'istoric' },
     ];
-    if (isAdmin()) mobBtns.push({ id: 'users', label: 'Admin' });
+    if (isAdmin()) mobBtns.push({ id: 'users', label: 'Admin', active: adminViewIds.includes(state.currentView) });
 
     document.getElementById('mobileBottomNav').innerHTML = mobBtns.map(m => `
-      <button type="button" class="mobile-nav-btn ${state.currentView === m.id ? 'active' : ''}" onclick="switchView('${m.id}')">
+      <button type="button" class="mobile-nav-btn ${m.active ? 'active' : ''}" onclick="switchView('${m.id}')" aria-current="${m.active ? 'page' : 'false'}">
+        ${mobIcons[m.id] || ''}
         <span>${esc(m.label)}</span>
       </button>
     `).join('');
@@ -793,6 +865,7 @@
     const root = document.getElementById('viewRoot');
     const titleEl = document.getElementById('viewTitle');
     const subEl = document.getElementById('viewSubtitle');
+    if (!isPoll && root) root.classList.add('itp-view-loading');
 
     try {
       if (view === 'azi') {
@@ -947,6 +1020,10 @@
       if (err && err.name === 'AbortError') return;
       if (isPoll) return;
       root.innerHTML = `<div class="alert alert-danger">${esc(err.message || 'Eroare la încărcare.')}</div>`;
+    } finally {
+      if (!isPoll && root && reqSeq === viewRequestSeq) {
+        root.classList.remove('itp-view-loading');
+      }
     }
   }
 
@@ -969,8 +1046,7 @@
     const lineOccPills = lines.map(ln => {
       const short = ln.replace(/^Linia\s+/i, 'L');
       const used = Number(state.occupancyByLine[ln] || 0);
-      return `<button type="button" class="badge border-0 ${state.lineFilter === ln ? 'bg-primary text-white' : 'bg-light text-dark border'}"
-        style="cursor:pointer; font-size: 0.71rem;"
+      return `<button type="button" class="badge border-0 itp-occ-pill ${state.lineFilter === ln ? 'bg-primary text-white' : 'bg-light text-dark border'}"
         data-itp-action="toggle-line" data-itp-val="${esc(ln)}">${esc(short)}: ${used}/${state.dailySlots.length}</button>`;
     }).join('');
 
@@ -1148,6 +1224,15 @@
       ${futureMobCards}
     ` : '';
 
+    const hasSearchQuery = state.search.trim() !== '';
+    const emptyAgendaBody = isOpenRevFilter
+      ? '<div>Nicio revenire deschisă (nereprogramată) în ultimele 60 de zile.</div>'
+      : (hasSearchQuery && !state.searchAllDays
+        ? `<div>Nicio programare găsită pentru <strong>„${esc(state.search.trim())}”</strong> în ${esc(formatDateRo(state.selectedDate))}.</div>
+           <div class="mt-2"><button type="button" class="btn btn-sm btn-primary touch-btn" onclick="enableSearchAllDaysAndReload()">Caută „${esc(state.search.trim())}” în toate zilele</button></div>`
+        : `<div>Nicio programare pentru ziua selectată.</div>
+           ${!hasSearchQuery && userCan('programari.edit') ? `<div class="mt-2"><button type="button" class="btn btn-sm btn-primary touch-btn" onclick="openNewAppointmentModal()">+ Adaugă programare (${esc(formatDateRo(state.selectedDate))})</button></div>` : ''}`);
+
     return `
       ${isClosed ? `<div class="alert alert-warning py-1 px-2 mb-2 small"><strong>Zi închisă:</strong> în afara programului stației. Doar Administratorul poate confirma excepții.</div>` : ''}
       <div class="card p-2 mb-2 itp-filter-card">
@@ -1157,8 +1242,9 @@
               <button type="button" class="itp-date-btn" onclick="shiftSelectedDate(-1)" aria-label="Ziua anterioară" title="Ziua anterioară">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
-              <div class="itp-ro-date-wrap flex-grow-1 flex-lg-grow-0" style="min-width: 108px;">
+              <div class="itp-ro-date-wrap itp-agenda-date-wrap flex-grow-1 flex-lg-grow-0">
                 <input type="text" class="form-control form-control-sm fw-medium itp-ro-date-text" id="agendaDateText"
+                  aria-label="Data agendei (zz/ll/aaaa)"
                   style="min-height: 32px;" inputmode="numeric" maxlength="10" placeholder="zz/ll/aaaa"
                   value="${esc(formatDateSlashRo(state.selectedDate))}"
                   onchange="onRoDateTextChange('agendaDateText', 'agendaDateNative', selectDate)">
@@ -1174,7 +1260,6 @@
               </button>
               <button type="button" class="btn btn-sm itp-azi-btn ${isTodaySelected ? 'btn-primary' : 'btn-outline-primary'}" onclick="selectDate('${esc(state.todayDate)}')">Azi</button>
             </div>
-            ${dayBadge}
             ${isClosed ? `<span class="badge bg-orange-lt text-orange flex-shrink-0">Închis</span>` : `<span class="badge bg-blue-lt text-blue d-lg-none flex-shrink-0" id="mobFreeDayBadge">${freeDay} lib.</span>`}
             <label class="d-none d-lg-flex align-items-center gap-2 ms-2 m-0" style="cursor:pointer;">
               <input class="form-check-input m-0" type="checkbox" ${state.searchAllDays ? 'checked' : ''} onchange="toggleSearchAllDays()">
@@ -1182,7 +1267,7 @@
             </label>
           </div>
           <div class="d-flex align-items-center gap-1 itp-filter-group justify-content-between justify-content-lg-end">
-            <select class="form-select form-select-sm" style="width:auto; min-height:28px;" onchange="setLineFilter(this.value)">
+            <select class="form-select form-select-sm itp-line-select" aria-label="Filtrare linie ITP" onchange="setLineFilter(this.value)">
               <option value="Toate" ${state.lineFilter === 'Toate' ? 'selected' : ''}>${isMob ? 'Liniile' : 'Toate liniile'}</option>
               ${lines.map(ln => `<option value="${esc(ln)}" ${state.lineFilter === ln ? 'selected' : ''}>${esc(ln)}</option>`).join('')}
             </select>
@@ -1196,9 +1281,10 @@
             </div>
           </div>
         </div>
-        <div class="d-flex align-items-center gap-1 mt-1 pt-1 border-top flex-wrap">
-          <span class="text-muted" style="font-size: 0.72rem;">Ocupare ${esc(formatDateRo(state.selectedDate))}:</span>
+        <div class="d-flex align-items-center gap-2 mt-1 pt-1 border-top flex-wrap">
+          <span class="text-muted" style="font-size: 0.74rem;">Ocupare ${esc(formatDateRo(state.selectedDate))}:</span>
           ${lineOccPills}
+          ${dayBadge}
         </div>
       </div>
 
@@ -1209,18 +1295,24 @@
               <tr><th>Ora / Linie</th><th>Nr. Înmatriculare</th><th>Mașină</th><th>Client & Telefon</th><th>Status</th><th class="text-end">Acțiuni rapide</th></tr>
             </thead>
             <tbody>
-              ${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">${isOpenRevFilter ? 'Nicio revenire deschisă (nereprogramată) în ultimele 60 de zile.' : 'Nicio programare pentru ziua selectată.'}</td></tr>`}
+              ${desktopRows || `<tr><td colspan="6" class="text-center text-muted py-4">${emptyAgendaBody}</td></tr>`}
               ${futureDeskSection}
             </tbody>
           </table>
         </div>
       </div>
       <div class="mobile-cards">
-        ${mobCards || `<div class="card p-3 text-center text-muted">${isOpenRevFilter ? 'Nicio revenire deschisă (nereprogramată) în ultimele 60 de zile.' : 'Nicio programare pentru ziua selectată.'}</div>`}
+        ${mobCards || `<div class="card p-3 text-center text-muted">${emptyAgendaBody}</div>`}
         ${futureMobSection}
       </div>
     `;
   }
+
+  window.enableSearchAllDaysAndReload = () => {
+    state.searchAllDays = true;
+    syncMobAllDaysButton();
+    loadAndRenderCurrentView();
+  };
 
   window.toggleLineFilter = (ln) => {
     state.lineFilter = state.lineFilter === ln ? 'Toate' : ln;
@@ -2142,27 +2234,62 @@
     });
   };
 
-  /* Administrare Utilizatori (renderUsersView): Lista conturi, permisiuni granulare, blocare/deblocare si creare/editare colegi. */
-  function renderUsersView() {
+  /* Bara sub-navigare Admin pe mobil (renderAdminSubNav): Comutare in 1 tap intre Utilizatori, Motive, Module, Setari, Backup si Jurnal. */
+  function renderAdminSubNav(activeView) {
+    if (!isAdmin()) return '';
+    const tabs = [
+      { id: 'users', label: 'Utilizatori' },
+      { id: 'motive', label: 'Motive' },
+      { id: 'module', label: 'Module' },
+      { id: 'setari', label: 'Setări' },
+      { id: 'backup', label: 'Backup' },
+    ];
     return `
-      <div class="mb-2 d-flex justify-content-between align-items-center">
+      <div class="d-lg-none mb-2 itp-admin-subnav" role="navigation" aria-label="Sub-secțiuni Administrare">
+        ${tabs.map(t => `<button type="button" class="filter-pill ${activeView === t.id ? 'active' : ''}" onclick="switchView('${t.id}')">${esc(t.label)}</button>`).join('')}
+        <button type="button" class="filter-pill" onclick="openSecurityLogModal()">Jurnal</button>
+      </div>
+    `;
+  }
+
+  /* Administrare Utilizatori (renderUsersView): Lista conturi, permisiuni granulare in limba romana, blocare/deblocare si creare/editare colegi. */
+  function renderUsersView() {
+    const permLabels = {
+      'programari.edit': 'Editare',
+      'programari.revenire': 'Revenire',
+      'programari.delete': 'Ștergere',
+    };
+    const renderPermBadges = (u) => {
+      if (u.role === 'admin') {
+        return `<span class="badge bg-red-lt text-red">Acces complet</span>`;
+      }
+      const list = (u.permissions || []).map(p => permLabels[p] || p);
+      if (!list.length) return `<span class="badge bg-secondary-lt text-dark">Doar citire</span>`;
+      return list.map(lbl => `<span class="badge bg-secondary-lt text-dark">${esc(lbl)}</span>`).join(' ');
+    };
+    return `
+      ${renderAdminSubNav('users')}
+      <div class="mb-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
         <span class="text-muted small">Conturile și permisiunile se aplică imediat.</span>
-        <button type="button" class="btn btn-sm btn-primary" onclick="openUserModal(null)">+ Utilizator nou</button>
+        <button type="button" class="btn btn-sm btn-primary itp-admin-act-btn" onclick="openUserModal(null)">+ Utilizator nou</button>
       </div>
       <div class="row g-2">
         ${state.adminUsers.map(u => `
           <div class="col-md-6">
             <div class="card p-3">
-              <div class="d-flex justify-content-between align-items-start gap-2">
-                <div>
-                  <div class="fw-bold">${esc(u.display_name)} <span class="badge ${u.role === 'admin' ? 'bg-red-lt text-red' : 'bg-blue-lt text-blue'}">${esc(u.role)}</span></div>
+              <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                <div class="min-w-0">
+                  <div class="fw-bold d-flex align-items-center gap-1 flex-wrap">
+                    <span>${esc(u.display_name)}</span>
+                    <span class="badge ${u.role === 'admin' ? 'bg-red-lt text-red' : 'bg-blue-lt text-blue'}">${u.role === 'admin' ? 'Admin' : 'Utilizator'}</span>
+                  </div>
                   <div class="text-muted small">@${esc(u.username)} • ${u.is_active ? 'Activ' : 'Blocat'}</div>
-                  <div class="text-muted small mt-1">Drepturi: ${esc((u.permissions || []).join(', ') || 'Doar citire')}</div>
+                  <div class="d-flex align-items-center gap-1 flex-wrap mt-2">${renderPermBadges(u)}</div>
                 </div>
-                <div class="d-flex gap-1">
-                  ${u.is_primary_admin && state.user && state.user.id === u.id && state.user.has_master_pin ? `<button type="button" class="btn btn-sm btn-outline-warning" onclick="openChangeMasterPinModal()">PIN Secret</button>` : ''}
-                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="openUserModal(${u.id})">Editează</button>
-                  ${u.is_primary_admin ? '' : `<button type="button" class="btn btn-sm btn-outline-${u.is_active ? 'danger' : 'success'}" onclick="toggleUserActive(${u.id})">${u.is_active ? 'Blochează' : 'Activează'}</button>`}
+                <div class="d-flex gap-2 flex-shrink-0 flex-wrap">
+                  ${u.is_primary_admin && state.user && state.user.id === u.id && state.user.has_master_pin ? `<button type="button" class="btn btn-sm btn-outline-warning itp-admin-act-btn" onclick="openChangeMasterPinModal()">PIN Secret</button>` : ''}
+                  <button type="button" class="btn btn-sm btn-outline-primary itp-admin-act-btn" onclick="openUserModal(${u.id})">Editează</button>
+                  ${u.is_primary_admin ? '' : `<button type="button" class="btn btn-sm btn-outline-${u.is_active ? 'danger' : 'success'} itp-admin-act-btn" onclick="toggleUserActive(${u.id})">${u.is_active ? 'Blochează' : 'Activează'}</button>`}
                 </div>
               </div>
             </div>
@@ -2262,24 +2389,24 @@
         <div class="card p-3">
           <h4 class="fw-bold mb-2">${esc(title)}</h4>
           <div class="input-group input-group-sm mb-2">
-            <input type="text" class="form-control" id="newReason_${kind}" placeholder="Motiv nou...">
+            <input type="text" class="form-control" id="newReason_${kind}" aria-label="${esc(title)} — motiv nou" placeholder="Motiv nou...">
             <button type="button" class="btn btn-primary" onclick="addReason('${kind}')">Adaugă</button>
           </div>
           <div class="list-group list-group-flush border rounded">
             ${items.map(r => state.editingReasonId === r.id ? `
               <div class="list-group-item py-1 px-2">
                 <div class="input-group input-group-sm">
-                  <input type="text" class="form-control" id="editReasonInp_${r.id}" value="${esc(r.label)}" maxlength="60">
+                  <input type="text" class="form-control" id="editReasonInp_${r.id}" aria-label="Editează textul motivului" value="${esc(r.label)}" maxlength="60">
                   <button type="button" class="btn btn-primary" onclick="saveEditReason(${r.id})">Salvează</button>
                   <button type="button" class="btn btn-outline-secondary" onclick="cancelEditReason()">Renunță</button>
                 </div>
               </div>
             ` : `
-              <div class="list-group-item d-flex justify-content-between align-items-center gap-2 py-1 px-2">
+              <div class="list-group-item d-flex justify-content-between align-items-center gap-2 py-2 px-2">
                 <span class="small fw-medium text-truncate">${esc(r.label)}</span>
-                <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="startEditReason(${r.id})">Editează</button>
-                  <button type="button" class="btn btn-sm btn-ghost-danger" onclick="deleteReason(${r.id})">Șterge</button>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                  <button type="button" class="btn btn-sm btn-outline-primary itp-admin-act-btn" onclick="startEditReason(${r.id})">Editează</button>
+                  <button type="button" class="btn btn-sm btn-ghost-danger itp-admin-act-btn" onclick="deleteReason(${r.id})">Șterge</button>
                 </div>
               </div>
             `).join('')}
@@ -2287,7 +2414,7 @@
         </div>
       </div>
     `;
-    return `<div class="row g-3">${renderKind('Motive Revenire (30 zile)', 'revenire', state.reasonsRevenire)}${renderKind('Motive Ștergere / Anulare', 'stergere', state.reasonsStergere)}</div>`;
+    return `${renderAdminSubNav('motive')}<div class="row g-3">${renderKind('Motive Revenire (30 zile)', 'revenire', state.reasonsRevenire)}${renderKind('Motive Ștergere / Anulare', 'stergere', state.reasonsStergere)}</div>`;
   }
 
   window.startEditReason = (id) => {
@@ -2355,17 +2482,18 @@
   /* Administrare Module (renderModulesView): Activare/dezactivare module optionale ale aplicatiei. */
   function renderModulesView() {
     return `
+      ${renderAdminSubNav('module')}
       <div class="row g-2">
         ${state.modules.map(m => `
           <div class="col-md-6">
-            <div class="card p-3 d-flex flex-row justify-content-between align-items-center">
+            <div class="card p-3 d-flex flex-row justify-content-between align-items-center gap-2">
               <div>
                 <div class="fw-bold">${esc(m.name)} <span class="text-muted small">v${esc(m.version)}</span></div>
                 <div class="text-muted small">${esc(m.description)}</div>
               </div>
               ${m.locked
                 ? `<span class="badge bg-blue-lt text-blue">Obligatoriu</span>`
-                : `<button type="button" class="btn btn-sm btn-outline-${m.enabled ? 'danger' : 'success'}" data-itp-action="toggle-module" data-itp-val="${esc(m.id)}">${m.enabled ? 'Dezactivează' : 'Activează'}</button>`}
+                : `<button type="button" class="btn btn-sm btn-outline-${m.enabled ? 'danger' : 'success'} itp-admin-act-btn" data-itp-action="toggle-module" data-itp-val="${esc(m.id)}">${m.enabled ? 'Dezactivează' : 'Activează'}</button>`}
             </div>
           </div>
         `).join('')}
@@ -2401,35 +2529,36 @@
       [1, 'Luni'], [2, 'Marți'], [3, 'Miercuri'], [4, 'Joi'], [5, 'Vineri'], [6, 'Sâmbătă'], [7, 'Duminică'],
     ];
     return `
+      ${renderAdminSubNav('setari')}
       <div class="card p-3" style="max-width: 660px;">
         <form onsubmit="saveStationSettings(event)">
           <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Denumire stație</label>
+            <label class="form-label small fw-semibold mb-1" for="cfgName">Denumire stație</label>
             <input type="text" class="form-control form-control-sm" id="cfgName" value="${esc(c.station_name)}" required>
           </div>
           <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Semnătură / adresă în mesajele WhatsApp și SMS</label>
+            <label class="form-label small fw-semibold mb-1" for="cfgSignature">Semnătură / adresă în mesajele WhatsApp și SMS</label>
             <input type="text" class="form-control form-control-sm" id="cfgSignature" value="${esc(c.station_signature || '')}" placeholder="AUTOMOTIVE CENTER WERKSTAT SRL...">
           </div>
           <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Linii ITP (separate prin virgulă)</label>
+            <label class="form-label small fw-semibold mb-1" for="cfgLines">Linii ITP (separate prin virgulă)</label>
             <input type="text" class="form-control form-control-sm" id="cfgLines" value="${esc((c.lines || []).join(', '))}" required>
           </div>
           <div class="row g-2 mb-2">
             <div class="col-6 col-sm-3">
-              <label class="form-label small fw-semibold mb-1">Deschidere</label>
-              <input type="text" class="form-control form-control-sm" id="cfgOpen" value="${esc(c.open_time)}" required>
+              <label class="form-label small fw-semibold mb-1" for="cfgOpen">Deschidere</label>
+              <input type="text" class="form-control form-control-sm" id="cfgOpen" inputmode="numeric" value="${esc(c.open_time)}" required>
             </div>
             <div class="col-6 col-sm-3">
-              <label class="form-label small fw-semibold mb-1">Închidere</label>
-              <input type="text" class="form-control form-control-sm" id="cfgClose" value="${esc(c.close_time)}" required>
+              <label class="form-label small fw-semibold mb-1" for="cfgClose">Închidere</label>
+              <input type="text" class="form-control form-control-sm" id="cfgClose" inputmode="numeric" value="${esc(c.close_time)}" required>
             </div>
             <div class="col-6 col-sm-3">
-              <label class="form-label small fw-semibold mb-1">Slot (minute)</label>
+              <label class="form-label small fw-semibold mb-1" for="cfgSlot">Slot (minute)</label>
               <input type="number" class="form-control form-control-sm" id="cfgSlot" value="${esc(c.slot_minutes)}" min="15" max="60" required>
             </div>
             <div class="col-6 col-sm-3">
-              <label class="form-label small fw-semibold mb-1">Termen revenire (zile)</label>
+              <label class="form-label small fw-semibold mb-1" for="cfgReinspectionDays">Termen revenire (zile)</label>
               <input type="number" class="form-control form-control-sm" id="cfgReinspectionDays" value="${esc(c.reinspection_days || 30)}" min="1" max="90" required>
             </div>
           </div>
@@ -2444,7 +2573,7 @@
               `).join('')}
             </div>
           </div>
-          <button type="submit" class="btn btn-sm btn-primary">Salvează setările</button>
+          <button type="submit" class="btn btn-sm btn-primary touch-btn px-3">Salvează setările</button>
         </form>
       </div>
     `;
@@ -2492,22 +2621,23 @@
   /* Administrare Backup & Jurnal Securitate (renderBackupView): Export SQL/CSV, restaurare si vizualizare core_audit_log. */
   function renderBackupView() {
     return `
+      ${renderAdminSubNav('backup')}
       <div class="card p-3">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div>
             <div class="fw-bold">Copii de siguranță</div>
             <div class="text-muted small">Salvează local o copie completă a datelor aplicației.</div>
           </div>
-          <button type="button" class="btn btn-sm btn-primary" onclick="createBackupNow()">Generează Backup acum</button>
+          <button type="button" class="btn btn-sm btn-primary itp-admin-act-btn" onclick="createBackupNow()">Generează Backup acum</button>
         </div>
         <div class="list-group list-group-flush border rounded">
           ${state.adminBackups.map(b => `
-            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-              <div>
-                <div class="fw-semibold small">${esc(b.filename)}</div>
+            <div class="list-group-item d-flex justify-content-between align-items-center gap-2 py-2 px-3">
+              <div class="min-w-0">
+                <div class="fw-semibold small text-truncate">${esc(b.filename)}</div>
                 <div class="text-muted small">${esc(b.modified_at)} • ${Math.round(b.size_bytes / 1024)} KB</div>
               </div>
-              <a class="btn btn-sm btn-outline-primary" href="api/admin/backups/${encodeURIComponent(b.filename)}" target="_blank" rel="noopener">Descarcă</a>
+              <a class="btn btn-sm btn-outline-primary itp-admin-act-btn flex-shrink-0" href="api/admin/backups/${encodeURIComponent(b.filename)}" target="_blank" rel="noopener">Descarcă</a>
             </div>
           `).join('') || `<div class="p-3 text-muted small text-center">Nicio copie de siguranță generată manual încă.</div>`}
         </div>
