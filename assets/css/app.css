@@ -444,12 +444,18 @@ body {
   --tblr-gutter-y: 0.5rem;
 }
 
-/* Banda filtre status agenda: Pastile rotunjite 999px (#ffffff inactiv, albastru #2563eb cu text alb cand sunt active). */
+/* Banda filtre status agenda si selector linie: Pastile rotunjite fara scrollbar orizontal, selector linie compact width:auto global. */
+.itp-line-select {
+  width: auto !important;
+  flex: 0 0 auto;
+  min-height: 32px;
+}
+
 .filter-strip {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 
 .filter-pill {
@@ -831,7 +837,6 @@ body {
   }
 
   .itp-line-select {
-    width: auto;
     min-height: 36px;
   }
 
